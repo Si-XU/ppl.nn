@@ -135,7 +135,7 @@ inline void conv2d_im2col_gemm_o31_kernel_fp32_avx512_core(
         "cmp $NK_DT_BLK, %%r10\n"
         "jl 6f\n" // label_ic_remain
 "4:\n" // label_ic_body
-        ".align 16\n"
+        PPL_X86_INLINE_ASM_ALIGN()
         ".if O_LEN < 9\n"
         ".irp IC,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15\n"
         "vmovups (\\IC * NK_DT_BLK * D_BYTES)(%%rbx), %%zmm31\n"

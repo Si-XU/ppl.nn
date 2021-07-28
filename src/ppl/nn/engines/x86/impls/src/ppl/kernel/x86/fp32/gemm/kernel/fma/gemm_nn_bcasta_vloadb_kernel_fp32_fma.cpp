@@ -71,7 +71,7 @@ void gemm_nn_bcasta_vloadb_m6n16k16_fp32_fma_kernel_core(
         ".equ KER_FORM_GEMM, 1\n"
         ".equ KER_FORM_CONV, 2\n"
 
-        ".align 16\n"
+        PPL_X86_INLINE_ASM_ALIGN()
         ".if KER_FORM != KER_FORM_NONE\n"
         "mov H_IDX(%[priv_param]), %%r15\n" // mb_h
         ".endif\n" // .if KER_FORM != KER_FORM_NONE
@@ -149,7 +149,7 @@ void gemm_nn_bcasta_vloadb_m6n16k16_fp32_fma_kernel_core(
         "cmp $M6_K_DT_BLK, %%r10\n"
         "jl 5f\n" // label_k_remain
 "4:\n" // label_k_body
-        ".align 16\n"
+        PPL_X86_INLINE_ASM_ALIGN()
         "lea (%%rax, %%r11, D_BYTES), %%rcx\n"
         ".if PREFETCH_A\n"
         ".if M_LEN > 0\n prefetcht0 (0 * M6_K_DT_BLK * D_BYTES)(%%rcx)\n .endif\n"

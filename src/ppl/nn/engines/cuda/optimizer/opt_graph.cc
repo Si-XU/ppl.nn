@@ -131,7 +131,7 @@ RetCode OptGraph::UpdateDims() {
                 }
                 if (ir_shape->second.dims.size() == dims_pairs->second.size()) {
                     for (uint32_t k = 0; k < ir_shape->second.dims.size(); ++k) {
-                        if ((dims_pairs->second)[k] != 0) {
+                        if (ir_shape->second.dims[k] == 1 && (dims_pairs->second)[k] != 0) {
                             ir_shape->second.dims[k] = (dims_pairs->second)[k];
                         }
                     }
@@ -203,7 +203,7 @@ RetCode OptGraph::UpdateDims() {
     return RC_SUCCESS;
 }
 
-RetCode OptGraph::FuseConvOperator() {
+RetCode OptGraph::FuseOperator() {
     ir::GraphTopo* topo = graph_->topo.get();
     UpdateTopologicalSort();
     auto fs_filter_manager = FsFilterManager::Instance();
@@ -242,13 +242,10 @@ RetCode OptGraph::AddBridgeKernels() {
             }
 
             auto edge = topo->GetEdgeById(edge_id);
-
-            auto creator = OptKernelCreatorManager::Instance()->Find("ppl", "Bridge");
-
             if (edge->GetName().find("Bridge_Edge") != string::npos) {
                 continue;
             }
-
+            auto creator = OptKernelCreatorManager::Instance()->Find("ppl", "Bridge");
             auto ret_pair = topo->AddNode("Bridge_Node_" + node->GetName() + "_" + edge->GetName());
             if (!ret_pair.second) {
                 LOG(ERROR) << "create a new node for [" << edge->GetName() << "] failed.";
@@ -256,7 +253,7 @@ RetCode OptGraph::AddBridgeKernels() {
             }
             auto new_node = ret_pair.first;
 
-            new_node->SetType(ir::Node::Type(node->GetType().domain, "Bridge"));
+            new_node->SetType(ir::Node::Type("ppl", "Bridge"));
             auto bridge_kernel = unique_ptr<CudaOptKernel>(creator(new_node));
             ((BridgeOp*)bridge_kernel.get())->AddInternalBridgeNode(node, new_node, edge, graph_);
 
@@ -495,7 +492,7 @@ RetCode OptGraph::DoOptimize(CudaDevice* device) {
         return status;
     }
 
-    status = FuseConvOperator();
+    status = FuseOperator();
     if (status != RC_SUCCESS) {
         LOG(ERROR) << "Fuse operators failed: " << GetRetCodeStr(status);
         return status;
@@ -531,7 +528,7 @@ RetCode OptGraph::DoOptimize(CudaDevice* device) {
         return status;
     }
 
-    status = FuseConvOperator();
+    status = FuseOperator();
     if (status != RC_SUCCESS) {
         LOG(ERROR) << "Fuse operators failed: " << GetRetCodeStr(status);
         return status;

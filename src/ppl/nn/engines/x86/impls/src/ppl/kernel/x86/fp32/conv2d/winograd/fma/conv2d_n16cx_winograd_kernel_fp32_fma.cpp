@@ -104,7 +104,7 @@ void conv2d_n16cx_winograd_kernel_fp32_fma_core(
         "cmp $CH_DT_BLK, %%r13\n"
         "jl 3f\n" // label_loop_c
 
-        ".align 16\n"
+        PPL_X86_INLINE_ASM_ALIGN()
 "2:\n" // label_loop_16c
         ".irp IC,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15\n"
         "vmovups ((\\IC * CH_DT_BLK + 0 * CH_RF_BLK) * DBYTES)(%%r14), %%ymm14\n"

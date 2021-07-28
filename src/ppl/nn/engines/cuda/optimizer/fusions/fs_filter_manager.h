@@ -22,6 +22,7 @@
 #include "ppl/nn/engines/cuda/optimizer/fusions/fusion.h"
 
 #include "ppl/nn/engines/cuda/optimizer/fusions/fs_averagepool.h"
+#include "ppl/nn/engines/cuda/optimizer/fusions/fs_channel_shuffle.h"
 #include "ppl/nn/engines/cuda/optimizer/fusions/fs_concat.h"
 #include "ppl/nn/engines/cuda/optimizer/fusions/fs_conv.h"
 #include "ppl/nn/engines/cuda/optimizer/fusions/fs_gemm.h"
@@ -46,6 +47,7 @@ private:
     ConcatFusion concat_fs_;
     ConvFusion conv_fs_;
     GemmFusion gemm_fs_;
+    ChannelShuffleFusion channel_shuffle_fs_;
 };
 
 }}} // namespace ppl::nn::cuda

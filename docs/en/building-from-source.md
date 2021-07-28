@@ -1,8 +1,8 @@
 ### Prerequisites
 
-* Linux running on x86 compatitable CPUs
+* Linux running on x86 compatible CPUs
 * GCC >= 4.9 or LLVM/Clang >= 6.0
-* [CMake](https://cmake.org/download/) >= 3.11
+* [CMake](https://cmake.org/download/) >= 3.13
 * [Git](https://git-scm.com/downloads) >= 2.7.0
 * [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit-archive) >= 10.2 (for CUDA version)
 * [Python](https://www.python.org/downloads/) >= 3 (for CUDA version)
@@ -57,3 +57,21 @@ There is a test tool named `pplnn` in `tools/pplnn.cc`. You can run `pplnn` usin
 ```
 
 NOTE: if CUDA engine is enabled, `pplnn` uses CUDA only.
+
+You can run the python demo with:
+
+```bash
+PYTHONPATH=./pplnn-build/python:./pplnn-build/ppl.common-build/python python3 ./tools/pplnn.py --use-x86 --onnx-model tests/testdata/conv.onnx
+```
+
+or
+
+```bash
+PYTHONPATH=./pplnn-build/python:./pplnn-build/ppl.common-build/python python3 ./tools/pplnn.py --use-cuda --onnx-model tests/testdata/conv.onnx
+```
+
+or use both engines:
+
+```bash
+PYTHONPATH=./pplnn-build/python:./pplnn-build/ppl.common-build/python python3 ./tools/pplnn.py --use-x86 --use-cuda --onnx-model tests/testdata/conv.onnx
+```
