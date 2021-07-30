@@ -24,8 +24,8 @@ import logging
 import argparse
 import random
 import numpy as np
-import pypplnn as pplnn
-import pypplcommon as pplcommon
+from pyppl import nn as pplnn
+from pyppl import common as pplcommon
 
 # ---------------------------------------------------------------------------- #
 
@@ -139,7 +139,7 @@ def RegisterEngines(args):
             sys.exit(-1)
 
         if args.quick_select:
-            status = cuda_engine.Configure(pplnn.CUDA_CONF_SET_DEFAULT_ALGORITHMS)
+            status = cuda_engine.Configure(pplnn.CUDA_CONF_USE_DEFAULT_ALGORITHMS)
             if status != pplcommon.RC_SUCCESS:
                 logging.error("cuda engine Configure() failed: " + pplcommon.GetRetCodeStr(status))
                 sys.exit(-1)
@@ -171,8 +171,16 @@ def SetInputsOneByOne(inputs, in_shapes, runtime):
     for i in range(file_num):
         tensor = runtime.GetInputTensor(i)
         shape = tensor.GetShape()
-        in_data = np.fromfile(input_files[i], dtype=shape.GetDataType())
-        status = tensor.CopyFromHost(in_data)
+        np_data_type = g_pplnntype2numpytype[shape.GetDataType()]
+
+        dims = []
+        if in_shapes:
+            dims = in_shapes[i]
+        else:
+            dims = shape.GetDims()
+
+        in_data = np.fromfile(input_files[i], dtype=np_data_type).reshape(dims)
+        status = tensor.ConvertFromHost(in_data)
         if status != pplcommon.RC_SUCCESS:
             logging.error("copy data to tensor[" + tensor.GetName() + "] failed: " +
                           pplcommon.GetRetCodeStr(status))
@@ -201,9 +209,8 @@ def SetReshapedInputsOneByOne(reshaped_inputs, runtime):
         tensor = runtime.GetInputTensor(i)
         shape = tensor.GetShape()
         np_data_type = g_pplnntype2numpytype[shape.GetDataType()]
-        in_data = np.fromfile(input_files[i], dtype = np_data_type)
-        in_data = in_data.reshape(input_shape)
-        status = tensor.CopyFromHost(in_data)
+        in_data = np.fromfile(input_files[i], dtype=np_data_type).reshape(input_shape)
+        status = tensor.ConvertFromHost(in_data)
         if status != pplcommon.RC_SUCCESS:
             logging.error("copy data to tensor[" + tensor.GetName() + "] failed: " +
                           pplcommon.GetRetCodeStr(status))
@@ -238,13 +245,13 @@ def SetRandomInputs(in_shapes, runtime):
             upper_bound = info.max
 
         dims = []
-        if not in_shapes:
-            dims = GenerateRandomDims(shape)
-        else:
+        if in_shapes:
             dims = in_shapes[i]
+        else:
+            dims = GenerateRandomDims(shape)
 
-        in_data = (upper_bound - lower_bound) * rng.random(dims, dtype=g_pplnntype2numpytype[shape.GetDataType()]) * lower_bound
-        status = tensor.CopyFromHost(in_data)
+        in_data = (upper_bound - lower_bound) * rng.random(dims, dtype = np_data_type) * lower_bound
+        status = tensor.ConvertFromHost(in_data)
         if status != pplcommon.RC_SUCCESS:
             logging.error("copy data to tensor[" + tensor.GetName() + "] failed: " +
                           pplcommon.GetRetCodeStr(status))
@@ -267,7 +274,7 @@ def SaveInputsOneByOne(save_data_dir, runtime):
     for i in range(runtime.GetInputCount()):
         tensor = runtime.GetInputTensor(i)
         shape = tensor.GetShape()
-        tensor_data = tensor.CopyToHost()
+        tensor_data = tensor.ConvertToHost()
         if not tensor_data:
             logging.error("copy data from tensor[" + tensor.GetName() + "] failed.")
             sys.exit(-1)
@@ -284,8 +291,7 @@ def SaveInputsAllInOne(save_data_dir, runtime):
     fd = open(out_file_name, mode="wb+")
     for i in range(runtime.GetInputCount()):
         tensor = runtime.GetInputTensor(i)
-        shsape = tensor.GetShape()
-        tensor_data = tensor.CopyToHost()
+        tensor_data = tensor.ConvertToHost()
         if not tensor_data:
             logging.error("copy data from tensor[" + tensor.GetName() + "] failed.")
             sys.exit(-1)
@@ -299,8 +305,7 @@ def SaveInputsAllInOne(save_data_dir, runtime):
 def SaveOutputsOneByOne(save_data_dir, runtime):
     for i in range(runtime.GetOutputCount()):
         tensor = runtime.GetOutputTensor(i)
-        shape = tensor.GetShape()
-        tensor_data = tensor.CopyToHost()
+        tensor_data = tensor.ConvertToHost()
         if not tensor_data:
             logging.error("copy data from tensor[" + tensor.GetName() + "] failed.")
             sys.exit(-1)

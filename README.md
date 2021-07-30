@@ -1,4 +1,4 @@
-## PPLNN
+# PPLNN
 
 [![website](docs/images/Website-OpenPPL-brightgreen.svg)](https://openppl.ai/)
 [![License](docs/images/License-Apache-2.0-green.svg)](LICENSE)
@@ -11,9 +11,48 @@
 
 ![alt arch](docs/images/arch.png)
 
+### Hello, world!
+
+* Installing prerequisites:
+
+    - On Debian or Ubuntu:
+
+    ```bash
+    apt-get install build-essential cmake git python3 python3-dev
+    ```
+
+    - On RedHat or CentOS:
+
+    ```bash
+    yum install gcc gcc-c++ cmake3 make git python3 python3-devel
+    ```
+
+* Cloning source code:
+
+```bash
+git clone https://github.com/openppl-public/ppl.nn.git
+```
+
+* Building from source:
+
+```bash
+cd ppl.nn
+./build.sh
+```
+
+* Running python demo:
+
+```bash
+PYTHONPATH=./pplnn-build/install python3 ./tools/pplnn.py --use-x86 --onnx-model tests/testdata/conv.onnx
+```
+
+Refer to [Documents](#documents) for more details.
+
 ### Documents
 
-* [Supported Ops and Platforms](docs/en/supported-ops-and-platforms.md)
+* OpenPPL Support
+  - [Supported Precison](docs/en/supported-ops-and-platforms.md)
+  - [Supported Ops and Platforms](docs/en/supported-ops-and-platforms.md)
 * [Building from Source](docs/en/building-from-source.md)
 * [Generating ONNX models from OpenMMLab](docs/en/model-convert-guide.md)
 * APIs
@@ -37,7 +76,7 @@
 Questions, reports, and suggestions are welcome through GitHub Issues!
 
 | WeChat Official Account | QQ Group |
-| :----:| :----: | 
+| :----:| :----: |
 | OpenPPL | 627853444 |
 | ![OpenPPL](docs/images/qrcode_for_gh_303b3780c847_258.jpg)| ![QQGroup](docs/images/qqgroup_s.jpg) |
 
