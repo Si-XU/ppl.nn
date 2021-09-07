@@ -121,8 +121,8 @@ void InitializeNumChlPerSpk(
     int num_chl_per_step_per_spk_head =  num_chl_per_grp_pad_per_step / splitk;
     int num_chl_per_step_per_spk_tail = (num_chl_per_grp_pad_per_step % splitk) + num_chl_per_step_per_spk_head;
 
-    num_chl_per_step_per_spk_head =  num_chl_per_step_per_spk_head * num_chl_per_step;
-    num_chl_per_step_per_spk_tail =  num_chl_per_step_per_spk_tail * num_chl_per_step -
-                                    (Align(num_chl_per_grp, num_chl_per_step) - num_chl_per_grp_pad);
+    num_chl_per_spk_head =  num_chl_per_step_per_spk_head * num_chl_per_step;
+    num_chl_per_spk_tail =  num_chl_per_step_per_spk_tail * num_chl_per_step -
+                            (Align(num_chl_per_grp, num_chl_per_step) - num_chl_per_grp_pad);
 }
 
