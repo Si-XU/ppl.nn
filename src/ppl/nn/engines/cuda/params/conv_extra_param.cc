@@ -66,42 +66,9 @@ RetCode ConvertToForwardConvParam(const TensorShape& shape_in0, const TensorShap
 
 RetCode ConvertToEmptyFuseParam(fuse_param_t& fuse_param) {
     fuse_param.has_activation = 0;
-    fuse_param.has_clip = false;
-    fuse_param.has_prelu = false;
     fuse_param.has_elt = false;
     fuse_param.has_elt_activation = 0;
-    fuse_param.has_elt_clip = false;
-    fuse_param.has_elt_prelu = 0;
     fuse_param.has_concat = false;
-    return RC_SUCCESS;
-}
-
-RetCode ConvertToPrelu(uint32_t fuse_index, InputOutputInfo* info, CudaDevice* device, ConvFusionInfo fuse_info,
-                       fuse_param_t& fuse_param) {
-    u_int32_t prelu_input = fuse_info.input_ind[fuse_index];
-    auto shape = info->GetInput<TensorImpl>(prelu_input)->GetShape();
-
-    if (fuse_index == 0) {
-        fuse_param.has_prelu = shape.IsScalar() ? 1 : 2;
-        fuse_param.prelu = info->GetInput<TensorImpl>(prelu_input)->GetBufferPtr();
-    } else {
-        fuse_param.has_elt_prelu = shape.IsScalar() ? 1 : 2;
-        fuse_param.elt_prelu = info->GetInput<TensorImpl>(prelu_input)->GetBufferPtr();
-    }
-
-    return RC_SUCCESS;
-}
-
-RetCode ConvertToLeakyrelu(uint32_t fuse_index, InputOutputInfo* info, CudaDevice* device, ConvFusionInfo fuse_info,
-                           fuse_param_t& fuse_param) {
-    if (fuse_index == 0) {
-        fuse_param.has_prelu = 1;
-        fuse_param.leaky = ((LeakyReLUParam*)fuse_info.fuse_attrs[fuse_index])->alpha;
-    } else {
-        fuse_param.has_elt_prelu = 1;
-        fuse_param.elt_leaky = ((LeakyReLUParam*)fuse_info.fuse_attrs[fuse_index])->alpha;
-    }
-
     return RC_SUCCESS;
 }
 
@@ -112,37 +79,12 @@ RetCode ConvertToForwardFuseParam(InputOutputInfo* info, CudaDevice* device, Con
     int fuse_size = fuse_info.types.size();
 
     ConvertToEmptyFuseParam(fuse_param);
-    RetCode status;
-    ClipParam* param;
 
     if (fuse_index < fuse_size && relu_set.find(fuse_info.types[fuse_index]) != relu_set.end()) {
         int type = GetRelueType(fuse_info.types[fuse_index]);
         switch (type) {
             case 0: // Relu
                 fuse_param.has_activation = 1;
-                break;
-            case 1: // Clip
-                fuse_param.has_clip = true;
-                param = (ClipParam*)fuse_info.fuse_attrs[fuse_index];
-                fuse_param.clip_min = param->min_val;
-                fuse_param.clip_max = param->max_val;
-                break;
-            case 2: // PRelu
-                status = ConvertToPrelu(fuse_index, info, device, fuse_info, fuse_param);
-                if (status != RC_SUCCESS) {
-                    LOG(ERROR) << "Set prelu fuse info failed: " << GetRetCodeStr(status);
-                    return status;
-                }
-                break;
-            case 3: // LeakyRelu
-                status = ConvertToLeakyrelu(fuse_index, info, device, fuse_info, fuse_param);
-                if (status != RC_SUCCESS) {
-                    LOG(ERROR) << "Set prelu fuse info failed: " << GetRetCodeStr(status);
-                    return status;
-                }
-                break;
-            case 4: // Sigmoid
-                fuse_param.has_activation = 2;
                 break;
             default:
                 return RC_UNSUPPORTED;
@@ -162,29 +104,6 @@ RetCode ConvertToForwardFuseParam(InputOutputInfo* info, CudaDevice* device, Con
         switch (type) {
             case 0: // Relu
                 fuse_param.has_elt_activation = 1;
-                break;
-            case 1: // Clip
-                fuse_param.has_elt_clip = true;
-                param = (ClipParam*)fuse_info.fuse_attrs[fuse_index];
-                fuse_param.elt_clip_min = param->min_val;
-                fuse_param.elt_clip_max = param->max_val;
-                break;
-            case 2: // PRelu
-                status = ConvertToPrelu(fuse_index, info, device, fuse_info, fuse_param);
-                if (status != RC_SUCCESS) {
-                    LOG(ERROR) << "Set prelu fuse info failed: " << GetRetCodeStr(status);
-                    return status;
-                }
-                break;
-            case 3: // LeakyRelu
-                status = ConvertToLeakyrelu(fuse_index, info, device, fuse_info, fuse_param);
-                if (status != RC_SUCCESS) {
-                    LOG(ERROR) << "Set prelu fuse info failed: " << GetRetCodeStr(status);
-                    return status;
-                }
-                break;
-            case 4: // Sigmoid
-                fuse_param.has_elt_activation = 2;
                 break;
             default:
                 return RC_UNSUPPORTED;

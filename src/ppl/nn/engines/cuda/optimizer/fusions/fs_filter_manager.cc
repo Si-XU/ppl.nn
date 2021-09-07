@@ -33,8 +33,8 @@ Fusion* FsFilterManager::FindFusion(const std::string& kernel_type) const {
 FsFilterManager::FsFilterManager() {
     type2fusion_.emplace("AveragePool", &averagepool_fs_);
     type2fusion_.emplace("Concat", &concat_fs_);
-    type2fusion_.emplace("Conv", &conv_fs_);
-    type2fusion_.emplace("Gemm", &gemm_fs_);
+    // type2fusion_.emplace("Conv", &conv_fs_);
+    // type2fusion_.emplace("Gemm", &gemm_fs_);
     type2fusion_.emplace("Reshape", &channel_shuffle_fs_);
     
 }
