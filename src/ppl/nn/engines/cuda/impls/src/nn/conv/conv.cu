@@ -74,7 +74,7 @@
             conv_param.pad_height,         conv_param.pad_width,                        \
             conv_param.hole_height,        conv_param.hole_width,                       \
             conv_param.has_bias,           bias,                                        \
-            fuse_param.has_relu,           fuse_param.has_elt_relu,                     \
+            fuse_param.has_activation,     fuse_param.has_elt_activation,               \
             fuse_param.has_elt,            (const int4 *) fuse_param.pre_data,          \
             fuse_param.has_concat,         concat_offset_v8,                            \
             concat_stride_v8
@@ -98,7 +98,7 @@
             conv_param.pad_height,         conv_param.pad_width,                        \
             conv_param.hole_height,        conv_param.hole_width,                       \
             conv_param.has_bias,           bias,                                        \
-            fuse_param.has_relu,           fuse_param.has_elt_relu,                     \
+            fuse_param.has_activation,     fuse_param.has_elt_activation,               \
             fuse_param.has_elt,            (const int4 *) fuse_param.pre_data,          \
             fuse_param.has_concat,         concat_offset_v8,                            \
             concat_stride_v8
@@ -108,7 +108,7 @@
         	spk_height_v1,                 spk_width_v8,                                \
         	out_hw,                        splitk * splitf,                             \
             conv_param.has_bias,           bias,                                        \
-            fuse_param.has_relu,           fuse_param.has_elt_relu,                     \
+            fuse_param.has_activation,     fuse_param.has_elt_activation,               \
             fuse_param.has_elt,            (const int4 *) fuse_param.pre_data,          \
             fuse_param.has_concat,         concat_offset_v8,                            \
             concat_stride_v8
