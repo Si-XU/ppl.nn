@@ -102,10 +102,7 @@ class KernelInfo:
             f.write("#define REDUCE(_h2R)            REDUCE_HALF2_3x4(_h2R)\n\n")
             f.write("#define READ_sRv4(_Rv4, _sm_base_v4, _sRv4_read)        READ_sRv4_SIZE4(_Rv4, _sm_base_v4, _sRv4_read)\n\n")
         elif self.k_num == 1:
-            if self.k_size == 32 and self.s_size == 32:
-                f.write("#define READ_sRv4(_Rv4, _sm_base_v4, _sRv4_read)        READ_sRv4_SIZE1(_Rv4, _sm_base_v4, _sRv4_read)\n\n")
-            else:
-                f.write("#define READ_sRv4(_Rv4, _sm_base_v4, _sRv4_read)        READ_sRv4_SIZE2(_Rv4, _sm_base_v4, _sRv4_read)\n\n")
+            f.write("#define READ_sRv4(_Rv4, _sm_base_v4, _sRv4_read)        READ_sRv4_SIZE1(_Rv4, _sm_base_v4, _sRv4_read)\n\n")
         else:
             """knum error"""
             sys.exit(1)
@@ -362,7 +359,7 @@ def GenAllKernels(parent_path):
         spk_header_file.Close()
 
         lut_source_file.Close()
-        lut_source_file.Close()
+        spk_source_file.Close()
 
         init_file.Close()
 

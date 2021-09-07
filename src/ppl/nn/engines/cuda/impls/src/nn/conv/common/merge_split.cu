@@ -27,14 +27,8 @@ __global__ void MergeConvSplitResults(
 	    int split_height_v1,     int split_width_v8, 
 	    int out_hw,              int split, 
         int has_bias,            const int4* bias,
-        int has_relu,            const __half2 clip_min,
-	    bool has_clip,           const __half2 clip_max,
-        int has_prelu,           const void* prelu,
+        int has_relu,            int has_elt_relu,
         bool has_elt,            const int4* pre_data,
-        int has_elt_relu,        const __half2 elt_clip_min,
-	    bool has_elt_clip,       const __half2 elt_clip_max,
-        int has_elt_prelu,       const void* elt_prelu,
-        const __half leaky,      const __half elt_leaky,
         bool has_concat,         int concat_offset_v8,
         int concat_stride_v8)
 {
@@ -72,58 +66,11 @@ __global__ void MergeConvSplitResults(
     }
 
     int *    merge_v1  = (int *)    &merge_v4;
-    __half * h_merge = (__half *) &merge_v4;
 
     if(has_relu)
     {
-        if(has_relu == 1){
-            for(int i = 0; i < _4HALF2_; i++)
-                merge_v1[i] = __vmaxs2(merge_v1[i], 0);
-	    } else {
-	        __half2 h2ONE = {(__half) 1.f, (__half) 1.f};
-
-            for(int i = 0; i < _4HALF2_; i++)
-	            h2_merge[i]  = __h2div(h2exp(h2_merge[i]), __hadd2(h2ONE, h2exp(h2_merge[i])));
-	    }
-    }
-    else if(has_clip) {
-#pragma unroll
         for(int i = 0; i < _4HALF2_; i++)
-        {
-	        h2_merge[i].x = __hgt(h2_merge[i].x, clip_max.x) ? clip_max.x : h2_merge[i].x;
-	        h2_merge[i].y = __hgt(h2_merge[i].y, clip_max.x) ? clip_max.x : h2_merge[i].y;
-	        h2_merge[i].x = __hlt(h2_merge[i].x, clip_min.x) ? clip_min.x : h2_merge[i].x;
-	        h2_merge[i].y = __hlt(h2_merge[i].y, clip_min.x) ? clip_min.x : h2_merge[i].y;
-        }
-    }
-    else if(has_prelu) {
-        if(has_prelu == 1)
-        {
-#pragma unroll
-            for(int i = 0; i < _INT4_TO_8HALF_; i++)
-        	    if(__hlt(h_merge[i], 0))
-                    h_merge[i] = __hmul(h_merge[i], leaky);
-        }
-        if(has_prelu == 2)
-        {
-            int4     scale_v4 = ( (int4 *) prelu) [k_id];
-            __half * h_scale  = (__half *) &scale_v4;
-
-#pragma unroll
-            for(int i = 0; i < _INT4_TO_8HALF_; i++)
-        	    if(__hlt(h_merge[i], 0))
-                    h_merge[i] = __hmul(h_merge[i], h_scale[i]);
-        }
-        if(has_prelu == 3)
-        {
-            int4   elt_v4 = ( (int4 *) prelu) [off];
-            __half* h_elt = (__half *) &elt_v4;
-
-#pragma unroll
-            for(int i = 0; i < _INT4_TO_8HALF_; i++)
-        	    if(__hlt(h_merge[i], 0))
-                    h_merge[i] = __hmul(h_merge[i], h_elt[i]);
-        }
+            merge_v1[i] = __vmaxs2(merge_v1[i], 0);
     }
 
     if(has_elt) {
@@ -135,48 +82,8 @@ __global__ void MergeConvSplitResults(
     }
 
     if(has_elt_relu) {
-        if(has_elt_relu == 1) {
-            for(int i = 0; i < _4HALF2_; i++)
-                merge_v1[i] = __vmaxs2(merge_v1[i], 0);
-	    } else{
-	        __half2 h2ONE = {(__half) 1.f, (__half) 1.f};
-
-            for(int i = 0; i < _4HALF2_; i++)
-	            h2_merge[i]  = __h2div(h2exp(h2_merge[i]), __hadd2(h2ONE, h2exp(h2_merge[i])));
-	        
-	    }
-    } else if(has_elt_clip) {
-        for(int i = 0; i < _4HALF2_; i++) {
-	        h2_merge[i].x = __hgt(h2_merge[i].x, elt_clip_max.x) ? elt_clip_max.x : h2_merge[i].x;
-	        h2_merge[i].y = __hgt(h2_merge[i].y, elt_clip_max.x) ? elt_clip_max.x : h2_merge[i].y;
-	        h2_merge[i].x = __hlt(h2_merge[i].x, elt_clip_min.x) ? elt_clip_min.x : h2_merge[i].x;
-	        h2_merge[i].y = __hlt(h2_merge[i].y, elt_clip_min.x) ? elt_clip_min.x : h2_merge[i].y;
-        }
-    }
-    else if(has_elt_prelu) {
-        if(has_prelu == 1) {
-            for(int i = 0; i < _INT4_TO_8HALF_; i++)
-        	    if(__hlt(h_merge[i], 0))
-                    h_merge[i] = __hmul(h_merge[i], elt_leaky);
-        }
-
-        if(has_elt_prelu == 2) {
-            int4    scale_v4 = ((int4  *) prelu) [k_id];
-            __half* h_scale  = (__half *) &scale_v4;
-
-            for(int i = 0; i < _INT4_TO_8HALF_; i++)
-        	    if(__hlt(h_merge[i], 0))
-                    h_merge[i] = __hmul(h_merge[i], h_scale[i]);
-        }
-
-        if(has_elt_prelu == 3) {
-            int4    elt_v4 = ((int4 *)prelu) [off];
-            __half* h_elt  = (__half *) &elt_v4;
-
-            for(int i = 0; i < _INT4_TO_8HALF_; i++)
-        	    if(__hlt(h_merge[i], 0))
-                    h_merge[i] = __hmul(h_merge[i], h_elt[i]);
-        }
+        for(int i = 0; i < _4HALF2_; i++)
+            merge_v1[i] = __vmaxs2(merge_v1[i], 0);
     }
 
     int concat_v8_off = 0;

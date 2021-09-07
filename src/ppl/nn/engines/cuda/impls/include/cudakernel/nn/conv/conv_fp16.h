@@ -25,8 +25,8 @@
 struct conv_param_t{
         int in_height;          int in_width;
         int in_num;             int num_grp;
-	int num_chl;            int num_chl_pad;
-	int num_flt;            int num_flt_pad;
+        int num_chl;            int num_chl_pad;
+        int num_flt;            int num_flt_pad;
         int flt_height;         int flt_width;
         int out_height;         int out_width;
         int stride_height;      int stride_width;
@@ -36,14 +36,9 @@ struct conv_param_t{
 };
 
 struct fuse_param_t{
-        int has_activation = 0;// 1: relu,  2: sigmoid
-	bool has_clip = false;        float clip_min;     float clip_max; 
-        int has_prelu = 0;            void* prelu;      float leaky = 0;       
-        bool has_elt  = false;        void* pre_data;    
-        int has_elt_activation = 0;     
-	bool has_elt_clip = false;    float elt_clip_min; float elt_clip_max; 
-        int has_elt_prelu = 0;        void* elt_prelu;  float elt_leaky = 0;    
-        bool has_concat   = false;    int concat_offset;       
+        int has_relu = 0;              int has_elt_relu = 0;     
+        bool has_elt = false;          void* pre_data;    
+        bool has_concat = false;       int concat_offset;       
         int concat_stride;            void* post_concat;
 };
 

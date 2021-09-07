@@ -19,24 +19,24 @@
 // reduce half2 macros
 /////////////////////////////////////////////////////
 
-#define REDUCE_HALF2_SIZE4(_h2R, _h2R_off) \
+#define REDUCE_HALF2_SIZE4(_R, _R_off) \
         { \
-            _h2R[0] = __hadd2(_h2R[0], _h2R[_h2R_off]); \
-            _h2R[1] = __hadd2(_h2R[1], _h2R[_h2R_off + 1]); \
-            _h2R[2] = __hadd2(_h2R[2], _h2R[_h2R_off + 2]); \
-            _h2R[3] = __hadd2(_h2R[3], _h2R[_h2R_off + 3]); \
+            HADD2_INST(_R[0], _R[0], _R[_R_off]); \
+            HADD2_INST(_R[1], _R[1], _R[_R_off + 1]); \
+            HADD2_INST(_R[2], _R[2], _R[_R_off + 2]); \
+            HADD2_INST(_R[3], _R[3], _R[_R_off + 3]); \
         }
 
-#define REDUCE_HALF2_1x4(_h2R) \
+#define REDUCE_HALF2_1x4(_R) \
         { \
-            REDUCE_HALF2_SIZE4(_h2R, _4HALF2_); \
+            REDUCE_HALF2_SIZE4(_R, _4HALF2_); \
         }
 
-#define REDUCE_HALF2_3x4(_h2R) \
+#define REDUCE_HALF2_3x4(_R) \
         { \
-            REDUCE_HALF2_SIZE4(_h2R, _4HALF2_); \
-            REDUCE_HALF2_SIZE4(_h2R, _4HALF2_ * 2); \
-            REDUCE_HALF2_SIZE4(_h2R, _4HALF2_ * 3); \
+            REDUCE_HALF2_SIZE4(_R, _4HALF2_); \
+            REDUCE_HALF2_SIZE4(_R, _4HALF2_ * 2); \
+            REDUCE_HALF2_SIZE4(_R, _4HALF2_ * 3); \
         }
 
 /////////////////////////////////////////////////////

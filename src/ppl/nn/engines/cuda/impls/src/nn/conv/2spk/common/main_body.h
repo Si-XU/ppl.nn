@@ -27,17 +27,8 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     __half * hC = (__half *) Cv4;
     int *     C = (int *)    Cv4;
 
+#pragma unroll
     for (int i = 0; i < HC_ITEMS_PER_THD; i++) { hC[i] = _HALF_ZERO_; }
-
-    int4  Rv4[INTER_SET_REDUCE_RATIO];
-
-#if defined(ENABLE_FUSE) || ((defined(ENABLE_SPLITF) || defined(ENABLE_SPLITK)) && (TILE_K_PER_CTA > TILE_K_PER_SET))
-    __half2 * h2R = (__half2 *) Rv4;
-#endif
-
-#if defined(ENABLE_FUSE)
-    __half  *  hR = (__half  *) Rv4;
-#endif
 
     uint tid       =  threadIdx.x;
 
@@ -77,9 +68,13 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     uint spk_id    =  blockIdx.z %  splitk;
     uint spf_id    = (blockIdx.z % (splitk * flt_hw)) / splitk;
     uint grp_id    =  blockIdx.z / (splitk * flt_hw);
+
+    uint num_chl_per_spk = (spk_id != splitk - 1) ? num_chl_per_spk_head: num_chl_per_spk_tail;
 #elif defined(ENABLE_SPLITK) && !defined(ENABLE_SPLITF)
     uint spk_id    =  blockIdx.z %  splitk;
     uint grp_id    =  blockIdx.z /  splitk;
+
+    uint num_chl_per_spk = (spk_id != splitk - 1) ? num_chl_per_spk_head: num_chl_per_spk_tail;
 #elif !defined(ENABLE_SPLITK) && defined(ENABLE_SPLITF)
     uint spf_id    =  blockIdx.z %  flt_hw;
     uint grp_id    =  blockIdx.z /  flt_hw;
@@ -97,18 +92,19 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
                        tid      % TILE_N_V8_PER_CTA;
 
     bool dCv4_x_valid =  (dCv4_idx < num_flt_per_grp_pad_v8) & ((tid / TILE_N_V8_PER_CTA) < TILE_M_PER_CTA);
+    bool dCv4_y_valid =  (dCv4_idy / out_hw) < in_num;
 
 #if defined(ENABLE_SPLITK) && defined(ENABLE_SPLITF)
     uint dCv4_base  = (spf_id   * splitk + spk_id)  * num_flt_per_grp_pad_v8 * num_grp * out_hw * in_num +
-                       grp_id   * num_flt_per_grp_pad_v8;
+                       grp_id   * num_flt_per_grp_pad_v8 + dCv4_idx;
 #elif defined(ENABLE_SPLITK) && !defined(ENABLE_SPLITF)
     uint dCv4_base  =  spk_id   * num_flt_per_grp_pad_v8 * num_grp * out_hw * in_num +
-                       grp_id   * num_flt_per_grp_pad_v8;
+                       grp_id   * num_flt_per_grp_pad_v8 + dCv4_idx;
 #elif !defined(ENABLE_SPLITK) && defined(ENABLE_SPLITF)
     uint dCv4_base  =  spf_id   * num_flt_per_grp_pad_v8 * num_grp * out_hw * in_num +
-                       grp_id   * num_flt_per_grp_pad_v8;
+                       grp_id   * num_flt_per_grp_pad_v8 + dCv4_idx;
 #elif defined(ENABLE_FUSE)
-    uint dCv4_base  =  grp_id   * num_flt_per_grp_pad_v8;
+    uint dCv4_base  =  grp_id   * num_flt_per_grp_pad_v8 + dCv4_idx;
 #endif
 
     uint mma_idx    =  local_tid %  MMA_SIZE_X_IN_THD;
@@ -154,8 +150,8 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #endif
 
 #if defined(ENABLE_SPLITK)
-    int  flt_c_v8_end = chl_lut.idx[spk_id + 1] >> 3;
-    int  flt_c_v8_id  = ldg_idx + (chl_lut.idx[spk_id] >> 3);
+    int  flt_c_v8_end = (spk_id * num_chl_per_spk_head + num_chl_per_spk) >> 3;
+    int  flt_c_v8_id  = ldg_idx + ((spk_id * num_chl_per_spk_head) >> 3);
 #elif defined(ENABLE_SPLITF) || defined(ENABLE_FUSE)
     int  flt_c_v8_end = num_chl_per_grp_pad_v8;
     int  flt_c_v8_id  = ldg_idx;
@@ -163,8 +159,14 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
     bool flt_c_v8_valid  = flt_c_v8_id < flt_c_v8_end;
 
-    int4 reg_dAv4[REG_dAv4_SIZE];
-    int4 reg_dBv4[REG_dBv4_SIZE];
+    int4 Rv4[Rv4_SIZE];
+    int4 * reg_dAv4 = (int4 *) Rv4;
+    int4 * reg_dBv4 = (int4 *) Rv4 + REG_dAv4_SIZE;
+
+#if defined(ENABLE_FUSE) || ((defined(ENABLE_SPLITF) || defined(ENABLE_SPLITK)) && (TILE_K_PER_CTA > TILE_K_PER_SET))
+    int * R = (int *) Rv4;
+#endif
+
 
 #if defined(FLT_SIZE1)
     int     dAv4_off[READ_dAv4_STEPS];
@@ -312,7 +314,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #endif
 
 #if defined(ENABLE_SPLITK)
-    for (uint j = 0; j < kloop_lut.idx[spk_id]; j++)
+    for (uint j = 0; j < flt_hw * DivUp(num_chl_per_spk, TILE_K_PER_SET); j++)
 #elif defined(ENABLE_SPLITF) || defined(ENABLE_FUSE)
     for (uint j = 0; j < kloop_num; j++)
 #endif
@@ -409,41 +411,40 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
     __syncthreads();
 
+#if defined(ENABLE_FUSE)
+    LOAD_BIAS_V4(has_bias, bias, BIAS_V4_OFFSET);
+
+    uint concat_v4_off = 0;
+
+    LOAD_ELT_V4(has_elt, pre_data, ELT_V4_OFFSET);
+#endif
+
+#pragma unroll
     for(int s = 0; s < OUTPUT_STEPS; s++)
     {
         READ_sRv4(Rv4, sm_base_v4, sRv4_read);
 
 #if TILE_K_PER_CTA > TILE_K_PER_SET
-        REDUCE(h2R);
-#endif
-
-        bool dCv4_y_valid = (dCv4_idy  / out_hw) < in_num;
-        uint dCv4_off     =  dCv4_base +
-                             dCv4_idy  * num_flt_per_grp_pad_v8 * num_grp +
-                             dCv4_idx;
-
-#if defined(ENABLE_FUSE)
-        ADD_BIAS_V4(has_bias, bias);
+        REDUCE(R);
 #endif
 
 #if defined(ENABLE_FUSE)
-        uint concatV4_off = 0;
+        ADD_BIAS_V4(has_bias, BIAS_V1_OFFSET);
 
         FUSE_RELU_V4(has_relu);
-        FUSE_CLIP_V4(has_clip, clip_max, clip_min);
-        FUSE_PRELU_V4(has_prelu, prelu, leaky);
 
-        FUSE_ELT_V4(has_elt, pre_data);
+        FUSE_ELT_V4(has_elt, ELT_V1_OFFSET);
+
         FUSE_RELU_V4(has_elt_relu);
-        FUSE_CLIP_V4(has_elt_clip, elt_clip_max, elt_clip_min);
-        FUSE_PRELU_V4(has_elt_prelu, elt_prelu, elt_leaky);
 
-        SET_CONCAT_OFF_V4(has_concat, concatV4_off);
+        SET_CONCAT_OFF_V4(has_concat, concat_v4_off);
 #endif
 
         OUTPUT_PRC_HALF(Rv4);
 
-        dCv4_idy += OUTPUT_SIZE_Y_IN_THD;
+#if defined(ENABLE_FUSE)
+        LOAD_ELT_V4(has_elt, pre_data, ELT_V4_OFFSET);
+#endif
     }
 
 #endif // __CUDA_ARCH__

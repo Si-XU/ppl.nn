@@ -41,8 +41,7 @@
             kloop_num,                                                                  \
     		in_lut,                        in_lut_size,                                 \
     		flt_lut,                       flt_lut_size,                                \
-            chl_lut,                       chl_lut_size,                                \
-            kloop_lut,                     kloop_lut_size,                              \
+            num_chl_per_spk_head,          num_chl_per_spk_tail,                        \
             in_hw,                         out_hw,                                      \
             flt_hw,                        splitk,                                      \
             conv_param.in_height,          conv_param.in_width,                         \
@@ -75,14 +74,8 @@
             conv_param.pad_height,         conv_param.pad_width,                        \
             conv_param.hole_height,        conv_param.hole_width,                       \
             conv_param.has_bias,           bias,                                        \
-            fuse_param.has_activation,     clip_min,                                    \
-            fuse_param.has_clip,           clip_max,                                    \
-            fuse_param.has_prelu,          (const void *) fuse_param.prelu,             \
+            fuse_param.has_relu,           fuse_param.has_elt_relu,                     \
             fuse_param.has_elt,            (const int4 *) fuse_param.pre_data,          \
-            fuse_param.has_elt_activation, elt_clip_min,                                \
-            fuse_param.has_elt_clip,       elt_clip_max,                                \
-            fuse_param.has_elt_prelu,      (const void *) fuse_param.elt_prelu,         \
-            leaky,                         elt_leaky,                                   \
             fuse_param.has_concat,         concat_offset_v8,                            \
             concat_stride_v8
 
@@ -105,14 +98,8 @@
             conv_param.pad_height,         conv_param.pad_width,                        \
             conv_param.hole_height,        conv_param.hole_width,                       \
             conv_param.has_bias,           bias,                                        \
-            fuse_param.has_activation,     clip_min,                                    \
-            fuse_param.has_clip,           clip_max,                                    \
-            fuse_param.has_prelu,          (const void *) fuse_param.prelu,             \
+            fuse_param.has_relu,           fuse_param.has_elt_relu,                     \
             fuse_param.has_elt,            (const int4 *) fuse_param.pre_data,          \
-            fuse_param.has_elt_activation, elt_clip_min,                                \
-            fuse_param.has_elt_clip,       elt_clip_max,                                \
-            fuse_param.has_elt_prelu,      (const void *) fuse_param.elt_prelu,         \
-            leaky,                         elt_leaky,                                   \
             fuse_param.has_concat,         concat_offset_v8,                            \
             concat_stride_v8
 
@@ -121,14 +108,8 @@
         	spk_height_v1,                 spk_width_v8,                                \
         	out_hw,                        splitk * splitf,                             \
             conv_param.has_bias,           bias,                                        \
-            fuse_param.has_activation,     clip_min,                                    \
-            fuse_param.has_clip,           clip_max,                                    \
-            fuse_param.has_prelu,          (const void *) fuse_param.prelu,             \
+            fuse_param.has_relu,           fuse_param.has_elt_relu,                     \
             fuse_param.has_elt,            (const int4 *) fuse_param.pre_data,          \
-            fuse_param.has_elt_activation, elt_clip_min,                                \
-            fuse_param.has_elt_clip,       elt_clip_max,                                \
-            fuse_param.has_elt_prelu,      (const void *) fuse_param.elt_prelu,         \
-            leaky,                         elt_leaky,                                   \
             fuse_param.has_concat,         concat_offset_v8,                            \
             concat_stride_v8
 
@@ -306,13 +287,6 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
 
     int4 *splitk_buf = d_temp_buf + buf_off_v4;
 
-    __half2 clip_min     = __float2half2_rn(fuse_param.clip_min);
-    __half2 clip_max     = __float2half2_rn(fuse_param.clip_max);
-    __half2 elt_clip_min = __float2half2_rn(fuse_param.elt_clip_min);
-    __half2 elt_clip_max = __float2half2_rn(fuse_param.elt_clip_max);
-    __half  leaky        = __float2half(fuse_param.leaky);
-    __half  elt_leaky    = __float2half(fuse_param.elt_leaky);
-
     float minTime = FLT_MAX;
 
     float elapsed;
@@ -384,15 +358,11 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
                     if(splitk == 1) {
                         (g_kernel_container[kid].lut_kptr)<<<grid_size, block_size, 0, stream>>>(LUT_KPARAM_LIST);
                     } else {
-                        int chl_lut_size, kloop_lut_size;
-                        struct chl_lut_t chl_lut;
-                        struct kloop_lut_t kloop_lut;
+                        int num_chl_per_spk_head, num_chl_per_spk_tail;
 
-                        InitializeChlLut(chl_lut_size, chl_lut.idx, conv_param.num_chl, conv_param.num_grp, pad_size,
-                                g_kernel_container[kid].tile_k_per_cta, splitk);
-                        InitializeKloopLut(kloop_lut_size, kloop_lut.idx, conv_param.num_chl, conv_param.num_grp, pad_size,
-                                g_kernel_container[kid].tile_k_per_cta, splitk, splitf, flt_hw);
-    
+                        InitializeNumChlPerSpk(num_chl_per_spk_head, num_chl_per_spk_tail, conv_param.num_chl, conv_param.num_grp, 
+                                pad_size, g_kernel_container[kid].tile_k_per_cta, splitk);
+
                         (g_kernel_container[kid].spk_kptr)<<<grid_size, block_size, 0, stream>>>(SPK_KPARAM_LIST);
                     }
 
@@ -498,13 +468,6 @@ void PPLCUDAConvolutionForwardImp(
     int4 *splitk_buf = d_temp_buf + buf_off_v4;
     int4 *conv_out   = (splitk > 1 || splitf > 1) ? splitk_buf : final_out;
 
-    __half2 clip_min     = __float2half2_rn(fuse_param.clip_min);
-    __half2 clip_max     = __float2half2_rn(fuse_param.clip_max);
-    __half2 elt_clip_min = __float2half2_rn(fuse_param.elt_clip_min);
-    __half2 elt_clip_max = __float2half2_rn(fuse_param.elt_clip_max);
-    __half  leaky        = __float2half(fuse_param.leaky);
-    __half  elt_leaky    = __float2half(fuse_param.elt_leaky);
-
     dim3 block_size, grid_size;
 
     block_size.x = g_kernel_container[kid].cta_size_in_thd;
@@ -549,14 +512,10 @@ void PPLCUDAConvolutionForwardImp(
         if(splitk == 1) {
             (g_kernel_container[kid].lut_kptr)<<<grid_size, block_size, 0, stream>>>(LUT_KPARAM_LIST);
         } else {
-            int chl_lut_size, kloop_lut_size;
-            struct chl_lut_t chl_lut;
-            struct kloop_lut_t kloop_lut;
+            int num_chl_per_spk_head, num_chl_per_spk_tail;
 
-            InitializeChlLut(chl_lut_size, chl_lut.idx, conv_param.num_chl, conv_param.num_grp, pad_size,
-                    g_kernel_container[kid].tile_k_per_cta, splitk);
-            InitializeKloopLut(kloop_lut_size, kloop_lut.idx, conv_param.num_chl, conv_param.num_grp, pad_size,
-                    g_kernel_container[kid].tile_k_per_cta, splitk, splitf, flt_hw);
+            InitializeNumChlPerSpk(num_chl_per_spk_head, num_chl_per_spk_tail, conv_param.num_chl, conv_param.num_grp, 
+                    pad_size, g_kernel_container[kid].tile_k_per_cta, splitk);
 
             (g_kernel_container[kid].spk_kptr)<<<grid_size, block_size, 0, stream>>>(SPK_KPARAM_LIST);
         }

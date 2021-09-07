@@ -26,8 +26,7 @@
         int kloop_num,                                            \
         struct lut_t in_lut,          int in_lut_size,            \
         struct lut_t flt_lut,         int flt_lut_size,           \
-        struct chl_lut_t chl_lut,     int chl_lut_size,           \
-        struct kloop_lut_t kloop_lut, int kloop_lut_size,         \
+        int num_chl_per_spk_head,     int num_chl_per_spk_tail,   \
         int in_hw,                    int out_hw,                 \
         int flt_hw,                   int splitk,                 \
         int in_height,                int in_width,               \
@@ -60,14 +59,8 @@
         int pad_height,               int pad_width,              \
         int hole_height,              int hole_width,             \
         int  has_bias,                const int4* bias,           \
-        int  has_relu,                const __half2 clip_min,     \
-	    bool has_clip,                const __half2 clip_max,     \
-        int  has_prelu,               const void* prelu,          \
+        int  has_relu,                int has_elt_relu,           \
         bool has_elt,                 const int4* pre_data,       \
-        int  has_elt_relu,            const __half2 elt_clip_min, \
-	    bool has_elt_clip,            const __half2 elt_clip_max, \
-        int has_elt_prelu,            const void* elt_prelu,      \
-        const __half leaky,           const __half elt_leaky,     \
         bool has_concat,              int concat_offset_v8,       \
         int concat_stride_v8
 
@@ -138,20 +131,22 @@
 
 #define _HALF_ZERO_             0.0
 
-
 #define _INT_TO_BYTE_           4
 #define _INT_TO_2HALF_          2
 #define _INT2_TO_2HALF2_        2
 #define _INT2_TO_2INT_          2
+#define _INT2_TO_4HALF_         4
 
+#define _INT8_TO_2INT4_         2
 #define _INT4_TO_INT4_          1
 #define _INT4_TO_2INT2_         2
 #define _INT4_TO_4INT_          4
 #define _INT4_TO_4HALF2_        4
 #define _INT4_TO_8HALF_         8
 
-#define SMEM_ROW_V4_SIZE        8
 #define SMEM_ROW_V1_SIZE        32
+#define SMEM_ROW_V2_SIZE        16
+#define SMEM_ROW_V4_SIZE        8
 #define SMEM_ROW_BYTE_SIZE      128
 #define SMEM_ROW_BIT_SIZE       1024
 
@@ -433,3 +428,43 @@
 #elif SET_SIZE_IN_WARP == 8
 #define SET_SIZE_IN_BITS        8
 #endif
+
+////////////////////////////////////////
+// fuse size macros
+////////////////////////////////////////
+
+#define REDUCE_V4_SIZE              INTER_SET_REDUCE_RATIO
+#define BIAS_V4_SIZE                1
+#define ELT_V4_SIZE                 1
+
+#define REDUCE_V1_SIZE              (REDUCE_V4_SIZE     * 4)
+#define BIAS_V1_SIZE                (BIAS_V4_SIZE       * 4)
+#define ELT_V1_SIZE                 (ELT_V4_SIZE        * 4)
+
+#define Rv4_SIZE                    Max((REG_dAv4_SIZE + REG_dBv4_SIZE), (REDUCE_V4_SIZE + BIAS_V4_SIZE + ELT_V4_SIZE))
+
+////////////////////////////////////////
+// fuse offset macros
+////////////////////////////////////////
+
+#define REDUCE_V4_OFFSET            0
+#define BIAS_V4_OFFSET              (REDUCE_V4_OFFSET   + REDUCE_V4_SIZE)
+#define ELT_V4_OFFSET               (BIAS_V4_OFFSET     + BIAS_V4_SIZE)
+
+#define REDUCE_V1_OFFSET            (REDUCE_V4_OFFSET   * 4)
+#define BIAS_V1_OFFSET              (BIAS_V4_OFFSET     * 4)
+#define ELT_V1_OFFSET               (ELT_V4_OFFSET      * 4)
+
+////////////////////////////////////////
+// fuse macros
+////////////////////////////////////////
+
+#define HADD2_INST(_d, _a, _b) \
+        asm volatile("add.rn.ftz.sat.f16x2 %0, %1, %2;\n":   "=r"(_d): "r"(_a), "r"(_b));
+
+#define HMAX2_INST(_d, _a, _b, _c) \
+        asm volatile("vmax2.u32.u32.u32 %0, %1, %2, %3;\n":   "=r"(_d): "r"(_a), "r"(_b), "r"(_c));
+
+#define HMIN2_INST(_d, _a, _b, _c) \
+        asm volatile("vmin2.u32.u32.u32 %0, %1, %2, %3;\n":   "=r"(_d): "r"(_a), "r"(_b), "r"(_c));
+
