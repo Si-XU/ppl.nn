@@ -37,14 +37,8 @@
         int pad_height,               int pad_width,              \
         int hole_height,              int hole_width,             \
         int  has_bias,                const int4* bias,           \
-        int  has_relu,                const __half2 clip_min,     \
-	    bool has_clip,                const __half2 clip_max,     \
-        int  has_prelu,               const void* prelu,          \
+        int  has_relu,                int has_elt_relu,           \
         bool has_elt,                 const int4* pre_data,       \
-        int  has_elt_relu,            const __half2 elt_clip_min, \
-	    bool has_elt_clip,            const __half2 elt_clip_max, \
-        int has_elt_prelu,            const void* elt_prelu,      \
-        const __half leaky,           const __half elt_leaky,     \
         bool has_concat,              int concat_offset_v8,       \
         int concat_stride_v8
 
@@ -314,4 +308,17 @@
 #elif CTA_SIZE_X_IN_WARP == 4
 #define CTA_SIZE_X_IN_BITS      2
 #endif
+
+////////////////////////////////////////
+// fuse macros
+////////////////////////////////////////
+
+#define HADD2_INST(_d, _a, _b) \
+        asm volatile("add.rn.ftz.sat.f16x2 %0, %1, %2;\n":   "=r"(_d): "r"(_a), "r"(_b));
+
+#define HMAX2_INST(_d, _a, _b, _c) \
+        asm volatile("vmax2.u32.u32.u32 %0, %1, %2, %3;\n":   "=r"(_d): "r"(_a), "r"(_b), "r"(_c));
+
+#define HMIN2_INST(_d, _a, _b, _c) \
+        asm volatile("vmin2.u32.u32.u32 %0, %1, %2, %3;\n":   "=r"(_d): "r"(_a), "r"(_b), "r"(_c));
 

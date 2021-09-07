@@ -20,9 +20,10 @@
 #define OUTPUT_PRC_HALF(_Rv4) \
         { \
             if( dCv4_x_valid && dCv4_y_valid ) \
-            { \
-                dC[ concatV4_off + dCv4_off ] = _Rv4[0]; \
-            } \
+                dC[dCv4_base + concat_v4_off] = _Rv4[0]; \
+            \
+            dCv4_idy   +=  OUTPUT_SIZE_Y_IN_THD; \
+            dCv4_y_valid  = (dCv4_idy / out_hw) < in_num; \
         }
 
 #else
@@ -30,128 +31,74 @@
 #define OUTPUT_PRC_HALF(_Rv4) \
         { \
             if( dCv4_x_valid && dCv4_y_valid ) \
-            { \
-                dC[ dCv4_off ] = _Rv4[0]; \
-            } \
+                dC[dCv4_base + dCv4_idy * num_flt_per_grp_pad_v8 * num_grp] = _Rv4[0]; \
+            \
+            dCv4_idy   +=  OUTPUT_SIZE_Y_IN_THD; \
+            dCv4_y_valid  = (dCv4_idy / out_hw) < in_num; \
         }
 #endif
 
-#define ADD_BIAS_V4(_has_bias, _bias) \
+//////////////////////////////////////////////////////
+// bias macros
+//////////////////////////////////////////////////////
+
+#define LOAD_BIAS_V4(_has_bias, _bias, _bias_v4_off) \
         { \
-            if( _has_bias && dCv4_x_valid && dCv4_y_valid ) \
+            if( _has_bias && dCv4_x_valid ) \
+                Rv4[_bias_v4_off + 0] = ((int4 *) _bias) [grp_id * num_flt_per_grp_pad_v8 + dCv4_idx]; \
+        }
+
+#define ADD_BIAS_V4(_has_bias, _bias_v1_off) \
+        { \
+            if(_has_bias) \
             { \
-	            int4      _biasV4 = ((int4 *) _bias) [grp_id * num_flt_per_grp_pad_v8 + dCv4_idx]; \
-	            __half2 * _h2Bias = (__half2 *) &_biasV4; \
-                \
                 _Pragma("unroll") \
-	            for(int i = 0; i < _INT4_TO_4HALF2_; i++) \
+	            for(int i = 0; i < _INT4_TO_4INT_; i++) \
                 { \
-	                h2R[i] = __hadd2(h2R[i], _h2Bias[i]); \
+                    HADD2_INST(R[i], R[_bias_v1_off + i], R[i]); \
 	            } \
             } \
         }
 
+//////////////////////////////////////////////////////
+// relu macros
+//////////////////////////////////////////////////////
+
 #define FUSE_RELU_V4(_has_relu) \
         { \
-	        if( _has_relu && dCv4_x_valid  && dCv4_y_valid ) \
+	        if(_has_relu) \
             { \
-		        if(_has_relu == 1) \
+                _Pragma("unroll") \
+	            for(int i = 0; i < _INT4_TO_4INT_; i++) \
                 { \
-	                int * Rv1 = (int *) Rv4; \
-                    \
-                    _Pragma("unroll") \
-	                for(int i = 0; i < _INT4_TO_4HALF2_; i++) \
-                    { \
-	                    Rv1[i] = __vmaxs2(Rv1[i], 0); \
-	                } \
-	            } \
-                else if(_has_relu == 2) \
-                { \
-	                __half2 * h2R = (__half2 *) Rv4; \
-			        __half2 h2ONE = { (__half) 1.f, (__half) 1.f}; \
-                    \
-                    _Pragma("unroll") \
-	                for(int i = 0; i < _INT4_TO_4HALF2_; i++) \
-                    { \
-				        h2R[i] = __h2div(h2exp(h2R[i]), __hadd2(h2ONE, h2exp(h2R[i]))); \
-	                } \
+                    HMAX2_INST(R[i], R[i], 0, R[i]); \
 	            } \
 		    } \
         }
 
-#define FUSE_CLIP_V4(_has_clip, _clip_max, _clip_min) \
+//////////////////////////////////////////////////////
+// eltwise macros
+//////////////////////////////////////////////////////
+
+#define LOAD_ELT_V4(_has_elt, _pre_data, _elt_v4_off) \
         { \
-	        if( _has_clip && dCv4_x_valid  && dCv4_y_valid ) { \
-                \
-                _Pragma("unroll") \
-	            for(int i = 0; i < _INT4_TO_4HALF2_; i++) \
-                { \
-	    	        h2R[i].x = __hgt(h2R[i].x, _clip_max.x) ? _clip_max.x : h2R[i].x; \
-	    	        h2R[i].y = __hgt(h2R[i].y, _clip_max.x) ? _clip_max.y : h2R[i].y; \
-	    	        h2R[i].x = __hlt(h2R[i].x, _clip_min.x) ? _clip_min.x : h2R[i].x; \
-	    	        h2R[i].y = __hlt(h2R[i].y, _clip_min.x) ? _clip_min.y : h2R[i].y; \
-	            } \
-	        } \
+       	    if( _has_elt && dCv4_y_valid && dCv4_x_valid ) \
+                Rv4[_elt_v4_off] = ((int4 *) _pre_data) [dCv4_base + dCv4_idy * num_flt_per_grp_pad_v8 * num_grp]; \
         }
 
-#define FUSE_PRELU_V4(_has_prelu, _prelu, _leaky) \
+#define FUSE_ELT_V4(_has_elt, _elt_v1_off) \
         { \
-	        if( _has_prelu && dCv4_x_valid  && dCv4_y_valid ) { \
-                \
-       	        if(_has_prelu == 1) \
-                { \
-                    _Pragma("unroll") \
-	                for(int i = 0; i < _INT4_TO_8HALF_; i++) \
-                    { \
-	            	    if( __hlt(hR[i],0) )    hR[i] = __hmul(hR[i], _leaky); \
-	                } \
-	            } \
-                \
-       	        if(_has_prelu == 2) \
-                { \
-	                int4     _scale_v4 = ( (int4 *) _prelu) [grp_id * num_flt_per_grp_pad_v8 + dCv4_idx]; \
-	                __half * _hscale  = (__half *) &_scale_v4; \
-                    \
-                    _Pragma("unroll") \
-	                for(int i = 0; i < _INT4_TO_8HALF_; i++) \
-                    { \
-	            	    if( __hlt(hR[i], 0) )   hR[i] = __hmul(hR[i], _hscale[i]); \
-	                } \
-	            } \
-                \
-       	        if(_has_prelu == 3) \
-                { \
-                    int4     _scale_v4 = ((int4  *) _prelu) [dCv4_off]; \
-	                __half * _hscale  = (__half *) &_scale_v4; \
-                    \
-                    _Pragma("unroll") \
-	                for(int i = 0; i < _INT4_TO_8HALF_; i++) \
-                    { \
-	            	    if( __hlt(hR[i], 0) )    hR[i] = __hmul(hR[i], _hscale[i]); \
-	                } \
-	            } \
-	        } \
-        }
-
-#define FUSE_ELT_V4(_has_elt, _pre_data) \
-        { \
-	        if( _has_elt && dCv4_x_valid && dCv4_y_valid ) \
+	        if( _has_elt ) \
             { \
-	            int4      _elt_v4 = ((int4 *)   _pre_data) [dCv4_off]; \
-	            __half2 * _h2_elt = (__half2 *) &_elt_v4; \
-                \
                 _Pragma("unroll") \
-	            for(int i = 0; i < _INT4_TO_4HALF2_; i++){ \
-	                h2R[i] = __hadd2(h2R[i], _h2_elt[i]); \
+	            for(int i = 0; i < _INT4_TO_4INT_; i++){ \
+                    HADD2_INST(R[i], R[_elt_v1_off + i], R[i]); \
 	            } \
 	        } \
         }
 
-#define SET_CONCAT_OFF_V4(_has_concat, _concatV4_off) \
+#define SET_CONCAT_OFF_V4(_has_concat, _concat_v4_off) \
         { \
-	        if( _has_concat && dCv4_x_valid && dCv4_y_valid ) \
-            { \
-	            dCv4_off = concat_offset_v8 + dCv4_idy * concat_stride_v8 + dCv4_base + dCv4_idx; \
-	        } \
+	        _concat_v4_off = (_has_concat) ? dCv4_idy * concat_stride_v8 + concat_offset_v8 : dCv4_idy * num_flt_per_grp_pad_v8 * num_grp; \
         }
         

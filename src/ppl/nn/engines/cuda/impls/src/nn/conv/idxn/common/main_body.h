@@ -23,7 +23,6 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     int C[C_ITEMS_PER_THD];
 
     __half  * hC  = (__half  *) C;
-    __half2 * h2C = (__half2 *) C;
 
 #if TILE_K_PER_STEP == 8
     int  * dAv1 = (int  *) dA;
@@ -37,6 +36,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #endif
     int  * dCv1 = (int  *) dC;
 
+#pragma unroll
     for (int i = 0; i < HC_ITEMS_PER_THD; i++) { hC[i] = _HALF_ZERO_; }
 
     uint tid       =  threadIdx.x;
@@ -79,6 +79,9 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
     dCv1_idy[1] =  dCv1_idy[0] + TILE_M_V1_PER_MMA_HALF;
 
+    dCv1_y_valid[0] = (dCv1_idy[0] < out_nhw);
+    dCv1_y_valid[1] = (dCv1_idy[1] < out_nhw);
+
     bool dCv1_x_valid[NUM_N_STEPS];
     uint   dCv1_idx[NUM_N_STEPS];
 
@@ -88,6 +91,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
                            tid_x;
     uint dCv1_idx_bound = (grp_id + 1) * num_flt_per_grp_pad_v2;
 
+#pragma unroll
     for(uint i = 0; i < NUM_N_STEPS; i++)
     {
         dCv1_idx[i]     =  dCv1_idx_base + i * TILE_N_V2_PER_STEP;
@@ -236,80 +240,41 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #endif
     }
 
+    int r_bias_v1[NUM_N_STEPS];
+
+    LOAD_BIAS_V1(has_bias, bias, r_bias_v1);
+
+#if defined(ENABLE_FUSE)
+    uint concat_v1_off0 = 0;
+    uint concat_v1_off1 = 0;
+
+    int r_elt_v1[NUM_N_STEPS * BLK_M_PER_MMA];
+
+    LOAD_ELT_V1(has_elt, pre_data, r_elt_v1);
+#endif
+
+#pragma unroll
     for(int step = 0; step < NUM_M_STEPS; step++)
     {
-        dCv1_y_valid[0] = (dCv1_idy[0] < out_nhw);
-        dCv1_y_valid[1] = (dCv1_idy[1] < out_nhw);
-
         uint Cv1_off  = step * TILE_N_V2_PER_THD * BLK_M_PER_MMA;
 
-#if TILE_N_PER_WARP == 8
-
-        ADD_BIAS_2x1_V1(has_bias, bias, step);
-
 #if defined(ENABLE_FUSE)
-        uint concat_v1_off0 = 0;
-        uint concat_v1_off1 = 0;
+        ADD_BIAS_V1(has_bias, r_bias_v1);
 
-        FUSE_RELU_2x1_V1(has_relu);
-        FUSE_CLIP_2x1_V1(has_clip, clip_max, clip_min);
-        FUSE_PRELU_2x1_V1(has_prelu, prelu, leaky);
+        FUSE_RELU_V1(has_relu);
 
-        FUSE_ELT_2x1_V1(has_elt, pre_data);
-        FUSE_RELU_2x1_V1(has_elt_relu);
-        FUSE_CLIP_2x1_V1(has_elt_clip, elt_clip_max, elt_clip_min);
-        FUSE_PRELU_2x1_V1(has_elt_prelu, elt_prelu, elt_leaky);
+        FUSE_ELT_V1(has_elt, r_elt_v1);
+
+        FUSE_RELU_V1(has_elt_relu);
 
         SET_CONCAT_OFF_V1(has_concat, concat_v1_off0, concat_v1_off1);
 #endif
 
-        OUTPUT_2x1_BY_INT1();
-#elif TILE_N_PER_WARP == 16
-
-        ADD_BIAS_2x2_V1(has_bias, bias, step);
+        OUTPUT_BY_INT1();
 
 #if defined(ENABLE_FUSE)
-        uint concat_v1_off0 = 0;
-        uint concat_v1_off1 = 0;
-
-        FUSE_RELU_2x2_V1(has_relu);
-        FUSE_CLIP_2x2_V1(has_clip, clip_max, clip_min);
-        FUSE_PRELU_2x2_V1(has_prelu, prelu, leaky);
-
-        FUSE_ELT_2x2_V1(has_elt, pre_data);
-        FUSE_RELU_2x2_V1(has_elt_relu);
-        FUSE_CLIP_2x2_V1(has_elt_clip, elt_clip_max, elt_clip_min);
-        FUSE_PRELU_2x2_V1(has_elt_prelu, elt_prelu, elt_leaky);
-
-        SET_CONCAT_OFF_V1(has_concat, concat_v1_off0, concat_v1_off1);
+        LOAD_ELT_V1(has_elt, pre_data, r_elt_v1);
 #endif
-
-        OUTPUT_2x2_BY_INT1();
-#elif TILE_N_PER_WARP == 32
-
-        ADD_BIAS_2x4_V1(has_bias, bias, step);
-
-#if defined(ENABLE_FUSE)
-        uint concat_v1_off0 = 0;
-        uint concat_v1_off1 = 0;
-
-        FUSE_RELU_2x4_V1(has_relu);
-        FUSE_CLIP_2x4_V1(has_clip, clip_max, clip_min);
-        FUSE_PRELU_2x4_V1(has_prelu, prelu, leaky);
-
-        FUSE_ELT_2x4_V1(has_elt, pre_data);
-        FUSE_RELU_2x4_V1(has_elt_relu);
-        FUSE_CLIP_2x4_V1(has_elt_clip, elt_clip_max, elt_clip_min);
-        FUSE_PRELU_2x4_V1(has_elt_prelu, elt_prelu, elt_leaky);
-
-        SET_CONCAT_OFF_V1(has_concat, concat_v1_off0, concat_v1_off1);
-#endif
-
-        OUTPUT_2x4_BY_INT1();
-#endif
-
-        dCv1_idy[0] += TILE_M_PER_STEP;
-        dCv1_idy[1] += TILE_M_PER_STEP;
     }
 
 #endif // __CUDA_ARCH__

@@ -403,28 +403,18 @@
 // precision half output
 /////////////////////////////////////////////////////
 
-#undef OUTPUT_2x1_BY_INT1
-#undef OUTPUT_2x2_BY_INT1
-#undef OUTPUT_2x4_BY_INT1
+#undef OUTPUT_BY_INT1
 
-#undef ADD_BIAS_2x1_V1
-#undef ADD_BIAS_2x2_V1
-#undef ADD_BIAS_2x4_V1
+#undef LOAD_BIAS_V1
+#undef ADD_BIAS_V1
 
-#undef FUSE_RELU_2x1_V1
-#undef FUSE_RELU_2x2_V1
-#undef FUSE_RELU_2x4_V1
+#undef FUSE_RELU_V1
 
-#undef FUSE_CLIP_2x1_V1
-#undef FUSE_CLIP_2x2_V1
-#undef FUSE_CLIP_2x4_V1
-
-#undef FUSE_PRELU_2x1_V1
-#undef FUSE_PRELU_2x2_V1
-#undef FUSE_PRELU_2x4_V1
-
-#undef FUSE_ELT_2x1_V1
-#undef FUSE_ELT_2x2_V1
-#undef FUSE_ELT_2x4_V1
+#undef LOAD_ELT_V1
+#undef FUSE_ELT_V1
 
 #undef SET_CONCAT_OFF_V1
+
+#undef HADD2_INST
+#undef HMAX2_INST
+#undef HMIN2_INST

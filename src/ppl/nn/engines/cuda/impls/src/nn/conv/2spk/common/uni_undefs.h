@@ -109,7 +109,9 @@
 #undef _INT_TO_2HALF_
 #undef _INT2_TO_2HALF2_
 #undef _INT2_TO_2INT_
+#undef _INT2_TO_4HALF_
 
+#undef _INT8_TO_2INT4_
 #undef _INT4_TO_INT4_
 #undef _INT4_TO_2INT2_
 #undef _INT4_TO_4INT_
@@ -117,10 +119,10 @@
 #undef _INT4_TO_8HALF_
 
 #undef SMEM_ROW_V1_SIZE
+#undef SMEM_ROW_V2_SIZE
 #undef SMEM_ROW_V4_SIZE
 #undef SMEM_ROW_BYTE_SIZE
 #undef SMEM_ROW_BIT_SIZE
-
 
 ////////////////////////////////////////
 // mma size macros
@@ -131,7 +133,7 @@
 #undef TILE_N_PER_MMA
 #undef TILE_M_PER_MMA_HALF
 
-#undef MMA_SIZE_Y_IN_THD
+#undef MMA_SIZE_X_IN_THD
 #undef MMA_SIZE_Y_IN_THD
 
 #undef MMA_SIZE_X_IN_BITS
@@ -237,7 +239,6 @@
 #undef TILE_N_V4_PER_MMA
 #undef TILE_N_V8_PER_MMA
 
-
 ////////////////////////////////////////
 // shared memory size macros
 ////////////////////////////////////////
@@ -324,10 +325,10 @@
 
 #undef FWD_FLT
 #undef FWD_FLT1
-#undef FLT_SIZE1
 #undef FWD_FLT3
-#undef FLT_SIZE3
 #undef FWD_FLTN
+#undef FLT_SIZE1
+#undef FLT_SIZE3
 #undef FLT_SIZEN
 
 #undef FWD_FLT_SIZE1
@@ -335,6 +336,9 @@
 #undef FWD_FLT_SIZE4
 #undef FWD_FLT_SIZE8
 #undef FWD_FLT_SIZE16
+
+#undef SET_BOUND_FLT1
+#undef SET_BOUND_FLT3
 
 ////////////////////////////////////////
 // mma macros
@@ -537,11 +541,42 @@
 
 #undef OUTPUT_PRC_HALF
 
+#undef LOAD_BIAS_V4
 #undef ADD_BIAS_V4
 
-#undef FUSE_RELU_V4
-#undef FUSE_CLIP_V4
-#undef FUSE_PRELU_V4
+////////////////////////////////////////
+// fuse size macros
+////////////////////////////////////////
+
+#undef REDUCE_V4_SIZE
+#undef BIAS_V4_SIZE
+#undef ELT_V4_SIZE
+
+#undef REDUCE_V1_SIZE
+#undef BIAS_V1_SIZE
+#undef ELT_V1_SIZE
+
+#undef Rv4
+
+////////////////////////////////////////
+// fuse offset macros
+////////////////////////////////////////
+
+#undef REDUCE_V4_OFFSET
+#undef BIAS_V4_OFFSET
+#undef ELT_V4_OFFSET
+
+#undef REDUCE_V1_OFFSET
+#undef BIAS_V1_OFFSET
+#undef ELT_V1_OFFSET
+
+#undef LOAD_ELT_V4
 #undef FUSE_ELT_V4
 
+#undef FUSE_RELU_V4
+
 #undef SET_CONCAT_OFF_V4
+
+#undef HADD2_INST
+#undef HMAX2_INST
+#undef HMIN2_INST
