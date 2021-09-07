@@ -460,7 +460,7 @@
 ////////////////////////////////////////
 
 #define HADD2_INST(_d, _a, _b) \
-        asm volatile("add.rn.ftz.sat.f16x2 %0, %1, %2;\n":   "=r"(_d): "r"(_a), "r"(_b));
+        asm volatile("add.ftz.f16x2 %0, %1, %2;\n":   "=r"(_d): "r"(_a), "r"(_b));
 
 #define HMAX2_INST(_d, _a, _b, _c) \
         asm volatile("vmax2.u32.u32.u32 %0, %1, %2, %3;\n":   "=r"(_d): "r"(_a), "r"(_b), "r"(_c));
