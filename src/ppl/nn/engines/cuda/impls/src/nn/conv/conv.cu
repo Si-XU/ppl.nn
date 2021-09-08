@@ -79,6 +79,50 @@
             fuse_param.has_concat,         concat_offset_v8,                            \
             concat_stride_v8
 
+#define SWZL_SPK_KPARAM_LIST \
+            d_flt,                                                                      \
+            pad_input,                                                                  \
+            conv_out,                                                                   \
+            kloop_num,                                                                  \
+            in_lut,                        in_lut_size,                                 \
+            flt_lut,                       flt_lut_size,                                \
+            num_chl_per_spk_head,          num_chl_per_spk_tail,                        \
+            in_hw,                         out_hw,                                      \
+            flt_hw,                        splitk,                                      \
+            conv_param.in_height,          conv_param.in_width,                         \
+            conv_param.in_num,             conv_param.num_grp,                          \
+            num_chl_per_grp,               num_chl_per_grp_pad,                         \
+            conv_param.flt_height,         conv_param.flt_width,                        \
+            num_flt_per_grp,               num_flt_per_grp_pad,                         \
+            conv_param.out_height,         conv_param.out_width,                        \
+            conv_param.stride_height,      conv_param.stride_width,                     \
+            conv_param.pad_height,         conv_param.pad_width,                        \
+            conv_param.hole_height,        conv_param.hole_width,                       \
+            conv_param.has_bias,           (int *)bias
+
+#define SWZL_LUT_KPARAM_LIST \
+            d_flt,                                                                      \
+            pad_input,                                                                  \
+            conv_out,                                                                   \
+            kloop_num,                                                                  \
+            in_lut,                        in_lut_size,                                 \
+            flt_lut,                       flt_lut_size,                                \
+            in_hw,                         out_hw,                                      \
+            flt_hw,                        splitk,                                      \
+            conv_param.in_height,          conv_param.in_width,                         \
+            conv_param.in_num,             conv_param.num_grp,                          \
+            num_chl_per_grp,               num_chl_per_grp_pad,                         \
+            conv_param.flt_height,         conv_param.flt_width,                        \
+            num_flt_per_grp,               num_flt_per_grp_pad,                         \
+            conv_param.out_height,         conv_param.out_width,                        \
+            conv_param.stride_height,      conv_param.stride_width,                     \
+            conv_param.pad_height,         conv_param.pad_width,                        \
+            conv_param.hole_height,        conv_param.hole_width,                       \
+            conv_param.has_bias,           bias,                                        \
+            fuse_param.has_activation,     fuse_param.has_elt_activation,               \
+            fuse_param.has_elt,            (const int4 *) fuse_param.pre_data,          \
+            fuse_param.has_concat,         concat_offset_v8,                            \
+            concat_stride_v8
 
 #define IDX_KPARAM_LIST \
             pad_input,                                                                  \
@@ -127,6 +171,10 @@ void InitializeKernelContainer(std::vector<kernel_info_t> &g_kernel_container, p
         Initialize2spkConvFSKernelContainer(g_kernel_container);
                       
         InitializeIdxnConvKernelContainer(g_kernel_container);
+
+        // InitializeSwzlConvF1KernelContainer(g_kernel_container);
+        // InitializeSwzlConvF3KernelContainer(g_kernel_container);
+        // InitializeSwzlConvFNKernelContainer(g_kernel_container);
     }
     
     is_g_kernel_container_initialized = true;
@@ -341,7 +389,7 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
                     (g_kernel_container[kid].idx_kptr)<<<grid_size, block_size, 0, stream>>>(IDX_KPARAM_LIST);
                 }
                 else if(g_kernel_container[kid].ktype == CONV_2SPK_F1 || g_kernel_container[kid].ktype == CONV_2SPK_F3 || \
-                        g_kernel_container[kid].ktype == CONV_2SPK_FN || g_kernel_container[kid].ktype == CONV_2SPK_FS) {
+                        g_kernel_container[kid].ktype == CONV_2SPK_FN || g_kernel_container[kid].ktype == CONV_2SPK_FS ) {
 
 	                int kloop_num = (flt_hw / splitf) * DivUp(num_chl_per_grp_pad, g_kernel_container[kid].tile_k_per_cta);
 
@@ -474,9 +522,9 @@ void PPLCUDAConvolutionForwardImp(
     block_size.y = 1;
     block_size.z = 1;
 
-    grid_size.x  = DivUp(conv_param.in_num * conv_param.out_height * conv_param.out_width, g_kernel_container[kid].tile_m_per_cta);
-    grid_size.y  = DivUp(num_flt_per_grp_pad, g_kernel_container[kid].tile_n_per_cta);
-    grid_size.z  = conv_param.num_grp * splitk * splitf;
+    grid_size.x = DivUp(conv_param.in_num * conv_param.out_height * conv_param.out_width, g_kernel_container[kid].tile_m_per_cta);
+    grid_size.y = DivUp(num_flt_per_grp_pad, g_kernel_container[kid].tile_n_per_cta);
+    grid_size.z = conv_param.num_grp * splitk * splitf;
 
     if(g_kernel_container[kid].ktype == CONV_IDXN_C2 || g_kernel_container[kid].ktype == CONV_IDXN_C4 || \
             g_kernel_container[kid].ktype == CONV_IDXN_C32) {
@@ -495,7 +543,7 @@ void PPLCUDAConvolutionForwardImp(
         (g_kernel_container[kid].idx_kptr)<<<grid_size, block_size, 0, stream>>>(IDX_KPARAM_LIST);
 
     } else if(g_kernel_container[kid].ktype == CONV_2SPK_F1 || g_kernel_container[kid].ktype == CONV_2SPK_F3 || \
-            g_kernel_container[kid].ktype == CONV_2SPK_FN || g_kernel_container[kid].ktype == CONV_2SPK_FS ) {
+              g_kernel_container[kid].ktype == CONV_2SPK_FN || g_kernel_container[kid].ktype == CONV_2SPK_FS) {
 
 	    int kloop_num = (flt_hw / splitf) * DivUp(num_chl_per_grp_pad, g_kernel_container[kid].tile_k_per_cta);
 
