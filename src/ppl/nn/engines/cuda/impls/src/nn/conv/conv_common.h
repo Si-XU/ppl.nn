@@ -58,6 +58,9 @@ enum {
      CONV_IDXN_C2 = 4,
      CONV_IDXN_C4 = 5,
      CONV_IDXN_C32 = 6,
+     CONV_SWZL_F1 = 7,
+     CONV_SWZL_F3 = 8,
+     CONV_SWZL_FN = 9,
      CONV_KTYPE_NUM,
 };
 
@@ -168,6 +171,19 @@ struct kernel_info_t
             cta_size_in_thd = (tile_m_per_cta / tile_m_per_warp) * \
                               (tile_n_per_cta / tile_n_per_warp) * \
                               (tile_k_per_cta / tile_k_per_set)  * \
+                              WARP_SIZE;
+        } else if( ktype == CONV_SWZL_F1 || ktype == CONV_SWZL_F3 || ktype == CONV_SWZL_FN ) {
+            if(      strstr(kname_substrs[3].c_str(), "f1") ) flt_size = 1;
+            else if( strstr(kname_substrs[3].c_str(), "f3") ) flt_size = 3;
+            else if( strstr(kname_substrs[3].c_str(), "fn") ) flt_size = 0;
+            else flt_size = -1;
+    
+            sscanf(kname_substrs[4].c_str(), "b%dx%d", &tile_m_per_cta,  &tile_n_per_cta);
+            sscanf(kname_substrs[5].c_str(), "w%dx%d", &tile_m_per_warp, &tile_n_per_warp);
+            sscanf(kname_substrs[6].c_str(), "k%d",    &tile_k_per_cta);
+    
+            cta_size_in_thd = (tile_m_per_cta / tile_m_per_warp) * \
+                              (tile_n_per_cta / tile_n_per_warp) * \
                               WARP_SIZE;
         }
     }
@@ -351,4 +367,7 @@ void Initialize2spkConvFSKernelContainer(std::vector<kernel_info_t> & kernel_con
                    
 void InitializeIdxnConvKernelContainer(std::vector<kernel_info_t> & kernel_container);
 
+void InitializeSwzlConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
 #endif
