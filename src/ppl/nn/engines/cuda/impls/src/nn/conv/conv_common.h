@@ -222,11 +222,11 @@ struct kernel_info_t
             } else
                 return false;
         } else if(flt_height == 1 && flt_width == 1) {
-            return (ktype == CONV_2SPK_F1) ? true : false;
+            return (ktype == CONV_2SPK_F1 || ktype == CONV_SWZL_F1) ? true : false;
         } else if(flt_height == 3 && flt_width == 3) {
-            return (ktype == CONV_2SPK_F3 || ktype == CONV_2SPK_FS) ? true : false;
+            return (ktype == CONV_2SPK_F3 || ktype == CONV_SWZL_F3 || ktype == CONV_2SPK_FS) ? true : false;
         } else if(flt_height * flt_width < 128) {
-            return (ktype == CONV_2SPK_FN || ktype == CONV_2SPK_FS) ? true : false;
+            return (ktype == CONV_2SPK_FN || ktype == CONV_SWZL_FN || ktype == CONV_2SPK_FS) ? true : false;
         }
 
         return false;

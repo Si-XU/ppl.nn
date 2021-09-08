@@ -172,9 +172,9 @@ void InitializeKernelContainer(std::vector<kernel_info_t> &g_kernel_container, p
                       
         InitializeIdxnConvKernelContainer(g_kernel_container);
 
-        // InitializeSwzlConvF1KernelContainer(g_kernel_container);
-        // InitializeSwzlConvF3KernelContainer(g_kernel_container);
-        // InitializeSwzlConvFNKernelContainer(g_kernel_container);
+        InitializeSwzlConvF1KernelContainer(g_kernel_container);
+        InitializeSwzlConvF3KernelContainer(g_kernel_container);
+        InitializeSwzlConvFNKernelContainer(g_kernel_container);
     }
     
     is_g_kernel_container_initialized = true;
@@ -364,8 +364,15 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
             block_size.y = 1;
             block_size.z = 1;
 
-            grid_size.x = DivUp(conv_param.in_num * conv_param.out_height * conv_param.out_width, g_kernel_container[kid].tile_m_per_cta);
-            grid_size.y = DivUp(num_flt_per_grp_pad, g_kernel_container[kid].tile_n_per_cta);
+            if(g_kernel_container[kid].ktype == CONV_SWZL_F1 || g_kernel_container[kid].ktype == CONV_SWZL_F3 || \
+                    g_kernel_container[kid].ktype == CONV_SWZL_FN) {
+                grid_size.x = DivUp(conv_param.in_num * conv_param.out_height * conv_param.out_width, g_kernel_container[kid].tile_n_per_cta);
+                grid_size.y = DivUp(num_flt_per_grp_pad, g_kernel_container[kid].tile_m_per_cta);
+            } else {
+                grid_size.x = DivUp(conv_param.in_num * conv_param.out_height * conv_param.out_width, g_kernel_container[kid].tile_m_per_cta);
+                grid_size.y = DivUp(num_flt_per_grp_pad, g_kernel_container[kid].tile_n_per_cta);
+            }
+
             grid_size.z = conv_param.num_grp * splitk * splitf;
 
 	        cudaEventRecord(begin, stream);
@@ -389,7 +396,9 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
                     (g_kernel_container[kid].idx_kptr)<<<grid_size, block_size, 0, stream>>>(IDX_KPARAM_LIST);
                 }
                 else if(g_kernel_container[kid].ktype == CONV_2SPK_F1 || g_kernel_container[kid].ktype == CONV_2SPK_F3 || \
-                        g_kernel_container[kid].ktype == CONV_2SPK_FN || g_kernel_container[kid].ktype == CONV_2SPK_FS ) {
+                        g_kernel_container[kid].ktype == CONV_2SPK_FN || g_kernel_container[kid].ktype == CONV_2SPK_FS || \
+                        g_kernel_container[kid].ktype == CONV_SWZL_F1 || g_kernel_container[kid].ktype == CONV_SWZL_F3 || \
+                        g_kernel_container[kid].ktype == CONV_SWZL_FN) {
 
 	                int kloop_num = (flt_hw / splitf) * DivUp(num_chl_per_grp_pad, g_kernel_container[kid].tile_k_per_cta);
 
@@ -404,14 +413,22 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
                             g_kernel_container[kid].tile_k_per_cta, pad_size);
 
                     if(splitk == 1) {
-                        (g_kernel_container[kid].lut_kptr)<<<grid_size, block_size, 0, stream>>>(LUT_KPARAM_LIST);
+                        if(g_kernel_container[kid].ktype == CONV_SWZL_F1 || g_kernel_container[kid].ktype == CONV_SWZL_F3 || \
+                                g_kernel_container[kid].ktype == CONV_SWZL_FN)
+                            (g_kernel_container[kid].lut_kptr)<<<grid_size, block_size, 0, stream>>>(SWZL_LUT_KPARAM_LIST);
+                        else
+                            (g_kernel_container[kid].lut_kptr)<<<grid_size, block_size, 0, stream>>>(LUT_KPARAM_LIST);
                     } else {
                         int num_chl_per_spk_head, num_chl_per_spk_tail;
 
                         InitializeNumChlPerSpk(num_chl_per_spk_head, num_chl_per_spk_tail, conv_param.num_chl, conv_param.num_grp, 
                                 pad_size, g_kernel_container[kid].tile_k_per_cta, splitk);
 
-                        (g_kernel_container[kid].spk_kptr)<<<grid_size, block_size, 0, stream>>>(SPK_KPARAM_LIST);
+                        if(g_kernel_container[kid].ktype == CONV_SWZL_F1 || g_kernel_container[kid].ktype == CONV_SWZL_F3 || \
+                                g_kernel_container[kid].ktype == CONV_SWZL_FN)
+                            (g_kernel_container[kid].spk_kptr)<<<grid_size, block_size, 0, stream>>>(SWZL_SPK_KPARAM_LIST);
+                        else
+                            (g_kernel_container[kid].spk_kptr)<<<grid_size, block_size, 0, stream>>>(SPK_KPARAM_LIST);
                     }
 
                     if(splitk > 1 || splitf > 1) {
@@ -543,7 +560,9 @@ void PPLCUDAConvolutionForwardImp(
         (g_kernel_container[kid].idx_kptr)<<<grid_size, block_size, 0, stream>>>(IDX_KPARAM_LIST);
 
     } else if(g_kernel_container[kid].ktype == CONV_2SPK_F1 || g_kernel_container[kid].ktype == CONV_2SPK_F3 || \
-              g_kernel_container[kid].ktype == CONV_2SPK_FN || g_kernel_container[kid].ktype == CONV_2SPK_FS) {
+              g_kernel_container[kid].ktype == CONV_2SPK_FN || g_kernel_container[kid].ktype == CONV_2SPK_FS || \
+              g_kernel_container[kid].ktype == CONV_SWZL_F1 || g_kernel_container[kid].ktype == CONV_SWZL_F3 || \
+              g_kernel_container[kid].ktype == CONV_SWZL_FN) {
 
 	    int kloop_num = (flt_hw / splitf) * DivUp(num_chl_per_grp_pad, g_kernel_container[kid].tile_k_per_cta);
 
@@ -558,14 +577,22 @@ void PPLCUDAConvolutionForwardImp(
                 g_kernel_container[kid].tile_k_per_cta, pad_size);
 
         if(splitk == 1) {
-            (g_kernel_container[kid].lut_kptr)<<<grid_size, block_size, 0, stream>>>(LUT_KPARAM_LIST);
+            if(g_kernel_container[kid].ktype == CONV_SWZL_F1 || g_kernel_container[kid].ktype == CONV_SWZL_F3 || \
+                    g_kernel_container[kid].ktype == CONV_SWZL_FN)
+                (g_kernel_container[kid].lut_kptr)<<<grid_size, block_size, 0, stream>>>(SWZL_LUT_KPARAM_LIST);
+            else
+                (g_kernel_container[kid].lut_kptr)<<<grid_size, block_size, 0, stream>>>(LUT_KPARAM_LIST);
         } else {
             int num_chl_per_spk_head, num_chl_per_spk_tail;
 
             InitializeNumChlPerSpk(num_chl_per_spk_head, num_chl_per_spk_tail, conv_param.num_chl, conv_param.num_grp, 
                     pad_size, g_kernel_container[kid].tile_k_per_cta, splitk);
 
-            (g_kernel_container[kid].spk_kptr)<<<grid_size, block_size, 0, stream>>>(SPK_KPARAM_LIST);
+            if(g_kernel_container[kid].ktype == CONV_SWZL_F1 || g_kernel_container[kid].ktype == CONV_SWZL_F3 || \
+                    g_kernel_container[kid].ktype == CONV_SWZL_FN)
+                (g_kernel_container[kid].spk_kptr)<<<grid_size, block_size, 0, stream>>>(SWZL_SPK_KPARAM_LIST);
+            else
+                (g_kernel_container[kid].spk_kptr)<<<grid_size, block_size, 0, stream>>>(SPK_KPARAM_LIST);
         }
     }
     
