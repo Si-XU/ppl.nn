@@ -32,7 +32,8 @@ private:
     const ppl::common::RetCode FuseConvWithNextNode(ir::Node* node, ir::Node* nextnode, const OptKernelOptions& options);
 
     static bool CanFuseRelu(ir::Node* nextnode, const OptKernelOptions& options) {
-        std::set<std::string> relu_fuse_op{"Relu", "Clip", "PRelu", "LeakyRelu", "Sigmoid"};
+        // std::set<std::string> relu_fuse_op{"Relu", "Clip", "PRelu", "LeakyRelu", "Sigmoid"};
+        std::set<std::string> relu_fuse_op{"Relu"};
         if (relu_fuse_op.find(nextnode->GetType().name) != relu_fuse_op.end()) {
             if (nextnode->GetType().name == "PRelu") { // extra check for PRelu
                 // slope must be an 1-d array or a scalar
