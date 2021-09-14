@@ -247,7 +247,8 @@ int PPLCUDAGemmSelectKernel(
     void* output,
     const ppl::nn::common::GemmParam &param,
     void* temp_buffer, 
-    const fuse_param_t &fuse_param)
+    const fuse_param_t &fuse_param,
+    const select_param_t &select_param)
 {
     auto type = weight_shape->GetDataType();
     if (!is_g_kvec_set) init_f1_kvec(g_kvec, type);
@@ -293,6 +294,8 @@ int PPLCUDAGemmSelectKernel(
     }
 
     for (unsigned int kid = 0; kid < g_kvec.size(); kid++) {
+        if(!g_kvec[kid].CheckQuickSelectFeasible(select_param, 1, 1)) continue;
+        
         int tile_m_per_cta   = g_kvec[kid].tile_m_per_cta;
         int tile_n_per_cta   = g_kvec[kid].tile_n_per_cta;
         int tile_k_per_cta   = g_kvec[kid].tile_k_per_cta;

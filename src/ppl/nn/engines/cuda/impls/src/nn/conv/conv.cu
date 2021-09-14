@@ -268,6 +268,91 @@ uint64_t PPLCUDAConvolutionGetRuntimeBufSize(
     return total_size <= workspace ? total_size : workspace;
 }
 
+ppl::common::RetCode PPLCUDAConvolutionQuickSelectKernel(
+        select_param_t &select_param,
+        conv_param_t &conv_param) {
+    int in_hw = conv_param.in_num * conv_param.in_height * conv_param.in_width;
+    int out_hw = conv_param.in_num * conv_param.out_height * conv_param.out_width;
+    int flt_hw = conv_param.flt_height * conv_param.flt_width;
+    int chl_per_group = conv_param.num_chl / conv_param.num_grp;
+
+    // Use non-shared memory algo for small channel
+    if (chl_per_group < 64) {
+        if (flt_hw > 9) {
+            select_param.m_cta = 128;
+            select_param.m_warp = 64;
+        } else {
+            select_param.m_cta = 32;
+            select_param.m_warp = 16;
+        }
+
+        if (in_hw == out_hw) {
+            select_param.n_cta = 64;
+            select_param.n_warp = 32;
+        } else {
+            select_param.n_cta = 32;
+            select_param.n_warp = 16;
+        }
+
+        if (conv_param.num_chl >= 16) {
+            select_param.k_cta = 32;
+            select_param.k_warp = 32;
+        } else {
+            select_param.k_cta = 16;
+            select_param.k_warp = 16;
+        }
+    } else { // Use 3spk algo for large channel
+        float min_pad = 1.0;
+        select_param.m_cta = 16;
+        for (int32_t i = 128; i >= 16; i = i / 2) {
+            if (out_hw < i) continue;
+            float pad = 1.0 * (DivUp(out_hw, i) * i - out_hw) / out_hw;
+            if (pad < min_pad)  {
+                min_pad = pad;
+                select_param.m_cta = i;
+            }
+            if (min_pad < 0.1)  break;
+        }
+
+        select_param.n_cta = 16;
+        for (int32_t i = 128; i >= 16; i = i / 2) {
+            int cout = conv_param.num_flt;
+            if ((cout < 64 && i / cout == 1) || (cout >= 64 && cout % i == 0)) {
+                select_param.n_cta = i;
+                break;
+            }
+        }
+
+        if (conv_param.num_chl >= 128) {
+            select_param.k_cta = 64;
+        } else {
+            select_param.k_cta = 32;
+        }
+
+        if (select_param.m_cta == 128 && select_param.n_cta == 128) {
+            select_param.m_cta = 64;
+        }
+
+        if (select_param.m_cta * 4 < select_param.n_cta) {
+            select_param.m_cta *= 2;
+            select_param.n_cta /= 2;
+        }
+        if (select_param.n_cta *4 < select_param.m_cta) {
+            select_param.m_cta /= 2;
+            select_param.n_cta *= 2;
+        }
+
+        select_param.m_warp = select_param.m_cta / 2;
+        select_param.n_warp = select_param.n_cta / 2;
+        select_param.k_warp = select_param.k_cta / 2;
+        if (select_param.k_warp < 8) {
+            select_param.k_warp = 16;
+        }
+    }
+    select_param.quick_select = true;
+    return ppl::common::RC_SUCCESS;
+}
+
 ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
         cudaStream_t &stream, 
         ppl::common::datatype_t type,
@@ -279,6 +364,7 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
         algo_param_t & algo_param,
         conv_param_t &conv_param, 
         fuse_param_t &fuse_param,
+        select_param_t &select_param,
 	    uint64_t workspace)
 {
     if(!is_g_kernel_container_initialized)
@@ -355,6 +441,8 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
             if(!g_kernel_container[kid].CheckSplitkFeasible(num_chl_per_grp, splitk)) continue;
 
             if(!g_kernel_container[kid].CheckSplitfFeasible(splitf, splitk)) continue;
+
+            if(!g_kernel_container[kid].CheckQuickSelectFeasible(select_param, splitk, splitf)) continue;
 
             int4 *conv_out = (splitk > 1 || splitf > 1) ? splitk_buf : final_out;
 

@@ -78,10 +78,6 @@ double TuringHMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
     ConvertToForwardConvParam(shape_in0, shape_in1, shape_out, attr_param_.param, temp_conv_param);
     ConvertToEmptyFuseParam(temp_fuse_param);
 
-    if (options.args->quick_select) {
-        return 0.0f;
-    }
-
     // input H or W is too small
     if (shape_in0.GetDim(2) + 2 * temp_conv_param.pad_height < shape_in1.GetDim(2) ||
         shape_in0.GetDim(3) + 2 * temp_conv_param.pad_width < shape_in1.GetDim(3)) {
@@ -108,12 +104,17 @@ double TuringHMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
     uint64_t size = PPLCUDAConvolutionGetCompilationBufSize(shape_in0.GetDataType(), temp_conv_param);
     ALLOC_BUFFERF_FOR_ALGO_SELECT(temp_buffer, size, ALGO_MAX_TIME)
 
+    select_param_t temp_select_param;
+    if (options.args->quick_select) {
+        PPLCUDAConvolutionQuickSelectKernel(temp_select_param, temp_conv_param);
+    }
+
     // Do select
     auto stream = options.device->GetStream();
     algo_param_t algo_param;
     PPLCUDAConvolutionSelectKernel(stream, shape_in0.GetDataType(), (int4*)input_buffer.addr, (int4*)weight_buffer.addr,
                                    (int4*)output_buffer.addr, (int4*)bias_buffer.addr, (int4*)temp_buffer.addr,
-                                   algo_param, temp_conv_param, temp_fuse_param);
+                                   algo_param, temp_conv_param, temp_fuse_param, temp_select_param);
 
     attr_param_.extra_param.algo_info.kernel_index = algo_param.kid;
     attr_param_.extra_param.algo_info.splitk = algo_param.splitk;

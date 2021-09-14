@@ -42,7 +42,8 @@ int PPLCUDAGemmSelectKernel(
     void* output,
     const ppl::nn::common::GemmParam &param,
     void* temp_buffer, 
-    const fuse_param_t &fuse_param);
+    const fuse_param_t &fuse_param,
+    const select_param_t &select_param);
 
 ppl::common::RetCode PPLCUDAGemmForwardImp(
     const cudaStream_t &stream,
