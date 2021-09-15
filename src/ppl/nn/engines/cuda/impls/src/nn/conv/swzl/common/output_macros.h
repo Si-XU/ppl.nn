@@ -101,14 +101,17 @@
         { \
 	        if(_has_clip) \
             { \
+                int * _r_clip_max = (int *) &_clip_max; \
+                int * _r_clip_min = (int *) &_clip_min; \
+                \
                 _Pragma("unroll") \
                 for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
                 { \
                     _Pragma("unroll") \
 	                for(int j = 0; j < _INT4_TO_4INT_; j++) \
                     { \
-                        HMIN2_INST(R[i * _INT4_TO_4INT_ + j], R[i * _INT4_TO_4INT_ + j], _clip_max, R[i * _INT4_TO_4INT_ + j]); \
-                        HMAX2_INST(R[i * _INT4_TO_4INT_ + j], R[i * _INT4_TO_4INT_ + j], _clip_min, R[i * _INT4_TO_4INT_ + j]); \
+                        HMIN2_INST(R[i * _INT4_TO_4INT_ + j], R[i * _INT4_TO_4INT_ + j], _r_clip_max[0], R[i * _INT4_TO_4INT_ + j]); \
+                        HMAX2_INST(R[i * _INT4_TO_4INT_ + j], R[i * _INT4_TO_4INT_ + j], _r_clip_min[0], R[i * _INT4_TO_4INT_ + j]); \
 	                } \
 		        } \
 		    } \

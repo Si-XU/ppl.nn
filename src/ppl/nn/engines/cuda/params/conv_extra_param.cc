@@ -66,8 +66,10 @@ RetCode ConvertToForwardConvParam(const TensorShape& shape_in0, const TensorShap
 
 RetCode ConvertToEmptyFuseParam(fuse_param_t& fuse_param) {
     fuse_param.has_activation = 0;
+    fuse_param.has_clip = false;
     fuse_param.has_elt = false;
     fuse_param.has_elt_activation = 0;
+    fuse_param.has_elt_clip = false;
     fuse_param.has_concat = false;
     return RC_SUCCESS;
 }
@@ -79,12 +81,20 @@ RetCode ConvertToForwardFuseParam(InputOutputInfo* info, CudaDevice* device, Con
     int fuse_size = fuse_info.types.size();
 
     ConvertToEmptyFuseParam(fuse_param);
+    RetCode status;
+    ClipParam* param;
 
     if (fuse_index < fuse_size && relu_set.find(fuse_info.types[fuse_index]) != relu_set.end()) {
         int type = GetRelueType(fuse_info.types[fuse_index]);
         switch (type) {
             case 0: // Relu
                 fuse_param.has_activation = 1;
+                break;
+            case 1: // Clip
+                fuse_param.has_clip = true;
+                param = (ClipParam*)fuse_info.fuse_attrs[fuse_index];
+                fuse_param.clip_min = param->min_val;
+                fuse_param.clip_max = param->max_val;
                 break;
             default:
                 return RC_UNSUPPORTED;
@@ -104,6 +114,12 @@ RetCode ConvertToForwardFuseParam(InputOutputInfo* info, CudaDevice* device, Con
         switch (type) {
             case 0: // Relu
                 fuse_param.has_elt_activation = 1;
+                break;
+            case 1: // Clip
+                fuse_param.has_elt_clip = true;
+                param = (ClipParam*)fuse_info.fuse_attrs[fuse_index];
+                fuse_param.elt_clip_min = param->min_val;
+                fuse_param.elt_clip_max = param->max_val;
                 break;
             default:
                 return RC_UNSUPPORTED;

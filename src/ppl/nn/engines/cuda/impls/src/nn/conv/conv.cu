@@ -74,11 +74,11 @@
             conv_param.pad_height,         conv_param.pad_width,                        \
             conv_param.hole_height,        conv_param.hole_width,                       \
             conv_param.has_bias,           bias,                                        \
-            fuse_param.has_activation,     fuse_param.clip_min,                         \
-            fuse_param.has_clip,           fuse_param.clip_max,                         \
+            fuse_param.has_activation,     clip_min,                                    \
+            fuse_param.has_clip,           clip_max,                                    \
             fuse_param.has_elt,            (const int4 *) fuse_param.pre_data,          \
-            fuse_param.has_elt_activation, fuse_param.elt_clip_min,                     \
-            fuse_param.has_elt_clip,       fuse_param.elt_clip_max,                     \
+            fuse_param.has_elt_activation, elt_clip_min,                                \
+            fuse_param.has_elt_clip,       elt_clip_max,                                \
             fuse_param.has_concat,         concat_offset_v8,                            \
             concat_stride_v8
 
@@ -122,11 +122,11 @@
             conv_param.pad_height,         conv_param.pad_width,                        \
             conv_param.hole_height,        conv_param.hole_width,                       \
             conv_param.has_bias,           bias,                                        \
-            fuse_param.has_activation,     fuse_param.clip_min,                         \
-            fuse_param.has_clip,           fuse_param.clip_max,                         \
+            fuse_param.has_activation,     clip_min,                                    \
+            fuse_param.has_clip,           clip_max,                                    \
             fuse_param.has_elt,            (const int4 *) fuse_param.pre_data,          \
-            fuse_param.has_elt_activation, fuse_param.elt_clip_min,                     \
-            fuse_param.has_elt_clip,       fuse_param.elt_clip_max,                     \
+            fuse_param.has_elt_activation, elt_clip_min,                                \
+            fuse_param.has_elt_clip,       elt_clip_max,                                \
             fuse_param.has_concat,         concat_offset_v8,                            \
             concat_stride_v8
 
@@ -148,11 +148,11 @@
             conv_param.pad_height,         conv_param.pad_width,                        \
             conv_param.hole_height,        conv_param.hole_width,                       \
             conv_param.has_bias,           bias,                                        \
-            fuse_param.has_activation,     fuse_param.clip_min,                         \
-            fuse_param.has_clip,           fuse_param.clip_max,                         \
+            fuse_param.has_activation,     clip_min,                                    \
+            fuse_param.has_clip,           clip_max,                                    \
             fuse_param.has_elt,            (const int4 *) fuse_param.pre_data,          \
-            fuse_param.has_elt_activation, fuse_param.elt_clip_min,                     \
-            fuse_param.has_elt_clip,       fuse_param.elt_clip_max,                     \
+            fuse_param.has_elt_activation, elt_clip_min,                                \
+            fuse_param.has_elt_clip,       elt_clip_max,                                \
             fuse_param.has_concat,         concat_offset_v8,                            \
             concat_stride_v8
 
@@ -161,11 +161,11 @@
         	spk_height_v1,                 spk_width_v8,                                \
         	out_hw,                        splitk * splitf,                             \
             conv_param.has_bias,           bias,                                        \
-            fuse_param.has_activation,     fuse_param.clip_min,                         \
-            fuse_param.has_clip,           fuse_param.clip_max,                         \
+            fuse_param.has_activation,     clip_min,                                    \
+            fuse_param.has_clip,           clip_max,                                    \
             fuse_param.has_elt,            (const int4 *) fuse_param.pre_data,          \
-            fuse_param.has_elt_activation, fuse_param.elt_clip_min,                     \
-            fuse_param.has_elt_clip,       fuse_param.elt_clip_max,                     \
+            fuse_param.has_elt_activation, elt_clip_min,                                \
+            fuse_param.has_elt_clip,       elt_clip_max,                                \
             fuse_param.has_concat,         concat_offset_v8,                            \
             concat_stride_v8
 
@@ -433,6 +433,10 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
 
     int4 *splitk_buf = d_temp_buf + buf_off_v4;
 
+    __half2 clip_min     = __float2half2_rn(fuse_param.clip_min);
+    __half2 clip_max     = __float2half2_rn(fuse_param.clip_max);
+    __half2 elt_clip_min = __float2half2_rn(fuse_param.elt_clip_min);
+    __half2 elt_clip_max = __float2half2_rn(fuse_param.elt_clip_max);
     float minTime = FLT_MAX;
 
     float elapsed;
@@ -633,6 +637,10 @@ void PPLCUDAConvolutionForwardImp(
     int4 *splitk_buf = d_temp_buf + buf_off_v4;
     int4 *conv_out   = (splitk > 1 || splitf > 1) ? splitk_buf : final_out;
 
+    __half2 clip_min     = __float2half2_rn(fuse_param.clip_min);
+    __half2 clip_max     = __float2half2_rn(fuse_param.clip_max);
+    __half2 elt_clip_min = __float2half2_rn(fuse_param.elt_clip_min);
+    __half2 elt_clip_max = __float2half2_rn(fuse_param.elt_clip_max);
     dim3 block_size, grid_size;
 
     block_size.x = g_kernel_container[kid].cta_size_in_thd;

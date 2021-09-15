@@ -84,11 +84,14 @@
         { \
 	        if(_has_clip) \
             { \
+                int * _r_clip_max = (int *) &_clip_max; \
+                int * _r_clip_min = (int *) &_clip_min; \
+                \
                 _Pragma("unroll") \
 	            for(int i = 0; i < _INT4_TO_4INT_; i++) \
                 { \
-                    HMIN2_INST(R[i], R[i], _clip_max, R[i]); \
-                    HMAX2_INST(R[i], R[i], _clip_min, R[i]); \
+                    HMIN2_INST(R[i], R[i], _r_clip_max[0], R[i]); \
+                    HMAX2_INST(R[i], R[i], _r_clip_min[0], R[i]); \
 	            } \
 		    } \
         }
