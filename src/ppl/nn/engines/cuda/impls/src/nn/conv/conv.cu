@@ -479,6 +479,8 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
 
             grid_size.z = conv_param.num_grp * splitk * splitf;
 
+            if(!g_kernel_container[kid].CheckSplitkBlockSizeFeasible((grid_size.x * grid_size.y * grid_size.z), splitk)) continue;
+
 	        cudaEventRecord(begin, stream);
 
 	        for(int i = 0; i < TIMES; i++) {
