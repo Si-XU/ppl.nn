@@ -570,6 +570,7 @@
 #undef FUSE_ELT_V4
 
 #undef FUSE_RELU_V4
+#undef FUSE_CLIP_V4
 
 #undef SET_CONCAT_OFF_V4
 

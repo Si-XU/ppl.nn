@@ -42,8 +42,11 @@ typedef void lut_kernel_t(
         int  pad_height,              int pad_width,
         int  hole_height,             int hole_width,
         int  has_bias,                const int4* bias,
-        int  has_relu,                int has_elt_relu,
+        int  has_relu,                const int clip_min,
+        bool has_clip,                const int clip_max,
         bool has_elt,                 const int4* pre_data,
+        int  has_elt_relu,            const int elt_clip_min,
+        bool has_elt_clip,            const int elt_clip_max,
         bool has_concat,              int concat_offset_v8,
         int concat_stride_v8);
 
@@ -86,8 +89,11 @@ typedef void idx_kernel_t(
         int  pad_height,              int pad_width,
         int  hole_height,             int hole_width,
         int  has_bias,                const int4* bias,
-        int  has_relu,                int has_elt_relu,
+        int  has_relu,                const int clip_min,
+        bool has_clip,                const int clip_max,
         bool has_elt,                 const int4* pre_data,
+        int  has_elt_relu,            const int elt_clip_min,
+        bool has_elt_clip,            const int elt_clip_max,
         bool has_concat,              int concat_offset_v8,
         int concat_stride_v8);
 

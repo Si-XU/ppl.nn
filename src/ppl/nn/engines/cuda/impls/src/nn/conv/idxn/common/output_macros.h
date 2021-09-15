@@ -82,6 +82,25 @@
         }
 
 //////////////////////////////////////////////////////
+// clip macros
+//////////////////////////////////////////////////////
+
+#define FUSE_CLIP_V1(_has_clip, _clip_max, _clip_min) \
+        { \
+	        if( _has_clip ) \
+            { \
+                _Pragma("unroll") \
+                for(int i = 0; i < NUM_N_STEPS; i++) \
+                { \
+                    if( dCv1_y_valid[0] && dCv1_x_valid[i] ) HMIN2_INST(C[Cv1_off + i],               C[Cv1_off + i],               _clip_max, C[Cv1_off + i]); \
+                    if( dCv1_y_valid[0] && dCv1_x_valid[i] ) HMAX2_INST(C[Cv1_off + i],               C[Cv1_off + i],               _clip_min, C[Cv1_off + i]); \
+                    if( dCv1_y_valid[1] && dCv1_x_valid[i] ) HMIN2_INST(C[Cv1_off + i + NUM_N_STEPS], C[Cv1_off + i + NUM_N_STEPS], _clip_max, C[Cv1_off + i + NUM_N_STEPS]); \
+                    if( dCv1_y_valid[1] && dCv1_x_valid[i] ) HMAX2_INST(C[Cv1_off + i + NUM_N_STEPS], C[Cv1_off + i + NUM_N_STEPS], _clip_min, C[Cv1_off + i + NUM_N_STEPS]); \
+	            } \
+	        } \
+        }
+
+//////////////////////////////////////////////////////
 // relu macros
 //////////////////////////////////////////////////////
 
