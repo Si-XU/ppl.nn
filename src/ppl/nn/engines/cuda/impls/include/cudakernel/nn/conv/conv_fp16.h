@@ -36,7 +36,11 @@ struct conv_param_t{
 };
 
 struct fuse_param_t{
-        int has_activation = 0;        int has_elt_activation = 0;     
+        int has_activation = 0;        
+        bool has_relu = false;         int clip_min;
+        bool has_clip = false;         int clip_max;
+        int has_elt_activation = 0;    int elt_clip_min; 
+        bool has_elt_clip = false;     int elt_clip_max;
         bool has_elt = false;          void* pre_data;    
         bool has_concat = false;       int concat_offset;       
         int concat_stride;             void* post_concat;

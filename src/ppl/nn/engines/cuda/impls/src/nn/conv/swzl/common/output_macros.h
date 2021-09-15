@@ -94,6 +94,27 @@
         }
 
 //////////////////////////////////////////////////////
+// clip macros
+//////////////////////////////////////////////////////
+
+#define FUSE_CLIP_V4(_has_clip, _clip_max, _clip_min) \
+        { \
+	        if(_has_clip) \
+            { \
+                _Pragma("unroll") \
+                for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
+                { \
+                    _Pragma("unroll") \
+	                for(int j = 0; j < _INT4_TO_4INT_; j++) \
+                    { \
+                        HMIN2_INST(R[i * _INT4_TO_4INT_ + j], R[i * _INT4_TO_4INT_ + j], _clip_max, R[i * _INT4_TO_4INT_ + j]); \
+                        HMAX2_INST(R[i * _INT4_TO_4INT_ + j], R[i * _INT4_TO_4INT_ + j], _clip_min, R[i * _INT4_TO_4INT_ + j]); \
+	                } \
+		        } \
+		    } \
+        }
+
+//////////////////////////////////////////////////////
 // eltwise macros
 //////////////////////////////////////////////////////
 

@@ -262,10 +262,11 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
         ADD_BIAS_V1(has_bias, r_bias_v1);
 
         FUSE_RELU_V1(has_relu);
+        FUSE_CLIP_V1(has_clip, clip_max, clip_min);
 
         FUSE_ELT_V1(has_elt, r_elt_v1);
-
         FUSE_RELU_V1(has_elt_relu);
+        FUSE_CLIP_V1(has_elt_clip, elt_clip_max, elt_clip_min);
 
         SET_CONCAT_OFF_V1(has_concat, concat_v1_off0, concat_v1_off1);
 #endif

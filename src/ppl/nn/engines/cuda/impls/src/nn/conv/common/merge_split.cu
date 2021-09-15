@@ -20,6 +20,12 @@
 #define _INT4_TO_4INT_      4
 #define _INT4_TO_8HALF_     8
 
+#define HMAX2_INST(_d, _a, _b, _c) \
+        asm volatile("vmax2.s32.s32.s32 %0, %1, %2, %3;\n":   "=r"(_d): "r"(_a), "r"(_b), "r"(_c));
+
+#define HMIN2_INST(_d, _a, _b, _c) \
+        asm volatile("vmin2.s32.s32.s32 %0, %1, %2, %3;\n":   "=r"(_d): "r"(_a), "r"(_b), "r"(_c));
+
 #include <cuda_fp16.h>
 
 __global__ void MergeConvSplitResults(
@@ -27,8 +33,11 @@ __global__ void MergeConvSplitResults(
 	    int split_height_v1,     int split_width_v8, 
 	    int out_hw,              int split, 
         int has_bias,            const int4* bias,
-        int has_relu,            int has_elt_relu,
+        int  has_relu,           const int clip_min,
+        bool has_clip,           const int clip_max,
         bool has_elt,            const int4* pre_data,
+        int  has_elt_relu,       const int elt_clip_min,
+        bool has_elt_clip,       const int elt_clip_max,
         bool has_concat,         int concat_offset_v8,
         int concat_stride_v8)
 {
@@ -73,6 +82,15 @@ __global__ void MergeConvSplitResults(
             merge_v1[i] = __vmaxs2(merge_v1[i], 0);
     }
 
+    if(has_clip) {
+#pragma unroll
+        for(int i = 0; i < _4HALF2_; i++)
+        {
+            HMIN2_INST(merge_v1[i], merge_v1[i], clip_max, merge_v1[i]); \
+            HMAX2_INST(merge_v1[i], merge_v1[i], clip_min, merge_v1[i]); \
+        }
+    }
+
     if(has_elt) {
 	    int4 eltV4     = is_in_range ? pre_data[off] : ZEROv4;
 	    __half2* h2Elt = (__half2*) &eltV4;
@@ -84,6 +102,13 @@ __global__ void MergeConvSplitResults(
     if(has_elt_relu) {
         for(int i = 0; i < _4HALF2_; i++)
             merge_v1[i] = __vmaxs2(merge_v1[i], 0);
+    }
+
+    if(has_elt_clip) {
+        for(int i = 0; i < _4HALF2_; i++) {
+            HMIN2_INST(merge_v1[i], merge_v1[i], elt_clip_max, merge_v1[i]); \
+            HMAX2_INST(merge_v1[i], merge_v1[i], elt_clip_min, merge_v1[i]); \
+        }
     }
 
     int concat_v8_off = 0;

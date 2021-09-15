@@ -62,8 +62,11 @@ static bool is_g_kvec_set = false;
     pad_height,                    pad_width,                               \
     hole_height,                   hole_width,                              \
     has_bias,                      (int4*)bias,                             \
-    fuse_param.has_activation,     fuse_param.has_elt_activation,           \
+    fuse_param.has_activation,     fuse_param.clip_min,                     \
+    fuse_param.has_clip,           fuse_param.clip_max,                     \
     fuse_param.has_elt,            (const int4 *) fuse_param.pre_data,      \
+    fuse_param.has_elt_activation, fuse_param.elt_clip_min,                 \
+    fuse_param.has_elt_clip,       fuse_param.elt_clip_max,                 \
     fuse_param.has_concat,         concat_offset_v8,                        \
     concat_stride_v8
 

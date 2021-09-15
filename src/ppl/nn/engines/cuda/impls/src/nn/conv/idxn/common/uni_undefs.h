@@ -409,6 +409,7 @@
 #undef ADD_BIAS_V1
 
 #undef FUSE_RELU_V1
+#undef FUSE_CLIP_V1
 
 #undef LOAD_ELT_V1
 #undef FUSE_ELT_V1
