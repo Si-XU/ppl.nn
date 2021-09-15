@@ -164,6 +164,10 @@ __forceinline__ __device__ void fuse_process(
         for (int j = 0; j < TILE_W; j++) {
             if (fuse_params.has_activation) {
                 out_val[i][j] = __hge(out_val[i][j], (half)0.0) ? out_val[i][j] : (half)0.0;
+            } else if (fuse_params.has_clip) {
+                out_val[i][j] = __hge(out_val[i][j], __float2half(fuse_params.clip_max))? 
+                        __float2half(fuse_params.clip_max) : __hle(out_val[i][j], __float2half(fuse_params.clip_min)) ? 
+                        __float2half(fuse_params.clip_min) : out_val[i][j];
             }
 
             if (fuse_params.has_elt) {
@@ -173,6 +177,10 @@ __forceinline__ __device__ void fuse_process(
                 if (fuse_params.has_elt_activation) {
                     out_val[i][j] = __hge(out_val[i][j], (half)0.0) ? out_val[i][j] : (half)0.0;
 		        }
+                } else if (fuse_params.has_elt_clip) {
+                    out_val[i][j] = __hge(out_val[i][j], __float2half(fuse_params.elt_clip_max))? 
+                            __float2half(fuse_params.elt_clip_max) : __hle(out_val[i][j], __float2half(fuse_params.elt_clip_min)) ? 
+                            __float2half(fuse_params.elt_clip_min) : out_val[i][j];
             }
         }
     }
@@ -369,12 +377,20 @@ __global__ void ppl_cuda_depthwise_hmma<-1,-1,-1,-1,-1,-1,-1,-1>(
     }
     if (fuse_params.has_activation){
         out_val = __hge(out_val, (half)0.0) ? out_val : (half)0.0;
+    } else if (fuse_params.has_clip) {
+        out_val = __hge(out_val, __float2half(fuse_params.clip_max))? 
+                __float2half(fuse_params.clip_max) : __hle(out_val, __float2half(fuse_params.clip_min)) ? 
+                __float2half(fuse_params.clip_min) : out_val;
     }
 
     if (fuse_params.has_elt) {
         out_val = __hadd(out_val, ((half*)fuse_params.pre_data)[base_offset]);
         if (fuse_params.has_elt_activation) {
             out_val = __hge(out_val, (half)0.0) ? out_val : (half)0.0;
+        } else if (fuse_params.has_elt_clip) {
+            out_val = __hge(out_val, __float2half(fuse_params.elt_clip_max))? 
+                    __float2half(fuse_params.elt_clip_max) : __hle(out_val, __float2half(fuse_params.elt_clip_min)) ? 
+                    __float2half(fuse_params.elt_clip_min) : out_val;
         }
     }
     if (fuse_params.has_concat) {

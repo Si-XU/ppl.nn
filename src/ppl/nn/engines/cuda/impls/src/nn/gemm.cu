@@ -62,11 +62,11 @@ static bool is_g_kvec_set = false;
     pad_height,                    pad_width,                               \
     hole_height,                   hole_width,                              \
     has_bias,                      (int4*)bias,                             \
-    fuse_param.has_activation,     fuse_param.clip_min,                     \
-    fuse_param.has_clip,           fuse_param.clip_max,                     \
+    fuse_param.has_activation,     clip_min,                                \
+    fuse_param.has_clip,           clip_max,                                \
     fuse_param.has_elt,            (const int4 *) fuse_param.pre_data,      \
-    fuse_param.has_elt_activation, fuse_param.elt_clip_min,                 \
-    fuse_param.has_elt_clip,       fuse_param.elt_clip_max,                 \
+    fuse_param.has_elt_activation, elt_clip_min,                            \
+    fuse_param.has_elt_clip,       elt_clip_max,                            \
     fuse_param.has_concat,         concat_offset_v8,                        \
     concat_stride_v8
 
@@ -268,6 +268,10 @@ int PPLCUDAGemmSelectKernel(
     int4 *final_out = fuse_param.has_concat ? (int4*)fuse_param.post_concat : (int4*)output;
 
     // fuse configs
+    __half2 clip_min     = __float2half2_rn(fuse_param.clip_min);
+    __half2 clip_max     = __float2half2_rn(fuse_param.clip_max);
+    __half2 elt_clip_min = __float2half2_rn(fuse_param.elt_clip_min);
+    __half2 elt_clip_max = __float2half2_rn(fuse_param.elt_clip_max);
     bool has_bias = param.bias_term;//beta != 0.f;
 
     float minTime = FLT_MAX;
@@ -384,6 +388,10 @@ ppl::common::RetCode PPLCUDAGemmForwardImp(
     int4 *final_out = fuse_param.has_concat ? (int4*)fuse_param.post_concat : (int4*)output;
 
     // fuse configs
+    __half2 clip_min     = __float2half2_rn(fuse_param.clip_min);
+    __half2 clip_max     = __float2half2_rn(fuse_param.clip_max);
+    __half2 elt_clip_min = __float2half2_rn(fuse_param.elt_clip_min);
+    __half2 elt_clip_max = __float2half2_rn(fuse_param.elt_clip_max);
     ppl::common::RetCode status = ppl::common::RC_SUCCESS;
     if(M == 1){
         status = PPLCUDAGemvForwardImp<__half>(stream,
@@ -712,6 +720,7 @@ __global__ void gemv(void *output,
 
 	    // fuse
 	    if(fuse_param.has_activation)    activation<T>(fuse_param.has_activation, out);
+	    if(fuse_param.has_clip)          clip<T>(out, fuse_param.clip_min, fuse_param.clip_max);
             int concatV4_off = 0;
             if(fuse_param.has_concat){
                     int concat_offset_v4 = fuse_param.concat_offset / T_NUMS_PER_INT4;

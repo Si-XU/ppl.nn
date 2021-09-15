@@ -33,7 +33,7 @@ private:
 
     static bool CanFuseRelu(ir::Node* nextnode, const OptKernelOptions& options) {
         // std::set<std::string> relu_fuse_op{"Relu", "Clip", "PRelu", "LeakyRelu", "Sigmoid"};
-        std::set<std::string> relu_fuse_op{"Relu"};
+        std::set<std::string> relu_fuse_op{"Relu", "Clip"};
         if (relu_fuse_op.find(nextnode->GetType().name) != relu_fuse_op.end()) {
             if (nextnode->GetType().name == "PRelu") { // extra check for PRelu
                 // slope must be an 1-d array or a scalar

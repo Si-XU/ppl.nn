@@ -20,12 +20,6 @@
 #define _INT4_TO_4INT_      4
 #define _INT4_TO_8HALF_     8
 
-#define HMAX2_INST(_d, _a, _b, _c) \
-        asm volatile("vmax2.s32.s32.s32 %0, %1, %2, %3;\n":   "=r"(_d): "r"(_a), "r"(_b), "r"(_c));
-
-#define HMIN2_INST(_d, _a, _b, _c) \
-        asm volatile("vmin2.s32.s32.s32 %0, %1, %2, %3;\n":   "=r"(_d): "r"(_a), "r"(_b), "r"(_c));
-
 #include <cuda_fp16.h>
 
 __global__ void MergeConvSplitResults(
@@ -33,11 +27,11 @@ __global__ void MergeConvSplitResults(
 	    int split_height_v1,     int split_width_v8, 
 	    int out_hw,              int split, 
         int has_bias,            const int4* bias,
-        int  has_relu,           const int clip_min,
-        bool has_clip,           const int clip_max,
+        int has_relu,            const __half2 clip_min,
+	    bool has_clip,           const __half2 clip_max,
         bool has_elt,            const int4* pre_data,
-        int  has_elt_relu,       const int elt_clip_min,
-        bool has_elt_clip,       const int elt_clip_max,
+        int has_elt_relu,        const __half2 elt_clip_min,
+	    bool has_elt_clip,       const __half2 elt_clip_max,
         bool has_concat,         int concat_offset_v8,
         int concat_stride_v8)
 {
@@ -86,8 +80,10 @@ __global__ void MergeConvSplitResults(
 #pragma unroll
         for(int i = 0; i < _4HALF2_; i++)
         {
-            HMIN2_INST(merge_v1[i], merge_v1[i], clip_max, merge_v1[i]); \
-            HMAX2_INST(merge_v1[i], merge_v1[i], clip_min, merge_v1[i]); \
+	        h2_merge[i].x = __hgt(h2_merge[i].x, clip_max.x) ? clip_max.x : h2_merge[i].x;
+	        h2_merge[i].y = __hgt(h2_merge[i].y, clip_max.x) ? clip_max.x : h2_merge[i].y;
+	        h2_merge[i].x = __hlt(h2_merge[i].x, clip_min.x) ? clip_min.x : h2_merge[i].x;
+	        h2_merge[i].y = __hlt(h2_merge[i].y, clip_min.x) ? clip_min.x : h2_merge[i].y;
         }
     }
 
@@ -106,8 +102,10 @@ __global__ void MergeConvSplitResults(
 
     if(has_elt_clip) {
         for(int i = 0; i < _4HALF2_; i++) {
-            HMIN2_INST(merge_v1[i], merge_v1[i], elt_clip_max, merge_v1[i]); \
-            HMAX2_INST(merge_v1[i], merge_v1[i], elt_clip_min, merge_v1[i]); \
+	        h2_merge[i].x = __hgt(h2_merge[i].x, elt_clip_max.x) ? elt_clip_max.x : h2_merge[i].x;
+	        h2_merge[i].y = __hgt(h2_merge[i].y, elt_clip_max.x) ? elt_clip_max.x : h2_merge[i].y;
+	        h2_merge[i].x = __hlt(h2_merge[i].x, elt_clip_min.x) ? elt_clip_min.x : h2_merge[i].x;
+	        h2_merge[i].y = __hlt(h2_merge[i].y, elt_clip_min.x) ? elt_clip_min.x : h2_merge[i].y;
         }
     }
 

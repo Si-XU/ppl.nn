@@ -68,6 +68,9 @@ ppl::common::RetCode GemmKernel::DoExecute(KernelExecContext* ctx) {
     fuse_param_t temp_fuse_param;
     ConvertToEmptyFuseParam(temp_fuse_param);
     temp_fuse_param.has_activation = param_->extra_param.has_activation;
+    temp_fuse_param.has_clip = param_->extra_param.has_clip;
+    temp_fuse_param.clip_min = param_->extra_param.clip.min_val;
+    temp_fuse_param.clip_max = param_->extra_param.clip.max_val;
 
     auto stream = GetStream();
     status = PPLCUDAGemmForwardImp(stream, &input->GetShape(), input->GetBufferPtr(), &weight->GetShape(),
