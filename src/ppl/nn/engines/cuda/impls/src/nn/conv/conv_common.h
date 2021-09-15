@@ -240,6 +240,14 @@ struct kernel_info_t
             return true;
     }
 
+    __inline__ bool CheckSplitkBlockSizeFeasible(int block_size, int splitk)
+    {
+        if(splitk > 1 && block_size >= 480) // TODO: hardcode threshold
+            return false;
+        else
+            return true;
+    }
+
     __inline__ bool CheckSplitfFeasible(int splitf, int splitk)
     {
         if(ktype == CONV_2SPK_FS) {
