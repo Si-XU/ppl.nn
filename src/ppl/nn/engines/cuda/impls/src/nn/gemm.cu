@@ -301,7 +301,7 @@ int PPLCUDAGemmSelectKernel(
     }
 
     for (unsigned int kid = 0; kid < g_kvec.size(); kid++) {
-        if(!g_kvec[kid].CheckQuickSelectFeasible(select_param, 1, 1)) continue;
+        if(!g_kvec[kid].CheckQuickSelectFeasible(select_param, 1, 1, 1)) continue;
         
         int tile_m_per_cta   = g_kvec[kid].tile_m_per_cta;
         int tile_n_per_cta   = g_kvec[kid].tile_n_per_cta;

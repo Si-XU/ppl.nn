@@ -15,6 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <fstream>
+#include <iostream>
+using namespace std;
+
 #include <vector>
 #include <cuda.h>
 #include <assert.h>
@@ -377,8 +381,14 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
         conv_param_t &conv_param, 
         fuse_param_t &fuse_param,
         select_param_t &select_param,
+        std::string node_name,
 	    uint64_t workspace)
 {
+
+    int selected_count = 0;
+    ofstream outfile;
+    outfile.open(node_name + ".csv");
+
     if(!is_g_kernel_container_initialized)
         InitializeKernelContainer(g_kernel_container, type);
 
@@ -445,7 +455,6 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
     cudaEventCreate(&end);
 
     const int SPLITK_OPTIONS[] = {1, 2, 4, 8};
-
     for(unsigned int spk = 0; spk < 4; spk++) {
         unsigned int splitk = SPLITK_OPTIONS[spk];
 
@@ -458,7 +467,7 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
 
             if(!g_kernel_container[kid].CheckSplitfFeasible(splitf, splitk)) continue;
 
-            if(!g_kernel_container[kid].CheckQuickSelectFeasible(select_param, splitk, splitf)) continue;
+            if(!g_kernel_container[kid].CheckQuickSelectFeasible(select_param, conv_param.num_chl / conv_param.num_grp, splitk, splitf)) continue;
 
             int4 *conv_out = (splitk > 1 || splitf > 1) ? splitk_buf : final_out;
 
@@ -565,6 +574,27 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
                 algo_param.splitf = splitf;
 	            minTime = elapsed;
 	        }
+
+            outfile << kid << "," << elapsed << ","
+                << in_hw << ","
+                << flt_hw << ","
+                << out_hw << ","
+                << conv_param.num_flt << ","
+                << conv_param.num_chl << ","
+                << g_kernel_container[kid].tile_m_per_cta << ","
+                << g_kernel_container[kid].tile_n_per_cta << ","
+                << g_kernel_container[kid].tile_k_per_cta << ","
+                << g_kernel_container[kid].tile_m_per_warp << ","
+                << g_kernel_container[kid].tile_n_per_warp << ","
+                << g_kernel_container[kid].tile_k_per_warp << ","
+                << g_kernel_container[kid].tile_k_per_step << ","
+                << g_kernel_container[kid].tile_k_per_set << ","
+                << g_kernel_container[kid].flt_size << ","
+                << g_kernel_container[kid].flt_pad_size << ","
+                << g_kernel_container[kid].cta_size_in_thd << ","
+                << g_kernel_container[kid].kname << ","
+                << splitk << "," << splitf << endl;
+            if (splitk == 1)   selected_count++;
         }
     }
 
@@ -576,7 +606,8 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
     cudaEventDestroy(end);
 
     g_conv_shape_hash[conv_shape_hash] = algo_param;
-
+    outfile.close();
+    printf("%d kernels are selected for node %s\n", selected_count, node_name.data());
     return ppl::common::RC_SUCCESS;
 }
 

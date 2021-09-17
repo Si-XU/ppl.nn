@@ -18,6 +18,7 @@
 #ifndef __PPLCUDA_IMPLICITGEMM_CONV_H_
 #define __PPLCUDA_IMPLICITGEMM_CONV_H_
 
+#include <string>
 #include <cuda_runtime.h>
 #include "ppl/common/types.h"
 #include "ppl/common/retcode.h"
@@ -92,6 +93,7 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
 	conv_param_t &conv_param,
 	fuse_param_t &fuse_param,
         select_param_t &select_param,
+        std::string node_name,
 	uint64_t workspace = (uint64_t)8*1024*1024*1024);
 
 void PPLCUDAConvolutionForwardImp(

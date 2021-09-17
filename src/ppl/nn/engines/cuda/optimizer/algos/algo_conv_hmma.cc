@@ -114,7 +114,7 @@ double TuringHMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
     algo_param_t algo_param;
     PPLCUDAConvolutionSelectKernel(stream, shape_in0.GetDataType(), (int4*)input_buffer.addr, (int4*)weight_buffer.addr,
                                    (int4*)output_buffer.addr, (int4*)bias_buffer.addr, (int4*)temp_buffer.addr,
-                                   algo_param, temp_conv_param, temp_fuse_param, temp_select_param);
+                                   algo_param, temp_conv_param, temp_fuse_param, temp_select_param,node->GetName());
 
     attr_param_.extra_param.algo_info.kernel_index = algo_param.kid;
     attr_param_.extra_param.algo_info.splitk = algo_param.splitk;

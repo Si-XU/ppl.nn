@@ -81,7 +81,6 @@ RetCode ConvertToForwardFuseParam(InputOutputInfo* info, CudaDevice* device, Con
     int fuse_size = fuse_info.types.size();
 
     ConvertToEmptyFuseParam(fuse_param);
-    RetCode status;
     ClipParam* param;
 
     if (fuse_index < fuse_size && relu_set.find(fuse_info.types[fuse_index]) != relu_set.end()) {

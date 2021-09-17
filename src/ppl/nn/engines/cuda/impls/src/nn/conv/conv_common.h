@@ -261,10 +261,16 @@ struct kernel_info_t
             return true;
     }
 
-    __inline__ bool CheckQuickSelectFeasible(select_param_t select_param, int splitk, int splitf)
+    __inline__ bool CheckQuickSelectFeasible(select_param_t select_param, int k, int splitk, int splitf)
     {
         if(!select_param.quick_select)
             return true;
+        
+        if (kname.at(kname.length()-1) == '2')
+            return false;
+        
+        if (ktype == CONV_2SPK_FN || ktype == CONV_SWZL_FN)
+            return false;
         
         int count = 0;
         uint64_t mul_tile = (uint64_t)tile_m_per_cta * tile_k_per_cta * tile_k_per_cta * 
@@ -290,7 +296,8 @@ struct kernel_info_t
         count += select_param.k_cta == tile_k_per_cta;
         count += select_param.m_warp == tile_m_per_warp;
         count += select_param.n_warp == tile_n_per_warp;
-        return count >= 4 && (mul_tile / select_tile <= 2) && (select_tile / mul_tile <= 2);
+        return (count >= 5) || // && mul_tile / select_tile <= 2 && select_tile / mul_tile <= 2) || 
+               (count >= 4 && mul_tile == select_tile);
     }
 };
 
