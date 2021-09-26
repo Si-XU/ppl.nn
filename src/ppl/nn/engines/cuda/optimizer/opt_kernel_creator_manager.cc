@@ -41,6 +41,7 @@
 #include "ppl/nn/engines/cuda/optimizer/ops/onnx/min_op.h"
 #include "ppl/nn/engines/cuda/optimizer/ops/onnx/max_pool_op.h"
 #include "ppl/nn/engines/cuda/optimizer/ops/onnx/max_unpool_op.h"
+#include "ppl/nn/engines/cuda/optimizer/ops/onnx/matmul_op.h"
 #include "ppl/nn/engines/cuda/optimizer/ops/onnx/mul_op.h"
 #include "ppl/nn/engines/cuda/optimizer/ops/onnx/non_max_suppression_op.h"
 #include "ppl/nn/engines/cuda/optimizer/ops/onnx/non_zero_op.h"
@@ -87,9 +88,11 @@
 #include "ppl/nn/engines/cuda/optimizer/ops/onnx/loop_op.h"
 #include "ppl/nn/engines/cuda/optimizer/ops/onnx/sequence_at_op.h"
 #include "ppl/nn/engines/cuda/optimizer/ops/onnx/split_to_sequence_op.h"
+#include "ppl/nn/engines/cuda/optimizer/ops/onnx/lstm_op.h"
 #include "ppl/nn/engines/cuda/optimizer/ops/mmcv/mmcv_non_max_suppression_op.h"
 #include "ppl/nn/engines/cuda/optimizer/ops/mmcv/mmcv_roialign_op.h"
 #include "ppl/nn/engines/cuda/optimizer/ops/mmcv/mmcv_gridsample_op.h"
+#include "ppl/nn/engines/cuda/optimizer/ops/mmcv/mmcv_modulated_deform_conv2d_op.h"
 #include "ppl/nn/common/logger.h"
 
 using namespace std;
@@ -157,6 +160,7 @@ OptKernelCreatorManager::OptKernelCreatorManager() {
     REGISTER_OPT_KERNEL_CREATOR("", "Min", MinOp);
     REGISTER_OPT_KERNEL_CREATOR("", "MaxPool", MaxPoolOp);
     REGISTER_OPT_KERNEL_CREATOR("", "MaxUnpool", MaxUnPoolOp);
+    REGISTER_OPT_KERNEL_CREATOR("", "MatMul", MatMulOp);
     REGISTER_OPT_KERNEL_CREATOR("", "Mul", MulOp);
     REGISTER_OPT_KERNEL_CREATOR("", "NonMaxSuppression", NonMaxSupressionOp);
     REGISTER_OPT_KERNEL_CREATOR("", "NonZero", NonZeroOp);
@@ -204,10 +208,12 @@ OptKernelCreatorManager::OptKernelCreatorManager() {
     REGISTER_OPT_KERNEL_CREATOR("", "Loop", LoopOp);
     REGISTER_OPT_KERNEL_CREATOR("", "SplitToSequence", SplitToSequenceOp);
     REGISTER_OPT_KERNEL_CREATOR("", "SequenceAt", SequenceAtOp);
+    REGISTER_OPT_KERNEL_CREATOR("", "LSTM", LstmOp);
     // mmcv op domain is "mmcv"
     REGISTER_OPT_KERNEL_CREATOR("mmcv", "NonMaxSuppression", MMCVNonMaxSupressionOp);
     REGISTER_OPT_KERNEL_CREATOR("mmcv", "MMCVRoiAlign", MMCVROIAlignOp);
     REGISTER_OPT_KERNEL_CREATOR("mmcv", "grid_sampler", MMCVGridSampleOp);
+    REGISTER_OPT_KERNEL_CREATOR("mmcv", "MMCVModulatedDeformConv2d", MMCVModulatedDeformConv2dOp);
 
     // ppl customize op domain is "ppl"
     REGISTER_OPT_KERNEL_CREATOR("ppl", "Bridge", BridgeOp);

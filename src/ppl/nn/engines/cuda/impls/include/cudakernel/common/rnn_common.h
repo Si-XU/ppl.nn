@@ -15,25 +15,27 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef _ST_HPC_PPL_NN_ENGINES_CUDA_OPTIMIZER_OPS_MMCV_MMCV_MODULATED_DEFORM_CONV2D_OP_H_
-#define _ST_HPC_PPL_NN_ENGINES_CUDA_OPTIMIZER_OPS_MMCV_MMCV_MODULATED_DEFORM_CONV2D_OP_H_
+#ifndef __PPL_KERNEL_CUDA_RNN_COMMON_H_
+#define __PPL_KERNEL_CUDA_RNN_COMMON_H_
 
-#include "ppl/nn/params/mmcv/mmcv_modulated_deform_conv2d_param.h"
-#include "ppl/nn/engines/cuda/optimizer/opt_kernel.h"
 
-namespace ppl { namespace nn { namespace cuda {
+namespace ppl { namespace kernel { namespace cuda {
 
-class MMCVModulatedDeformConv2dOp final : public CudaOptKernel {
+typedef unsigned int rnn_direction_t;
+
+class rnn_direction {
 public:
-    MMCVModulatedDeformConv2dOp(const ir::Node* node) : CudaOptKernel(node) {}
-    ppl::common::RetCode Init(const OptKernelOptions& options) override;
-    ppl::common::RetCode Finalize(const OptKernelOptions& options) override;
-    KernelImpl* CreateKernelImpl() const override;
-
-private:
-    ppl::nn::common::MMCVModulatedDeformConv2dParam param_;
+    static const rnn_direction_t forward       = 0;
+    static const rnn_direction_t reverse       = 1;
+    static const rnn_direction_t bidirectional = 2;
 };
 
-}}} // namespace ppl::nn::cuda
+class rnn_num_gate {
+public:
+    static const int64_t lstm = 4;
+    static const int64_t gru  = 3;
+};
+
+}}}; // namespace ppl::kernel::cuda
 
 #endif
