@@ -27,6 +27,25 @@ using namespace ppl::common;
 
 namespace ppl { namespace nn { namespace cuda {
 
+static std::string GetConvShapeString(conv_param_t &conv_param)
+{
+    return std::string("b" + std::to_string(conv_param.in_num)  + \
+                       "_c" + std::to_string(conv_param.num_chl) + \
+                       "_d" + std::to_string(conv_param.num_flt) + \
+                       "_g" + std::to_string(conv_param.num_grp) + \
+                       "_h" + std::to_string(conv_param.in_height) + \
+                       "_w" + std::to_string(conv_param.in_width) + \
+                       "_r" + std::to_string(conv_param.flt_height) + \
+                       "_s" + std::to_string(conv_param.flt_width) + \
+                       "_p" + std::to_string(conv_param.pad_height) + \
+                       "_q" + std::to_string(conv_param.pad_width) + \
+                       "_u" + std::to_string(conv_param.stride_height) + \
+                       "_v" + std::to_string(conv_param.stride_width) + \
+                       "_y" + std::to_string(conv_param.hole_height) + \
+                       "_x" + std::to_string(conv_param.hole_width) + \
+                       "_");
+}
+
 void TuringHMMAImpgemm::DeleteAttrParam(void*& param) {
     delete (CudaConvParam*)param;
     return;
@@ -39,7 +58,7 @@ void TuringHMMAImpgemm::GetAttrParam(void*& param) const {
     return;
 }
 
-bool TuringHMMAImpgemm::IsSupported(const ir::Node* node, const OptKernelOptions& options) const {
+bool TuringHMMAImpgemm::IsSupported(const ir::Node* node, const OptKernelOptions& options, dataformat_t input_format) const {
     uint32_t group = (reinterpret_cast<CudaConvParam*>(options.param))->param.group;
     // check if conv is depthwise
     auto tensor1 = options.tensors->find(node->GetInput(1))->second->GetShape();
@@ -49,6 +68,9 @@ bool TuringHMMAImpgemm::IsSupported(const ir::Node* node, const OptKernelOptions
     // check if conv is quantization
     auto quant0 = options.quants->at(node->GetInput(0));
     if (quant0.type == DATATYPE_INT8) {
+        return false;
+    }
+    if (input_format != DATAFORMAT_NHWC8) {
         return false;
     }
     return true;
@@ -77,6 +99,18 @@ double TuringHMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
     auto align_size = ppl::common::cuda::GetDataFormatChannelAlignment(shape_in0.GetDataFormat());
     ConvertToForwardConvParam(shape_in0, shape_in1, shape_out, attr_param_.param, temp_conv_param);
     ConvertToEmptyFuseParam(temp_fuse_param);
+
+    auto algo_info = options.algos->find(GetConvShapeString(temp_conv_param));
+    if (algo_info != options.algos->end()) {
+        attr_param_.extra_param.algo_info.kernel_index = algo_info->second.kid;
+        attr_param_.extra_param.algo_info.splitk = algo_info->second.splitk;
+        attr_param_.extra_param.algo_info.splitf = algo_info->second.splitf;
+        return 0.0f;
+    }
+
+    if (options.args->quick_select) {
+        return 0.0f;
+    }
 
     // input H or W is too small
     if (shape_in0.GetDim(2) + 2 * temp_conv_param.pad_height < shape_in1.GetDim(2) ||

@@ -44,8 +44,8 @@ namespace ppl { namespace nn { namespace cuda {
 struct OptKernelOptions {
     OptKernelOptions(ir::Graph* graph, RuntimePartitionInfo* info, utils::SharedResource* resource, CudaArgs* args,
                      CudaDevice* device, std::map<edgeid_t, std::unique_ptr<TensorImpl>>* tensors,
-                     std::vector<CudaTensorQuant>* quants)
-        : graph(graph), info(info), resource(resource), args(args), device(device), tensors(tensors), quants(quants) {}
+                     std::vector<CudaTensorQuant>* quants, std::map<std::string, CudaArgs::AlgoInfo>* algos)
+        : graph(graph), info(info), resource(resource), args(args), device(device), tensors(tensors), quants(quants), algos(algos) {}
 
     OptKernelOptions(ir::Graph* graph, RuntimePartitionInfo* info, utils::SharedResource* resource,
                      std::map<edgeid_t, std::unique_ptr<TensorImpl>>* tensors)
@@ -60,6 +60,7 @@ struct OptKernelOptions {
     CudaDevice* device;
     std::map<edgeid_t, std::unique_ptr<TensorImpl>>* tensors;
     std::vector<CudaTensorQuant>* quants;
+    std::map<std::string, CudaArgs::AlgoInfo>* algos;
     void* param;
 };
 
@@ -75,6 +76,9 @@ public:
     }
     virtual void CopyParam(void*& param) {
         param = nullptr;
+    }
+    virtual bool CompareParam(CudaOptKernel* other) {
+        return false;
     }
 
     CudaCommonParam* GetCommparam() {
@@ -181,42 +185,26 @@ protected:
     }
 
     static ppl::common::RetCode UnifyToOutputQuant(InputOutputInfo* info, std::vector<CudaTensorQuant>* quant) {
-        bool do_quant = true;
+        auto temp_edge_id = info->GetOutput<TensorImpl>(0)->GetEdge()->GetId();
+        auto& temp_quant = quant->at(temp_edge_id);
+        if (temp_quant.type == ppl::common::DATATYPE_UNKNOWN) {
+            return ppl::common::RC_INVALID_VALUE;
+        }
         for (uint32_t i = 0; i < info->GetInputCount(); ++i) {
             auto in_edge_id = info->GetInput<TensorImpl>(i)->GetEdge()->GetId();
             auto& in_quant = quant->at(in_edge_id);
-            if (in_quant.type == ppl::common::DATATYPE_UNKNOWN) {
-                do_quant = false;
-            }
+            in_quant = temp_quant;
+            auto& in_shape = info->GetInput<TensorImpl>(i)->GetShape();
+            in_shape.SetDataType(in_quant.type);
         }
         for (uint32_t i = 0; i < info->GetOutputCount(); ++i) {
             auto out_edge_id = info->GetOutput<TensorImpl>(i)->GetEdge()->GetId();
             auto& out_quant = quant->at(out_edge_id);
-            if (out_quant.type == ppl::common::DATATYPE_UNKNOWN) {
-                do_quant = false;
-            }
+            out_quant = temp_quant;
+            auto& out_shape = info->GetOutput<TensorImpl>(i)->GetShape();
+            out_shape.SetDataType(out_quant.type);
         }
-
-        if (do_quant) { // Do quantization
-            auto temp_edge_id = info->GetOutput<TensorImpl>(0)->GetEdge()->GetId();
-            auto& temp_quant = quant->at(temp_edge_id);
-            for (uint32_t i = 0; i < info->GetOutputCount(); ++i) {
-                auto out_edge_id = info->GetOutput<TensorImpl>(i)->GetEdge()->GetId();
-                auto& out_quant = quant->at(out_edge_id);
-                out_quant = temp_quant;
-                auto& out_shape = info->GetOutput<TensorImpl>(i)->GetShape();
-                out_shape.SetDataType(out_quant.type);
-            }
-            for (uint32_t i = 0; i < info->GetInputCount(); ++i) {
-                auto in_edge_id = info->GetInput<TensorImpl>(i)->GetEdge()->GetId();
-                auto& in_quant = quant->at(in_edge_id);
-                in_quant = temp_quant;
-                auto in_shape = &info->GetInput<TensorImpl>(i)->GetShape();
-                in_shape->SetDataType(in_quant.type);
-            }
-            return ppl::common::RC_SUCCESS;
-        }
-        return ppl::common::RC_INVALID_VALUE;
+        return ppl::common::RC_SUCCESS;
     }
 
     static ppl::common::RetCode InferDefaultType(InputOutputInfo* info, ppl::common::datatype_t type) {

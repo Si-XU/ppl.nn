@@ -606,8 +606,8 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
     cudaEventDestroy(end);
 
     g_conv_shape_hash[conv_shape_hash] = algo_param;
-    outfile.close();
-    printf("%d kernels are selected for node %s\n", selected_count, node_name.data());
+    printf("%s,%d,%d,%d\n", GetConvShapeString(conv_param).data(), algo_param.kid, algo_param.splitk, algo_param.splitf);
+
     return ppl::common::RC_SUCCESS;
 }
 
