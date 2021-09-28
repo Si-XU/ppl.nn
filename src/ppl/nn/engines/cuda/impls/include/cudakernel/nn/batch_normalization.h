@@ -34,5 +34,6 @@ ppl::common::RetCode PPLCUDABatchNormalizationForwardImp(
     const void* var,
     ppl::nn::TensorShape* output_shape,
     void* output,
-    float epsilon);
+    float epsilon,
+    int has_activation);
 #endif //PPLCUDA_KERNEL_INCLUDE_BATCH_NORMALIZATION_BATCH_NORMALIZATION_H_

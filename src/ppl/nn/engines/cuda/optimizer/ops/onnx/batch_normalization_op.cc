@@ -28,7 +28,7 @@ using namespace ppl::nn::common;
 namespace ppl { namespace nn { namespace cuda {
 
 RetCode BatchNormalizationOp::Init(const OptKernelOptions& options) {
-    auto status = GenericLoadParam<BatchNormalizationParam>(options, &param_);
+    auto status = GenericLoadParam<CudaBatchNormalizationParam>(options, &param_);
     if (status != RC_SUCCESS) {
         LOG(ERROR) << "load param failed: " << GetRetCodeStr(status);
         return status;

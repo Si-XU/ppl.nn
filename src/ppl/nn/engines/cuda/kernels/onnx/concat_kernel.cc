@@ -66,6 +66,13 @@ ppl::common::RetCode ConcatKernel::DoExecute(KernelExecContext* ctx) {
     auto output = ctx->GetOutput<TensorImpl>(0);
     int32_t dim_count = output->GetShape().GetDimCount();
 
+    if (ctx->GetInputCount() == 1) {
+        auto input = ctx->GetInput<TensorImpl>(0);
+        if (input->GetEdge()->CalcConsumerCount() == 1 && input->GetType() == TENSORTYPE_NORMAL) {
+            output->TransferBufferFrom(input);
+            return ppl::common::RC_SUCCESS;
+        }
+    }
     std::vector<std::vector<int>> src_dims(ctx->GetInputCount());
     std::vector<void*> src_list(ctx->GetInputCount());
     std::vector<std::vector<int>> src_padded_dims(ctx->GetInputCount());

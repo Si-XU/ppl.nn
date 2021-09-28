@@ -29,7 +29,7 @@ ppl::common::RetCode BatchNormalizationKernel::DoExecute(KernelExecContext* ctx)
     ppl::common::RetCode status = PPLCUDABatchNormalizationForwardImp(
         GetStream(), &input->GetShape(), input->GetBufferPtr(), &scale->GetShape(), scale->GetBufferPtr(),
         ctx->GetInput<TensorImpl>(2)->GetBufferPtr(), ctx->GetInput<TensorImpl>(3)->GetBufferPtr(),
-        ctx->GetInput<TensorImpl>(4)->GetBufferPtr(), &output->GetShape(), output->GetBufferPtr(), param_->epsilon);
+        ctx->GetInput<TensorImpl>(4)->GetBufferPtr(), &output->GetShape(), output->GetBufferPtr(), param_->param.epsilon, param_->extra_param.has_activation);
     return status;
 }
 

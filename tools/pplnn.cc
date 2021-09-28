@@ -874,7 +874,7 @@ int main(int argc, char* argv[]) {
 
         double run_dur = 0;
         int32_t run_count = 0;
-        while (run_dur < g_flag_min_profiling_time * 1000) {
+        while (run_count < g_flag_min_profiling_time * 1000) {
             run_begin_ts = std::chrono::system_clock::now();
             auto status = runtime->Run();
             if (status == RC_SUCCESS) {

@@ -49,7 +49,8 @@ __global__ void ppl_cukernel_batchnorm_withmeanvar(
     const T* mean,
     const T* var,
     float eps,
-    T* output)
+    T* output,
+    int has_activation)
 {
     typedef Math<T, T, T> OpMath;
     int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -66,7 +67,14 @@ __global__ void ppl_cukernel_batchnorm_withmeanvar(
     T mean_val    = mean[c_idx];
     T var_val     = var[c_idx];
     T std         = ppl_get_std<T>(var_val, t_eps);
-    output[index] = OpMath::add(OpMath::mul(OpMath::mul(OpMath::sub(input[index], mean_val), std), scale_val), B_val);
+    T val = OpMath::add(OpMath::mul(OpMath::mul(OpMath::sub(input[index], mean_val), std), scale_val), B_val);
+    if (has_activation == 1) {
+        T zero = (T)0;
+        output[index] = OpMath::gt(val, zero) ? val : zero;
+    } else {
+        output[index] = val;
+    }
+    // output[index] = OpMath::add(OpMath::mul(OpMath::mul(OpMath::sub(input[index], mean_val), std), scale_val), B_val);
 }
 
 template <typename T>
@@ -80,7 +88,8 @@ __global__ void ppl_cukernel_batchnorm_withmeanvar_nhwc(
     const T* mean,
     const T* var,
     float eps,
-    T* output)
+    T* output,
+    bool has_activation)
 {
     typedef Math<T, T, T> OpMath;
     int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -97,7 +106,13 @@ __global__ void ppl_cukernel_batchnorm_withmeanvar_nhwc(
     T var_val     = var[c_idx];
     T std         = ppl_get_std<T>(var_val, t_eps);
     int nhwc_index = outer_offset * pad_channels + c_idx;
-    output[nhwc_index] = OpMath::add(OpMath::mul(OpMath::mul(OpMath::sub(input[nhwc_index], mean_val), std), scale_val), B_val);
+    T val = OpMath::add(OpMath::mul(OpMath::mul(OpMath::sub(input[nhwc_index], mean_val), std), scale_val), B_val);
+    if (has_activation == 1) {
+        T zero = (T)0;
+        output[nhwc_index] = OpMath::gt(val, zero) ? val : zero;
+    } else {
+        output[nhwc_index] = val;
+    }
 }
 
 ppl::common::RetCode PPLCUDABatchNormalizationForwardImp(
@@ -112,7 +127,8 @@ ppl::common::RetCode PPLCUDABatchNormalizationForwardImp(
     const void* var,
     ppl::nn::TensorShape* output_shape,
     void* output,
-    float epsilon)
+    float epsilon,
+    int has_activation)
 {
     int dim_count = input_shape->GetDimCount();
     int batch     = input_shape->GetDim(0);
@@ -127,17 +143,21 @@ ppl::common::RetCode PPLCUDABatchNormalizationForwardImp(
     if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NDARRAY) {
         DivModFast channel_fast(hw_count);
         if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT32) {
-            ppl_cukernel_batchnorm_withmeanvar<float><<<grid_size, block_size, 0, stream>>>(num_elems, channel_fast, channels, (const float*)input, (const float*)scale, (const float*)B, (const float*)mean, (const float*)var, epsilon, (float*)output);
+            ppl_cukernel_batchnorm_withmeanvar<float><<<grid_size, block_size, 0, stream>>>(num_elems, channel_fast, channels, (const float*)input, (const float*)scale, (const float*)B, 
+            (const float*)mean, (const float*)var, epsilon, (float*)output, has_activation);
         } else if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT16) {
-            ppl_cukernel_batchnorm_withmeanvar<half><<<grid_size, block_size, 0, stream>>>(num_elems, channel_fast, channels, (const half*)input, (const half*)scale, (const half*)B, (const half*)mean, (const half*)var, epsilon, (half*)output);
+            ppl_cukernel_batchnorm_withmeanvar<half><<<grid_size, block_size, 0, stream>>>(num_elems, channel_fast, channels, (const half*)input, (const half*)scale, (const half*)B, 
+            (const half*)mean, (const half*)var, epsilon, (half*)output, has_activation);
         }
     } else {
         DivModFast channel_fast(channels);
         int pad_channels  = dim_count >= 2 ? input_shape->GetDim(1) + input_shape->GetPadding0(1) + input_shape->GetPadding1(1) : 1;
         if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT32) {
-            ppl_cukernel_batchnorm_withmeanvar_nhwc<float><<<grid_size, block_size, 0, stream>>>(num_elems, channel_fast, pad_channels, (const float*)input, (const float*)scale, (const float*)B, (const float*)mean, (const float*)var, epsilon, (float*)output);
+            ppl_cukernel_batchnorm_withmeanvar_nhwc<float><<<grid_size, block_size, 0, stream>>>(num_elems, channel_fast, pad_channels, (const float*)input, (const float*)scale, (const float*)B, 
+            (const float*)mean, (const float*)var, epsilon, (float*)output, has_activation);
         } else if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT16) {
-            ppl_cukernel_batchnorm_withmeanvar_nhwc<half><<<grid_size, block_size, 0, stream>>>(num_elems, channel_fast, pad_channels, (const half*)input, (const half*)scale, (const half*)B, (const half*)mean, (const half*)var, epsilon, (half*)output);
+            ppl_cukernel_batchnorm_withmeanvar_nhwc<half><<<grid_size, block_size, 0, stream>>>(num_elems, channel_fast, pad_channels, (const half*)input, (const half*)scale, (const half*)B, 
+            (const half*)mean, (const half*)var, epsilon, (half*)output, has_activation);
         }
     }
     return ppl::common::RC_SUCCESS;

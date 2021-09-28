@@ -22,6 +22,7 @@
 #include "ppl/nn/engines/cuda/optimizer/fusions/fusion.h"
 
 #include "ppl/nn/engines/cuda/optimizer/fusions/fs_averagepool.h"
+#include "ppl/nn/engines/cuda/optimizer/fusions/fs_batch_normalization.h"
 #include "ppl/nn/engines/cuda/optimizer/fusions/fs_channel_shuffle.h"
 #include "ppl/nn/engines/cuda/optimizer/fusions/fs_concat.h"
 #include "ppl/nn/engines/cuda/optimizer/fusions/fs_conv.h"
@@ -44,6 +45,7 @@ private:
 private:
     std::map<std::string, Fusion*> type2fusion_;
     AveragePoolFusion averagepool_fs_;
+    BatchNormalizationFusion batch_normalization_fs_;
     ConcatFusion concat_fs_;
     ConvFusion conv_fs_;
     GemmFusion gemm_fs_;

@@ -15,27 +15,23 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef _ST_HPC_PPL_NN_ENGINES_CUDA_OPTIMIZER_OPS_ONNX_BATCH_NORMALIZATION_OP_H_
-#define _ST_HPC_PPL_NN_ENGINES_CUDA_OPTIMIZER_OPS_ONNX_BATCH_NORMALIZATION_OP_H_
+#ifndef _ST_HPC_PPL_NN_ENGINES_CUDA_OPTIMIZER_FUSIONS_FS_BATCH_NORMALIZATION_H_
+#define _ST_HPC_PPL_NN_ENGINES_CUDA_OPTIMIZER_FUSIONS_FS_BATCH_NORMALIZATION_H_
 
-#include "ppl/nn/engines/cuda/optimizer/opt_kernel.h"
-
-#include "ppl/nn/engines/cuda/params/batch_normalization_extra_param.h"
+#include "ppl/nn/engines/cuda/optimizer/fusions/fusion.h"
 
 namespace ppl { namespace nn { namespace cuda {
 
-class BatchNormalizationOp final : public CudaOptKernel {
+class BatchNormalizationFusion : public Fusion {
 public:
-    BatchNormalizationOp(const ir::Node* node) : CudaOptKernel(node) {}
-    KernelImpl* CreateKernelImpl() const override;
-    ppl::common::RetCode Init(const OptKernelOptions&) override;
-    ppl::common::RetCode Finalize(const OptKernelOptions& options) override;
-    void* GetParam() override {
-        return (void*)&param_;
-    };
-    
+    const ppl::common::RetCode FuseNode(ir::Node* node, bool reliable, const OptKernelOptions& options) override;
+
 private:
-    CudaBatchNormalizationParam param_;
+    const bool CanFuse(ir::Node* nextnode, const OptKernelOptions& options, uint32_t flag);
+    const ppl::common::RetCode FuseBatchNormalizationWithNextNode(ir::Node* node, ir::Node* nextnode, const OptKernelOptions& options);
+
+private:
+    std::set<std::string> fuse_type{"Relu"};
 };
 
 }}} // namespace ppl::nn::cuda

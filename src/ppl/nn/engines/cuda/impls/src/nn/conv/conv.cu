@@ -386,8 +386,8 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
 {
 
     int selected_count = 0;
-    ofstream outfile;
-    outfile.open(node_name + ".csv");
+    // ofstream outfile;
+    // outfile.open(node_name + ".csv");
 
     if(!is_g_kernel_container_initialized)
         InitializeKernelContainer(g_kernel_container, type);
@@ -575,25 +575,25 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
 	            minTime = elapsed;
 	        }
 
-            outfile << kid << "," << elapsed << ","
-                << in_hw << ","
-                << flt_hw << ","
-                << out_hw << ","
-                << conv_param.num_flt << ","
-                << conv_param.num_chl << ","
-                << g_kernel_container[kid].tile_m_per_cta << ","
-                << g_kernel_container[kid].tile_n_per_cta << ","
-                << g_kernel_container[kid].tile_k_per_cta << ","
-                << g_kernel_container[kid].tile_m_per_warp << ","
-                << g_kernel_container[kid].tile_n_per_warp << ","
-                << g_kernel_container[kid].tile_k_per_warp << ","
-                << g_kernel_container[kid].tile_k_per_step << ","
-                << g_kernel_container[kid].tile_k_per_set << ","
-                << g_kernel_container[kid].flt_size << ","
-                << g_kernel_container[kid].flt_pad_size << ","
-                << g_kernel_container[kid].cta_size_in_thd << ","
-                << g_kernel_container[kid].kname << ","
-                << splitk << "," << splitf << endl;
+            // outfile << kid << "," << elapsed << ","
+            //     << in_hw << ","
+            //     << flt_hw << ","
+            //     << out_hw << ","
+            //     << conv_param.num_flt << ","
+            //     << conv_param.num_chl << ","
+            //     << g_kernel_container[kid].tile_m_per_cta << ","
+            //     << g_kernel_container[kid].tile_n_per_cta << ","
+            //     << g_kernel_container[kid].tile_k_per_cta << ","
+            //     << g_kernel_container[kid].tile_m_per_warp << ","
+            //     << g_kernel_container[kid].tile_n_per_warp << ","
+            //     << g_kernel_container[kid].tile_k_per_warp << ","
+            //     << g_kernel_container[kid].tile_k_per_step << ","
+            //     << g_kernel_container[kid].tile_k_per_set << ","
+            //     << g_kernel_container[kid].flt_size << ","
+            //     << g_kernel_container[kid].flt_pad_size << ","
+            //     << g_kernel_container[kid].cta_size_in_thd << ","
+            //     << g_kernel_container[kid].kname << ","
+            //     << splitk << "," << splitf << endl;
             if (splitk == 1)   selected_count++;
         }
     }
@@ -607,6 +607,7 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernel(
 
     g_conv_shape_hash[conv_shape_hash] = algo_param;
     printf("%s,%d,%d,%d\n", GetConvShapeString(conv_param).data(), algo_param.kid, algo_param.splitk, algo_param.splitf);
+    // outfile.close();
 
     return ppl::common::RC_SUCCESS;
 }

@@ -236,7 +236,6 @@ RetCode CudaEngine::SetQuantization(CudaEngine* engine, va_list args) {
 
 RetCode CudaEngine::SetAlgorithm(CudaEngine* engine, va_list args) {
     const char* json_file = va_arg(args, const char*);
-    printf("%s\n", json_file);
     if (json_file && json_file[0] != '\0') {
         std::string buf;
         auto status = ReadFileContent(json_file, &buf);
@@ -279,7 +278,6 @@ RetCode CudaEngine::SetAlgorithm(CudaEngine* engine, va_list args) {
                 }
             }
             engine->cuda_flags_.alog_selects.insert(make_pair(shape_name, algo_info));
-            LOG(INFO) << shape_name;
         }
     }
     return RC_SUCCESS;
