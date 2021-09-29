@@ -339,6 +339,7 @@ int PPLCUDAGemmSelectKernel(
 	    }
     }
 
+    
     cudaEventDestroy(begin);
     cudaEventDestroy(end);
     return best_kid;

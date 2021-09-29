@@ -29,6 +29,25 @@ using namespace ppl::common;
 
 namespace ppl { namespace nn { namespace cuda {
 
+static std::string GetConvShapeString(conv_param_t &conv_param)
+{
+    return std::string("b" + std::to_string(conv_param.in_num)  + \
+                       "_c" + std::to_string(conv_param.num_chl) + \
+                       "_d" + std::to_string(conv_param.num_flt) + \
+                       "_g" + std::to_string(conv_param.num_grp) + \
+                       "_h" + std::to_string(conv_param.in_height) + \
+                       "_w" + std::to_string(conv_param.in_width) + \
+                       "_r" + std::to_string(conv_param.flt_height) + \
+                       "_s" + std::to_string(conv_param.flt_width) + \
+                       "_p" + std::to_string(conv_param.pad_height) + \
+                       "_q" + std::to_string(conv_param.pad_width) + \
+                       "_u" + std::to_string(conv_param.stride_height) + \
+                       "_v" + std::to_string(conv_param.stride_width) + \
+                       "_y" + std::to_string(conv_param.hole_height) + \
+                       "_x" + std::to_string(conv_param.hole_width) + \
+                       "_");
+}
+
 void GemmAlgorithm::DeleteAttrParam(void*& param) {
     delete (CudaGemmParam*)param;
     return;
@@ -55,6 +74,29 @@ double GemmAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& option
     auto shape_out = options.tensors->find(node->GetOutput(0))->second->GetShape();
     auto align_size = ppl::common::cuda::GetDataFormatChannelAlignment(shape_in0.GetDataFormat());
 
+    select_param_t temp_select_param;
+    conv_param_t temp_conv_param;
+    temp_conv_param.in_num = attr_param_.param.transA ? shape_in0.GetDim(1) : shape_in0.GetDim(0);
+    temp_conv_param.num_chl = attr_param_.param.transB ? shape_in1.GetDim(1) : shape_in1.GetDim(0);
+    temp_conv_param.num_flt = attr_param_.param.transB ? shape_in1.GetDim(0) : shape_in1.GetDim(1);
+    temp_conv_param.in_height = 1;          temp_conv_param.in_width = 1;
+    temp_conv_param.flt_height = 1;         temp_conv_param.flt_width = 1;
+    temp_conv_param.out_height = 1;         temp_conv_param.out_width = 1;
+    temp_conv_param.pad_height = 1;         temp_conv_param.pad_width = 1;
+    temp_conv_param.stride_height = 1;      temp_conv_param.stride_width = 1;
+    temp_conv_param.hole_height = 1;        temp_conv_param.hole_width = 1;
+    temp_conv_param.num_grp = 1;
+
+    if (options.args->quick_select) {
+        PPLCUDAConvolutionQuickSelectKernel(temp_select_param, temp_conv_param);
+    }
+
+    auto algo_info = options.algos->find(GetConvShapeString(temp_conv_param));
+    if (algo_info != options.algos->end()) {
+        attr_param_.extra_param.kernel_index = algo_info->second.kid;
+        return 0.0f;
+    }
+
     // illegal gemm input
     if (shape_in0.GetDim(!attr_param_.param.transA) != shape_in1.GetDim(attr_param_.param.transB)) {
         return ALGO_MAX_TIME;
@@ -77,19 +119,6 @@ double GemmAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& option
     uint64_t size = PPLGemmCUDAGetBufSize(&shape_in0, attr_param_.param.transA);
     ALLOC_BUFFERF_FOR_ALGO_SELECT(temp_buffer, size, ALGO_MAX_TIME)
 
-    select_param_t temp_select_param;
-    if (options.args->quick_select) {
-        conv_param_t temp_conv_param;
-        temp_conv_param.in_num = attr_param_.param.transA ? shape_in0.GetDim(0) : shape_in0.GetDim(1);
-	    temp_conv_param.num_chl = attr_param_.param.transA ? shape_in0.GetDim(1) : shape_in0.GetDim(0);
-	    temp_conv_param.num_flt = attr_param_.param.transB ? shape_in0.GetDim(0) : shape_in0.GetDim(1);
-        temp_conv_param.in_height = 1;          temp_conv_param.in_width = 1;
-        temp_conv_param.flt_height = 1;         temp_conv_param.flt_width = 1;
-        temp_conv_param.out_height = 1;         temp_conv_param.out_width = 1;
-        temp_conv_param.num_grp = 1;
-        PPLCUDAConvolutionQuickSelectKernel(temp_select_param, temp_conv_param);
-    }
-
     // Do Select
     auto stream = options.device->GetStream();
     fuse_param_t temp_fuse_param;
@@ -108,6 +137,8 @@ double GemmAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& option
 
     LOG(DEBUG) << "Select gemm algorithm with kernel index " << attr_param_.extra_param.kernel_index
                << " and excute timer " << timer << " for node[" << node->GetName() << "]";
+    
+    printf("gemm res is %s,%d,1,1\n", GetConvShapeString(temp_conv_param).data(), kernel_id);
     return timer;
 }
 
