@@ -393,8 +393,8 @@ RetCode OptGraph::InitQuantization() {
             temp_tensor_quant.scale.resize(size);
             temp_tensor_quant.zero_point.resize(size);
             for (uint32_t i = 0; i < size; ++i) {
-                auto tensor_max = *((float*)(str.content.data()) + i);
-                auto tensor_min = *((float*)(str.content.data()) + i);
+                auto tensor_max = *((float*)(max_str.content.data()) + i);
+                auto tensor_min = *((float*)(min_str.content.data()) + i);
                 temp_tensor_quant.scale[i] = (tensor_max - tensor_min) / ((1 << temp_tensor_quant.bit_width) - 1);
                 temp_tensor_quant.zero_point[i] = tensor_max + tensor_min;
             }
@@ -464,8 +464,9 @@ RetCode OptGraph::UpdateType() {
 RetCode OptGraph::SelectAlgos(CudaDevice* device) {
     auto topo = graph_->topo.get();
     auto& graph_quants = args_->tensor_quants.find(topo->GetName())->second;
+    auto& graph_algos = args_->alog_selects;
 
-    OptKernelOptions options(graph_, info_, resource_, args_, device, &tensor_impls_, &graph_quants);
+    OptKernelOptions options(graph_, info_, resource_, args_, device, &tensor_impls_, &graph_quants, &graph_algos);
     UpdateTopologicalSort();
 
     if (!PPLCudaComputeCapabilityEqual(7, 5, device->GetDeviceId())) {

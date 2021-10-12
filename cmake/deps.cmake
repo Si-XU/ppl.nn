@@ -43,8 +43,7 @@ endif()
 
 FetchContent_Declare(hpcc
     GIT_REPOSITORY https://github.com/openppl-public/hpcc.git
-    GIT_TAG v0.1.5
-    GIT_SHALLOW TRUE
+    GIT_TAG 072f718bf47a893c86e48d3a78d2a0f181adb8c5
     SOURCE_DIR ${HPCC_DEPS_DIR}/hpcc
     BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/hpcc-build
     SUBBUILD_DIR ${HPCC_DEPS_DIR}/hpcc-subbuild
@@ -65,15 +64,15 @@ set(PPLCOMMON_ENABLE_LUA_API ${PPLNN_ENABLE_LUA_API})
 
 hpcc_declare_git_dep(ppl.common
     https://github.com/openppl-public/ppl.common.git
-    v0.3.0)
+    742439f844f6fa4e669c3ea872ef46beb5a942b2)
 
 # --------------------------------------------------------------------------- #
 
 set(protobuf_BUILD_TESTS OFF CACHE BOOL "disable protobuf tests")
 
 hpcc_declare_pkg_dep(protobuf
-    https://github.com/protocolbuffers/protobuf/archive/refs/tags/v3.1.0.zip
-    04123cc6d9ce7e8eaa8bca826bba4f1b)
+    https://github.com/protocolbuffers/protobuf/archive/refs/tags/v3.12.4.zip
+    35baf103b2bbc166502c2e431d9d543b)
 
 # --------------------------------------------------------------------------- #
 
