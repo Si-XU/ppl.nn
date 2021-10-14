@@ -24,16 +24,16 @@ namespace ppl { namespace nn { namespace cuda {
 ppl::common::RetCode MMCVModulatedDeformConv2dKernel::DoExecute(KernelExecContext* ctx) {
     auto input = ctx->GetInput<TensorImpl>(0);
     auto output = ctx->GetOutput<TensorImpl>(0);
-    auto weight = ctx->GetInput<TensorImpl>(1);
-    auto offset = ctx->GetInput<TensorImpl>(2);
-    auto mask = ctx->GetInput<TensorImpl>(3);
-    auto bias = ctx->GetInput<TensorImpl>(4);
+    auto offset = ctx->GetInput<TensorImpl>(1);
+    auto mask = ctx->GetInput<TensorImpl>(2);
+    auto weight = ctx->GetInput<TensorImpl>(3);
+    auto bias = ctx->GetInputCount() > 4 ? ctx->GetInput<TensorImpl>(4) : nullptr;
     
     auto shape_in0 = ctx->GetInput<TensorImpl>(0)->GetShape();
-    auto shape_in1 = ctx->GetInput<TensorImpl>(1)->GetShape();
+    auto shape_in3 = ctx->GetInput<TensorImpl>(3)->GetShape();
     auto shape_out = ctx->GetOutput<TensorImpl>(0)->GetShape();
 
-    int64_t size = PPLCUDADeformConvGetBufSize(&shape_in0, &shape_in1, &shape_out);
+    int64_t size = PPLCUDADeformConvGetBufSize(&shape_in0, &shape_in3, &shape_out);
     BufferDesc tmp_buffer_desc;
     auto status = GetCudaDevice()->AllocTmpBuffer(size, &tmp_buffer_desc);
     if (status != ppl::common::RC_SUCCESS) {
@@ -49,7 +49,7 @@ ppl::common::RetCode MMCVModulatedDeformConv2dKernel::DoExecute(KernelExecContex
     status = PPLCUDADeformConvForward(
         stream, &output->GetShape(), &input->GetShape(), 
         output->GetBufferPtr(), input->GetBufferPtr(), weight->GetBufferPtr(),
-        offset->GetBufferPtr(), mask ? mask->GetBufferPtr() : nullptr, bias->GetBufferPtr(),
+        offset->GetBufferPtr(), mask ? mask->GetBufferPtr() : nullptr, bias ? bias->GetBufferPtr() : nullptr,
         param_->groups, param_->deform_groups, param_->channels, param_->num_output,
         param_->stride[0], param_->stride[1], param_->kernel_size[0], param_->kernel_size[1], 
         param_->padding[0], param_->padding[1], param_->dilation[0], param_->dilation[1],
