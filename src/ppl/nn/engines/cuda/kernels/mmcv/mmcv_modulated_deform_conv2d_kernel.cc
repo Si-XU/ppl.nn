@@ -45,13 +45,18 @@ ppl::common::RetCode MMCVModulatedDeformConv2dKernel::DoExecute(KernelExecContex
         GetCudaDevice()->FreeTmpBuffer(buffer);
     });
     
+    const int64_t num_output = weight->GetShape().GetDim(0);
+    const int64_t channels = weight->GetShape().GetDim(1) * param_->groups;
+    const int64_t kernel_h = weight->GetShape().GetDim(2);
+    const int64_t kernel_w = weight->GetShape().GetDim(3);
+
     auto stream = GetStream();
     status = PPLCUDADeformConvForward(
         stream, &output->GetShape(), &input->GetShape(), 
         output->GetBufferPtr(), input->GetBufferPtr(), weight->GetBufferPtr(),
         offset->GetBufferPtr(), mask ? mask->GetBufferPtr() : nullptr, bias ? bias->GetBufferPtr() : nullptr,
-        param_->groups, param_->deform_groups, param_->channels, param_->num_output,
-        param_->stride[0], param_->stride[1], param_->kernel_size[0], param_->kernel_size[1], 
+        param_->groups, param_->deform_groups, channels, num_output,
+        param_->stride[0], param_->stride[1], kernel_h, kernel_w, 
         param_->padding[0], param_->padding[1], param_->dilation[0], param_->dilation[1],
         mask, tmp_buffer_desc.addr);
     

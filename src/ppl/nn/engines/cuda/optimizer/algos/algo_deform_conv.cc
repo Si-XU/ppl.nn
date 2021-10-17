@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "ppl/nn/engines/cuda/optimizer/algos/algo_conv.h"
+#include "ppl/nn/engines/cuda/optimizer/algos/algo_deform_conv.h"
 
 #include <chrono>
 
@@ -28,18 +28,18 @@ using namespace ppl::common;
 
 namespace ppl { namespace nn { namespace cuda {
 
-double TuringHMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& options) {
+double DeformConvAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& options) {
     return 1e-5;
 }
 
-RetCode TuringHMMAImpgemm::ModifyParam(const ir::Node* node, OptKernelOptions& options) {
-    this->attr_param_ = *(reinterpret_cast<CudaConvParam*>(options.param));
+RetCode DeformConvAlgorithm::ModifyParam(const ir::Node* node, OptKernelOptions& options) {
+    this->param_ = (reinterpret_cast<ppl::nn::common::MMCVModulatedDeformConv2dParam*>(options.param));
     auto topo = options.graph->topo.get();
     auto data = options.graph->data.get();
-    auto weight_edge = topo->GetEdgeById(node->GetInput(1));
+    auto weight_edge = topo->GetEdgeById(node->GetInput(3));
     auto weight_node = topo->GetNodeById(weight_edge->GetProducer());
 
-    auto shape_in1 = options.tensors->find(node->GetInput(1))->second->GetShape();
+    auto shape_in1 = options.tensors->find(node->GetInput(3))->second->GetShape();
 
     RetCode status;
     
@@ -86,7 +86,7 @@ RetCode TuringHMMAImpgemm::ModifyParam(const ir::Node* node, OptKernelOptions& o
     return RC_SUCCESS;
 }
 
-void TuringHMMAImpgemm::ReshapeOnEdges(const ir::Node* node, std::map<edgeid_t, std::unique_ptr<TensorImpl>>* tensors,
+void DeformConvAlgorithm::ReshapeOnEdges(const ir::Node* node, std::map<edgeid_t, std::unique_ptr<TensorImpl>>* tensors,
                                        dataformat_t input_format, dataformat_t output_format) {
     for (uint32_t i = 0; i < node->GetInputCount(); ++i) { // only reset formats of input0 and weight
         auto edge_id = node->GetInput(i);
