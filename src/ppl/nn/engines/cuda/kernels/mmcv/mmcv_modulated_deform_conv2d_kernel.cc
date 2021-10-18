@@ -18,6 +18,9 @@
 #include "ppl/nn/engines/cuda/kernels/mmcv/mmcv_modulated_deform_conv2d_kernel.h"
 
 #include "cudakernel/nn/deform_conv.h"
+#include <memory>
+#include <fstream>
+#include <cuda_fp16.h>
 
 namespace ppl { namespace nn { namespace cuda {
 
@@ -59,7 +62,41 @@ ppl::common::RetCode MMCVModulatedDeformConv2dKernel::DoExecute(KernelExecContex
         param_->stride[0], param_->stride[1], kernel_h, kernel_w, 
         param_->padding[0], param_->padding[1], param_->dilation[0], param_->dilation[1],
         mask, tmp_buffer_desc.addr);
-    
+if(strcmp(output->GetEdge()->GetName().c_str(), "442")==0)
+{
+auto sz = num_output*channels*kernel_h*kernel_w/2;
+__half* t = (__half*)malloc(sz*sizeof(__half));
+cudaMemcpy(t, (__half*)weight->GetBufferPtr() + sz, sz*sizeof(__half), cudaMemcpyDeviceToHost);
+printf("runtime weights: %d\n", sz);
+for(int i = 0; i < sz; i++){
+    printf("%f\t", (float)t[i]);
+}
+printf("\n");
+free(t);
+}
+printf("weight shape: %d,%d,%d,%d", num_output,channels,kernel_h,kernel_w);
+
+   
+{
+    int save_bytes = output->GetShape().GetDataType() == ppl::common::DATATYPE_FLOAT16 ?
+                    sizeof(float) * output->GetShape().GetElementsIncludingPadding() :
+                    output->GetShape().GetBytesIncludingPadding();
+    std::unique_ptr<char[]> out_data(new char[save_bytes]);
+    ppl::nn::TensorShape tmp_shape(output->GetShape());
+    if(output->GetShape().GetDataType() == ppl::common::DATATYPE_FLOAT16) {
+        tmp_shape.SetDataType(ppl::common::DATATYPE_FLOAT32);
+    } else {
+        tmp_shape.SetDataType(output->GetShape().GetDataType());
+    }
+    tmp_shape.SetDataFormat(ppl::common::DATAFORMAT_NDARRAY);
+    output->ConvertToHost(out_data.get(), tmp_shape);
+    char t[128];
+    strcpy(t, output->GetName());
+    strcat(t, ".dat");
+    printf("number: %s, %f, %d\n", t, (out_data.get())[0], save_bytes);
+    std::ofstream out_fs(t);
+    out_fs.write((char*)out_data.get(), save_bytes);
+}
     return status;
 
 }

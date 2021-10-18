@@ -23,6 +23,7 @@
 #include "ppl/common/cuda/cuda_types.h"
 #include "ppl/nn/common/logger.h"
 #include "ppl/nn/utils/utils.h"
+#include <cuda_fp16.h>
 
 using namespace ppl::common;
 
@@ -49,13 +50,14 @@ RetCode DeformConvAlgorithm::ModifyParam(const ir::Node* node, OptKernelOptions&
     if (weight_iter != data->constants.end() && // is a constant tensor and has not be loaded
         options.info->constants.find(weight_node->GetInput(0)) == options.info->constants.end()) {
         auto preedge_id = weight_node->GetInput(0);
-        auto postedge_id = node->GetInput(1);
+        auto postedge_id = node->GetInput(3);
         auto preshape = options.tensors->find(preedge_id)->second->GetShape();
         auto postshape = options.tensors->find(postedge_id)->second->GetShape();
         auto size = postshape.GetElementsIncludingPadding();
         size = (size / postshape.GetDim(0) + 7)/ 8 * 8 * postshape.GetDim(0);
 
         RuntimeConstantInfo weight_constat_info;
+printf("in modify out weight 1\n");
         {
             BufferDesc buffer;
             status = options.device->Realloc(size, &buffer);
@@ -69,20 +71,61 @@ RetCode DeformConvAlgorithm::ModifyParam(const ir::Node* node, OptKernelOptions&
         }
 
         ALLOC_BUFFERF_FOR_ALGO_SELECT(temp_buffer, postshape.GetBytesIncludingPadding(), RC_OUT_OF_MEMORY)
+//if(strcmp(topo->GetEdgeById(weight_node->GetInput(0))->GetName().c_str(), "backbone.layer2.0.conv2.weight") == 0)
+//{
+//int64_t sz = size;
+//float *t = (float*)malloc(sz*sizeof(float));
+//cudaMemcpy(t, weight_iter->second.data.data(), sz*sizeof(float), cudaMemcpyHostToHost);
+//for(int i = 0; i < sz; i++)
+//    printf("%f\t", (float)t[i]);
+//free(t);
+//printf("\nin modify weight iter:\n");
+//}
         status = options.device->GetDataConverter()->ConvertFromHost(&temp_buffer, postshape,
                                                                      weight_iter->second.data.data(), preshape);
         if (status != RC_SUCCESS) {
             LOG(ERROR) << node->GetName() << " copy constant failed: " << GetRetCodeStr(status);
             return status;
         }
-
+//if(strcmp(topo->GetEdgeById(weight_node->GetInput(0))->GetName().c_str(), "backbone.layer2.0.conv2.weight") == 0)
+//{
+//printf("in modify out weight\n");
+//int64_t sz = size;
+//__half *t = (__half*)malloc(sz*sizeof(__half));
+//cudaMemcpy(t, temp_buffer.addr, sz*sizeof(__half), cudaMemcpyDeviceToHost);
+//for(int i = 0; i < sz; i++)
+//    printf("%f\t", (float)t[i]);
+//free(t);
+//}
+//cudaMemcpy(weight_constat_info.GetBufferDesc().addr, temp_buffer.addr, size*sizeof(__half), cudaMemcpyDeviceToDevice);
         PPLCUDADeformConvModifyWeights(stream, &postshape, temp_buffer.addr, weight_constat_info.GetBufferDesc().addr);
+//{
+//printf("in modify out weight 2\n");
+//int64_t sz = size;
+//__half *t = (__half*)malloc(sz*sizeof(__half));
+//cudaMemcpy(t, weight_constat_info.GetBufferDesc().addr, sz*sizeof(__half), cudaMemcpyDeviceToHost);
+//for(int i = 0; i < sz; i++)
+//    printf("%f\t", (float)t[i]);
+//free(t);
+//}
+if(strcmp(topo->GetEdgeById(weight_node->GetInput(0))->GetName().c_str(), "backbone.layer2.0.conv2.weight") == 0)
+{
+int sz = size/2;
+printf("origin weight: %d\n", sz);
+__half *t = (__half*)malloc(sz*sizeof(__half));
+cudaMemcpy(t, (__half*)weight_constat_info.GetBufferDesc().addr+ size/2, sz*sizeof(__half), cudaMemcpyDeviceToHost);
+for(int i = 0; i < sz; i++)
+    printf("%f\t", (float)t[i]);
+printf("\n");
+}
+
 
         options.info->constants.emplace(preedge_id, std::move(weight_constat_info));
         options.tensors->find(preedge_id)->second->GetShape() = postshape;
         options.quants->at(preedge_id).format = postshape.GetDataFormat();
         options.quants->at(preedge_id).type = postshape.GetDataType();
     }
+
     return RC_SUCCESS;
 }
 

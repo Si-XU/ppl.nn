@@ -307,9 +307,11 @@ ppl::common::RetCode PPLCUDADeformConvModifyWeights(
     int c = flt_shape->GetDim(1);
     int r = flt_shape->GetDim(2);
     int s = flt_shape->GetDim(3);
+printf("kernel flt: %d, %d, %d, %d\n", n, c, r, s);
     int size = c*r*s;
     if (size % pad_size == 0){
-        cudaMemcpy(out_flt, in_flt, n*size*sizeof(__half), cudaMemcpyDeviceToDevice);
+        auto err = cudaMemcpy(out_flt, in_flt, n*size*sizeof(__half), cudaMemcpyDeviceToDevice);
+        printf("\nmemcpy err: %d\n", err);
         return ppl::common::RC_SUCCESS;
     }
     int aligned_size = Align(size, pad_size);
@@ -463,7 +465,17 @@ ppl::common::RetCode PPLCUDADeformConvForward(
             __half *tmp_a = (__half*)flt + g * oc_per_grp * col_trans_out_w;
             __half *tmp_b = (__half*)trans_columns + g * col_trans_out_h * col_trans_out_w;
             __half *tmp_output = (__half*)output_buf + b * out_c * col_trans_out_h + g * oc_per_grp * col_trans_out_h;
-
+{
+int sz = oc_per_grp * col_trans_out_w/2;
+__half *t = (__half*)malloc(sz*sizeof(__half));
+cudaMemcpy(t, tmp_a + oc_per_grp * col_trans_out_w/2, sz*sizeof(__half), cudaMemcpyDeviceToHost);
+printf("\nwrong weight: %d\n", sz);
+for(int i = 0; i < sz; i++)
+    printf("%f\t", (float)t[i]);
+printf("\n");
+}
+//cudaMemset(tmp_a + oc_per_grp * col_trans_out_w/2, 0, oc_per_grp * col_trans_out_w/2*sizeof(__half));
+//cudaMemset(tmp_output, 0, M*N*sizeof(__half));
             __half *tmp_bias = bias? (__half*)bias + g*oc_per_grp : NULL;
             PPLCUDAGemmForwardImp(
                 stream, &shape_a, tmp_a, &shape_b, tmp_b,

@@ -36,7 +36,8 @@ RetCode MMCVModulatedDeformConv2dOp::Init(const OptKernelOptions& options) {
     };
 
     infer_type_func_ = [this](InputOutputInfo* info, std::vector<CudaTensorQuant>* quant, datatype_t type) -> RetCode {
-        return InferInheritedType(info);
+        type = ppl::common::DATATYPE_FLOAT16;
+        return InferDefaultType(info, type);
     };
 
     return RC_SUCCESS;
