@@ -39,7 +39,9 @@
         int stride_height,            int stride_width,           \
         int pad_height,               int pad_width,              \
         int hole_height,              int hole_width,             \
-        int has_bias,                 int* bias
+        int has_bias,                 int* bias                   \
+	float in_scale,               void *d_flt_scale,          \
+        float out_scale
 
 #define TOTAL_KPARAM_LIST \
         int4* dA,                                                 \
@@ -60,16 +62,18 @@
         int pad_height,               int pad_width,              \
         int hole_height,              int hole_width,             \
         int  has_bias,                const int4* bias,           \
-        int  has_relu,                const __half2 clip_min,     \
-	    bool has_clip,                const __half2 clip_max,     \
+	float in_scale,               void *d_flt_scale,          \
+        float out_scale,                                          \
+        int  has_relu,                const float clip_min,     \
+	    bool has_clip,                const float clip_max,     \
         int  has_prelu,               const void* prelu,          \
         bool has_elt,                 const int4* pre_data,       \
-        int  has_elt_relu,            const __half2 elt_clip_min, \
-	    bool has_elt_clip,            const __half2 elt_clip_max, \
+        int  has_elt_relu,            const float elt_clip_min, \
+	    bool has_elt_clip,            const float elt_clip_max, \
         int has_elt_prelu,            const void* elt_prelu,      \
-        const __half leaky,           const __half elt_leaky,     \
-        bool has_concat,              int concat_offset_v8,       \
-        int concat_stride_v8
+        const float leaky,           const float elt_leaky,     \
+        bool has_concat,              int concat_offset_v4,       \
+        int concat_stride_v4
 
 ////////////////////////////////////////
 // align functions
@@ -92,6 +96,7 @@
 // constant cta size macros
 ////////////////////////////////////////
 
+#define _16CHAR_TO_INT4_        16
 #define _4CHAR_TO_INT_          4
 #define _4INT_TO_INT4_          4
 #define _2INT_TO_INT2_          2
@@ -137,6 +142,7 @@
 #define _8MMA_                  8
 
 #define _HALF_ZERO_             0.0
+#define _ZERO_                  0.0f
 
 
 #define _INT_TO_BYTE_           4
@@ -150,7 +156,9 @@
 #define _INT4_TO_4HALF2_        4
 #define _INT4_TO_8HALF_         8
 
+#define SMEM_ROW_V8_SIZE        4
 #define SMEM_ROW_V4_SIZE        8
+#define SMEM_ROW_V2_SIZE        16
 #define SMEM_ROW_V1_SIZE        32
 #define SMEM_ROW_BYTE_SIZE      128
 #define SMEM_ROW_BIT_SIZE       1024
@@ -159,10 +167,10 @@
 // mma size macros
 ////////////////////////////////////////
 
-#define TILE_M_PER_MMA          16
+#define TILE_M_PER_MMA          8
 #define TILE_K_PER_MMA          8
 #define TILE_N_PER_MMA          8
-#define TILE_M_PER_MMA_HALF     ((TILE_M_PER_MMA) / 2)
+#define TILE_M_PER_SUB_MMA      8
 
 #define MMA_SIZE_X_IN_THD       4
 #define MMA_SIZE_Y_IN_THD       8
@@ -225,11 +233,13 @@
 #define TILE_K_V2_PER_CTA       ((TILE_K_PER_CTA)  / 2)
 #define TILE_K_V4_PER_CTA       ((TILE_K_PER_CTA)  / 4)
 #define TILE_K_V8_PER_CTA       ((TILE_K_PER_CTA)  / 8)
+#define TILE_K_V16_PER_CTA      ((TILE_K_PER_CTA)  / 16)
 
 #define TILE_K_V1_PER_SET       ((TILE_K_PER_SET)  / 1)
 #define TILE_K_V2_PER_SET       ((TILE_K_PER_SET)  / 2)
 #define TILE_K_V4_PER_SET       ((TILE_K_PER_SET)  / 4)
 #define TILE_K_V8_PER_SET       ((TILE_K_PER_SET)  / 8)
+#define TILE_K_V16_PER_SET      ((TILE_K_PER_SET)  / 16)
 
 #define TILE_K_V1_PER_WARP      ((TILE_K_PER_WARP) / 1)
 #define TILE_K_V2_PER_WARP      ((TILE_K_PER_WARP) / 2)
@@ -268,15 +278,18 @@
 // shared memory size macros
 ////////////////////////////////////////
 
-#define OUTPUT_STEPS            ((TILE_M_V1_PER_CTA) * (TILE_N_V8_PER_CTA) / CTA_SIZE_IN_THD)
+//FIXME: the final is TILE_N_V16_PER_CTA
+#define OUTPUT_STEPS            ((TILE_M_V1_PER_CTA) * (TILE_N_V4_PER_CTA) / CTA_SIZE_IN_THD)
 
 #if OUTPUT_STEPS < 1
 #undef  OUTPUT_STEPS
 #define OUTPUT_STEPS  1
 #endif
 
-#define N_ROWS_PER_SMEM_ROW     (SMEM_ROW_V4_SIZE / TILE_N_V8_PER_CTA)
-#define K_ROWS_PER_SMEM_ROW     (SMEM_ROW_V4_SIZE / TILE_K_V8_PER_CTA)
+//#define N_ROWS_PER_SMEM_ROW     (SMEM_ROW_V4_SIZE / TILE_N_V8_PER_CTA)
+//#define K_ROWS_PER_SMEM_ROW     (SMEM_ROW_V4_SIZE / TILE_K_V8_PER_CTA)
+#define N_ROWS_PER_SMEM_ROW     (SMEM_ROW_V4_SIZE / TILE_N_V4_PER_CTA)
+#define K_ROWS_PER_SMEM_ROW     (SMEM_ROW_V4_SIZE / TILE_K_V16_PER_CTA)
 
 #if N_ROWS_PER_SMEM_ROW < 1
 #undef  N_ROWS_PER_SMEM_ROW
@@ -288,7 +301,7 @@
 #define K_ROWS_PER_SMEM_ROW 1
 #endif
 
-#define OUTPUT_SIZE_X_IN_THD    (TILE_N_V8_PER_CTA)
+#define OUTPUT_SIZE_X_IN_THD    (TILE_N_V4_PER_CTA)
 #define OUTPUT_SIZE_Y_IN_THD    ((CTA_SIZE_IN_THD) / (OUTPUT_SIZE_X_IN_THD))
 
 ////////////////////////////////////////
@@ -319,9 +332,10 @@
 // main loop macros
 ////////////////////////////////////////
 
-#define   C_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (SET_SIZE_IN_THD * _INT_TO_2HALF_))
+#define   C_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (SET_SIZE_IN_THD))
 #define  HC_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (SET_SIZE_IN_THD))
-#define Cv4_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (SET_SIZE_IN_THD * _INT_TO_2HALF_ * _4INT_TO_INT4_))
+//#define Cv4_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (SET_SIZE_IN_THD * _4CHAR_TO_INT_ * _4INT_TO_INT4_))
+#define Cv4_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (SET_SIZE_IN_THD * _4INT_TO_INT4_))
 
 #if Cv4_ITEMS_PER_THD < 1
 #undef Cv4_ITEMS_PER_THD
@@ -332,8 +346,8 @@
 // load A and B from device memory macros
 ////////////////////////////////////////
 
-#define REG_dAv4_SIZE           ( ((TILE_M_PER_CTA) * (TILE_K_PER_CTA)) / ((_2HALF_TO_INT_) * (_4INT_TO_INT4_) * (CTA_SIZE_IN_THD)) )
-#define REG_dBv4_SIZE           ( ((TILE_N_PER_CTA) * (TILE_K_PER_CTA)) / ((_2HALF_TO_INT_) * (_4INT_TO_INT4_) * (CTA_SIZE_IN_THD)) )
+#define REG_dAv4_SIZE           ( ((TILE_M_PER_CTA) * (TILE_K_PER_CTA)) / ((_4CHAR_TO_INT_) * (_4INT_TO_INT4_) * (CTA_SIZE_IN_THD)) )
+#define REG_dBv4_SIZE           ( ((TILE_N_PER_CTA) * (TILE_K_PER_CTA)) / ((_4CHAR_TO_INT_) * (_4INT_TO_INT4_) * (CTA_SIZE_IN_THD)) )
 
 #if REG_dAv4_SIZE < 1
 #undef  REG_dAv4_SIZE
@@ -352,9 +366,9 @@
 // shared memory size macros
 ////////////////////////////////////////
 
-#define SM_A_SIZE               ((TILE_M_PER_CTA) * (TILE_K_PER_CTA) / (_2HALF_TO_INT_))
-#define SM_B_SIZE               ((TILE_K_PER_CTA) * (TILE_N_PER_CTA) / (_2HALF_TO_INT_))
-#define SM_C_SIZE               ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (_2HALF_TO_INT_))
+#define SM_A_SIZE               ((TILE_M_PER_CTA) * (TILE_K_PER_CTA) / (_4CHAR_TO_INT_))
+#define SM_B_SIZE               ((TILE_K_PER_CTA) * (TILE_N_PER_CTA) / (_4CHAR_TO_INT_))
+#define SM_C_SIZE               ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (_1INT_))
 
 #define SM_A_1BUF               (SM_A_SIZE)
 #define SM_B_1BUF               (SM_B_SIZE)
@@ -399,6 +413,11 @@
         { \
             _lut_id = (_lut_id == flt_hw) ? 1 : _lut_id + 1; \
         }
+#define MAX(x, y)  ( (x) >= (y) ? (x) : (y) )
+#define MIN(x, y)  ( (x) <= (y) ? (x) : (y) )
+#define MMAs_PER_REDUCE_ROW     MIN( (TILE_N_V1_PER_CTA/TILE_N_V1_PER_MMA), SMEM_ROW_V8_SIZE )
+#define TILE_N_IN_MMA_PER_WARP  ( TILE_N_V1_PER_WARP/TILE_N_V1_PER_MMA ) 
+#define SWIZZLE_GROUP ( MAX( 1, (4/(CTA_SIZE_IN_THD/TILE_N_V4_PER_CTA)) ) )
 
 ////////////////////////////////////////
 // bit size macros

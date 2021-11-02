@@ -141,7 +141,26 @@ void PPLCUDAConvolutionCvtFlt(
         cudaMemset(output, 0, sizeof(half) * num_grp * out_size_per_grp);
         flt_group_padding<__half><<<grid, cta_size, 0, stream>>>((__half*)output, (__half*)input, in_size_per_grp, num_grp, num_chl_per_grp_pad,
         out_size_per_grp);
+    } else if (type == ppl::common::DATATYPE_INT8) {
+        //FIXME different from fp16: flt num not paded
+        out_size_per_grp = num_flt_per_grp * flt_height * flt_width * num_chl_per_grp_pad;
+        cudaMemset(output, 0, sizeof(int8_t) * num_grp * out_size_per_grp);
+        flt_group_padding<int8_t><<<grid, cta_size, 0, stream>>>((int8_t*)output, (int8_t*)input, in_size_per_grp, num_grp, num_chl_per_grp_pad,
+        out_size_per_grp);
     }
+e = cudaDeviceSynchronize();
+//{
+//int8_t *t = (int8_t*)malloc(32*16*3*3*sizeof(int8_t));
+//cudaMemcpy(t, output, 32*16*3*3*sizeof(int8_t), cudaMemcpyDeviceToHost);
+//printf("cvt flt:\n");
+//for(int i = 0; i < 32*16*3*3; i++){
+//    if(i%16==0) printf("kernel: %d\n", i/16);
+//    printf("%d\t", t[i]);
+//}
+//printf("\n");
+//free(t);
+//}
+
 }
 
 void PPLCUDAConvolutionCvtInput(
@@ -171,6 +190,9 @@ void PPLCUDAConvolutionCvtInput(
 
     } else if (type == ppl::common::DATATYPE_FLOAT16) {
         split_group<__half><<<grid, cta_size, 0, stream>>>((__half*)output, (__half*)input, fast_div_channel,
+        out_size, num_grp, num_chl_per_grp, num_chl, num_chl_per_grp_pad);
+    } else if (type == ppl::common::DATATYPE_INT8) {
+        split_group<int8_t><<<grid, cta_size, 0, stream>>>((int8_t*)output, (int8_t*)input, fast_div_channel,
         out_size, num_grp, num_chl_per_grp, num_chl, num_chl_per_grp_pad);
     }
 }
@@ -209,6 +231,9 @@ void PPLCUDAConvolutionCvtOutput(
     } else if (type == ppl::common::DATATYPE_FLOAT16) {
         merge_group<__half><<<grid, cta_size, 0, stream>>>((__half*)output, (__half*)input, fast_div_channel,
         out_size, num_grp, num_flt_per_grp, num_flt, num_flt_per_grp_pad, flt_align);
+    } else if (type == ppl::common::DATATYPE_INT8) {
+        merge_group<int8_t><<<grid, cta_size, 0, stream>>>((int8_t*)output, (int8_t*)input, fast_div_channel,
+        out_size, num_grp, num_flt_per_grp, num_flt, num_flt_per_grp_pad, flt_align);
     }
 
 }
@@ -246,6 +271,10 @@ void PPLCUDAConvolutionCvtBias(
 			(__half*)output, (__half*)input, 
 			out_size, num_grp, 
 			num_flt_per_grp, conv_param.num_flt_pad, num_flt_per_grp_pad);
+    } else if (type == ppl::common::DATATYPE_INT8) {
+        group_padding<int8_t><<<grid, cta_size, 0, stream>>>(
+			(int8_t*)output, (int8_t*)input, 
+			out_size, num_grp, 
+			num_flt_per_grp, conv_param.num_flt_pad, num_flt_per_grp_pad);
     }
-
 }

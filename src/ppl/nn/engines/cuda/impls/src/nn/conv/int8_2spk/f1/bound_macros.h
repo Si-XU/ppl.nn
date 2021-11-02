@@ -15,20 +15,17 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "cudakernel/memory/reshape.h"
-#include "ppl/nn/common/tensor_shape.h"
-#include "ppl/common/retcode.h"
-#include <cuda_runtime.h>
-#include<stdio.h>
+#define SET_BOUND_FLT1(_in_hw_mask, _in_n_id, _in_h_id, _in_w_id) \
+        { \
+            _in_hw_mask = _in_n_id <  in_num && \
+                        _in_h_id >= 0 && _in_h_id < in_height && \
+                        _in_w_id >= 0 && _in_w_id < in_width; \
+        }
 
-ppl::common::RetCode PPLCUDAReshapeForwardImp(
-    cudaStream_t stream,
-    const ppl::nn::TensorShape* input_shape,
-    const void* input,
-    const ppl::nn::TensorShape* output_shape,
-    void* output)
-{
-    int64_t num_elems_output = output_shape->GetElementsIncludingPadding();
-    cudaMemcpyAsync(output, input, ppl::common::GetSizeOfDataType(input_shape->GetDataType()) * num_elems_output, cudaMemcpyDeviceToDevice, stream);
-    return ppl::common::RC_SUCCESS;
-}
+#define FWD_FLT1(_flt_c_v16_id, _flt_c_v16_valid) \
+        { \
+            flt_c_v16_id   += TILE_K_V16_PER_CTA; \
+            _flt_c_v16_valid = _flt_c_v16_id < flt_c_v16_end; \
+        }
+
+#define FWD_FLT(_flt_c_v16_id, _flt_c_v16_valid)    FWD_FLT1(_flt_c_v16_id, _flt_c_v16_valid)

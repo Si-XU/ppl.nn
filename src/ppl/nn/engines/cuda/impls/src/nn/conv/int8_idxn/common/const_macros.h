@@ -37,14 +37,16 @@
         int pad_height,               int pad_width,              \
         int hole_height,              int hole_width,             \
         int  has_bias,                const int4* bias,           \
-        int  has_relu,                const __half2 clip_min,     \
-	    bool has_clip,                const __half2 clip_max,     \
+	float in_scale,               void *d_flt_scale,          \
+        float out_scale,                                          \
+        int  has_relu,                const float clip_min,     \
+	bool has_clip,                const float clip_max,     \
         int  has_prelu,               const void* prelu,          \
         bool has_elt,                 const int4* pre_data,       \
-        int  has_elt_relu,            const __half2 elt_clip_min, \
-	    bool has_elt_clip,            const __half2 elt_clip_max, \
+        int  has_elt_relu,            const float elt_clip_min, \
+	    bool has_elt_clip,            const float elt_clip_max, \
         int has_elt_prelu,            const void* elt_prelu,      \
-        const __half leaky,           const __half elt_leaky,     \
+        const float leaky,           const float elt_leaky,     \
         bool has_concat,              int concat_offset_v8,       \
         int concat_stride_v8
 
@@ -143,15 +145,17 @@
 // mma size macros
 ////////////////////////////////////////
 
-#define TILE_M_PER_MMA          16
-#define TILE_K_PER_MMA          8
+#define TILE_M_PER_MMA          8
+#define TILE_K_PER_MMA          16
 #define TILE_N_PER_MMA          8
-#define TILE_M_PER_MMA_HALF     ((TILE_M_PER_MMA) / 2)
+//#define TILE_M_PER_MMA_HALF     ((TILE_M_PER_MMA) / 2)
+#define TILE_M_PER_SUB_MMA      8
+#define TILE_M_V1_PER_SUB_MMA   TILE_M_PER_SUB_MMA
 
 #define MMA_SIZE_X_IN_THD       4
 #define MMA_SIZE_Y_IN_THD       8
 
-#define BLK_M_PER_MMA           2
+#define BLK_M_PER_MMA           1
 #define BLK_N_PER_MMA           1
 
 ////////////////////////////////////////
@@ -208,7 +212,7 @@
 #define TILE_M_V2_PER_MMA       ((TILE_M_PER_MMA)  / 2)
 #define TILE_M_V4_PER_MMA       ((TILE_M_PER_MMA)  / 4)
 #define TILE_M_V8_PER_MMA       ((TILE_M_PER_MMA)  / 8)
-#define TILE_M_V1_PER_MMA_HALF  ((TILE_M_PER_MMA)  / 2)
+//#define TILE_M_V1_PER_MMA_HALF  ((TILE_M_PER_MMA)  / 2)
 
 /////////////////////
 // tile k
@@ -217,16 +221,19 @@
 #define TILE_K_V2_PER_CTA       ((TILE_K_PER_CTA)  / 2)
 #define TILE_K_V4_PER_CTA       ((TILE_K_PER_CTA)  / 4)
 #define TILE_K_V8_PER_CTA       ((TILE_K_PER_CTA)  / 8)
+#define TILE_K_V16_PER_CTA      ((TILE_K_PER_CTA)  / 16)
 
 #define TILE_K_V1_PER_STEP      ((TILE_K_PER_STEP) / 1)
 #define TILE_K_V2_PER_STEP      ((TILE_K_PER_STEP) / 2)
 #define TILE_K_V4_PER_STEP      ((TILE_K_PER_STEP) / 4)
 #define TILE_K_V8_PER_STEP      ((TILE_K_PER_STEP) / 8)
+#define TILE_K_V16_PER_STEP     ((TILE_K_PER_STEP) / 16)
 
 #define TILE_K_V1_PER_MMA       ((TILE_K_PER_MMA)  / 1)
 #define TILE_K_V2_PER_MMA       ((TILE_K_PER_MMA)  / 2)
 #define TILE_K_V4_PER_MMA       ((TILE_K_PER_MMA)  / 4)
 #define TILE_K_V8_PER_MMA       ((TILE_K_PER_MMA)  / 8)
+#define TILE_K_V16_PER_MMA      ((TILE_K_PER_MMA)  / 16)
 
 /////////////////////
 // tile n
@@ -260,9 +267,9 @@
 // main loop macros
 ////////////////////////////////////////
 
-#define   C_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (CTA_SIZE_IN_THD * _INT_TO_2HALF_))
-#define  HC_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (CTA_SIZE_IN_THD))
-#define Cv4_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (CTA_SIZE_IN_THD * _INT_TO_2HALF_ * _4INT_TO_INT4_))
+#define   C_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (CTA_SIZE_IN_THD * _1INT_))
+//#define  HC_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (CTA_SIZE_IN_THD))
+#define Cv4_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (CTA_SIZE_IN_THD * _1INT_ * _4INT_TO_INT4_))
 
 ////////////////////////////////////////
 // load A and B from device memory macros

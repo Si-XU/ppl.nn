@@ -18,7 +18,7 @@
 #include "cudakernel/arithmetic/arithmetic.h"
 #include "ppl/common/types.h"
 #include <cuda_fp16.h>
-#include <algorithm>
+//#include <stdio.h>
 
 enum ArithmeticOpType {
     Arithmetic_Unknown = 0,
@@ -127,6 +127,34 @@ template<> __device__ inline int32_t ppl_arithmetic_scalar<Arithmetic_Pow, int32
 
 template<> __device__ inline int32_t ppl_arithmetic_scalar<Arithmetic_PRelu, int32_t>(int32_t a, int32_t b) {
     int32_t res = a;
+    res = (a > 0) ? res : res * b;
+    return res;
+}
+
+template<> __device__ inline int8_t ppl_arithmetic_scalar<Arithmetic_Add, int8_t>(int8_t a, int8_t b) {
+    return a + b;
+}
+template<> __device__ inline int8_t ppl_arithmetic_scalar<Arithmetic_Sub, int8_t>(int8_t a, int8_t b) {
+    return a - b;
+}
+template<> __device__ inline int8_t ppl_arithmetic_scalar<Arithmetic_Mul, int8_t>(int8_t a, int8_t b) {
+    return a * b;
+}
+template<> __device__ inline int8_t ppl_arithmetic_scalar<Arithmetic_Div, int8_t>(int8_t a, int8_t b) {
+    return a / b;
+}
+template<> __device__ inline int8_t ppl_arithmetic_scalar<Arithmetic_Max, int8_t>(int8_t a, int8_t b) {
+    return (a > b) ? a : b;
+}
+template<> __device__ inline int8_t ppl_arithmetic_scalar<Arithmetic_Min, int8_t>(int8_t a, int8_t b) {
+    return (a > b) ? b : a;
+}
+template<> __device__ inline int8_t ppl_arithmetic_scalar<Arithmetic_Pow, int8_t>(int8_t a, int8_t b) {
+    return powf(a ,b);
+}
+
+template<> __device__ inline int8_t ppl_arithmetic_scalar<Arithmetic_PRelu, int8_t>(int8_t a, int8_t b) {
+    int8_t res = a;
     res = (a > 0) ? res : res * b;
     return res;
 }
@@ -540,7 +568,7 @@ ppl::common::RetCode PPLCUDAArithMeticForwardImp(
     uint64_t grid_size = (num_elems + block_size - 1) / block_size;
     int axis = 0; bool bidirectional = false;
     int num_broadcast_dims = ppl_get_num_broadcast_dims(input_shape0, input_shape1, axis, bidirectional);
-    
+    //printf("forward \n");
     if (!bidirectional && ((input_shape0->GetDimCount() < 2) || (input_shape1->GetDimCount() < 2))) {
         bool first_shorter = false;
         if (input_shape0->GetElementsIncludingPadding() < input_shape1->GetElementsIncludingPadding()) {
@@ -555,12 +583,14 @@ ppl::common::RetCode PPLCUDAArithMeticForwardImp(
                 stream>>>(num_elems, inner_dim, first_shorter, (const T*)input0, (const T*)input1, (T*)output);
         }
     } else if (num_broadcast_dims == 0) {
+        //printf("no broadcast \n");
         ppl_cukernel_arithmetic_nobroadcast<op_type, T><<<grid_size, block_size, 0,
             stream>>>(num_elems, (const T*)input0, (const T*)input1, (T*)output);
     } else {
         ArithmeticParam param;
         int packed_channel = 1;
         if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8) {
+            //printf("NHWC8 \n");
             if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT16) {
                 // one broadcast (or last dimensions broadcast)
                 if (ppl_feature_broadcast(input_shape0, input_shape1, &axis)) {
@@ -599,6 +629,7 @@ ppl::common::RetCode PPLCUDAArithMeticForwardImp(
             ppl_cukernel_arithmetic<op_type, T><<<grid_size, block_size, 0,
                 stream>>>(num_elems, dim_count, param, (const T*)input0, (const T*)input1, (T*)output);
          } else if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NDARRAY) {
+            //printf("NDARRAY \n");
             if (num_broadcast_dims == 1) {
                 int inner_dim = 1;
                 for(int it = axis + 1; it < dim_count; inner_dim *= output_shape->GetDim(it), ++it);
@@ -653,6 +684,10 @@ ppl::common::RetCode PPLCUDAArithMetic##OPTYPE##ForwardImp( \
         return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, int32_t>(stream, \
             input_shape0, (const int32_t*)input0, input_shape1, \
             (const int32_t*)input1, output_shape, (int32_t*)output); \
+    } else if(output_shape->GetDataType() == ppl::common::DATATYPE_INT8) { \
+        return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, int8_t>(stream, \
+            input_shape0, (const int8_t*)input0, input_shape1, \
+            (const int8_t*)input1, output_shape, (int8_t*)output); \
     } else { \
         return ppl::common::RC_UNSUPPORTED; \
     } \
@@ -689,10 +724,14 @@ ppl::common::RetCode PPLCUDAArithMetic##OPTYPE##ForwardImp( \
         return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, int32_t>(stream, \
             input_shape0, (const int32_t*)input0, input_shape1, \
             (const int32_t*)input1, output_shape, (int32_t*)output); \
+    } else if(output_shape->GetDataType() == ppl::common::DATATYPE_INT8) { \
+        return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, int8_t>(stream, \
+            input_shape0, (const int8_t*)input0, input_shape1, \
+            (const int8_t*)input1, output_shape, (int8_t*)output); \
     } else { \
         return ppl::common::RC_UNSUPPORTED; \
     } \
-}
+} 
 
 INSTANT(Add);
 INSTANT(Sub);

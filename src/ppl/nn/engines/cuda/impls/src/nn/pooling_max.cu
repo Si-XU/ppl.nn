@@ -19,6 +19,7 @@
 #include "ppl/common/types.h"
 #include <cuda_fp16.h>
 #include <float.h>
+#include <stdio.h>
 
 #define HALF_MIN half(-65504)
 #define HALF2_MIN half2(-65504, -65504)
@@ -27,6 +28,20 @@
         (a).x = __hgt((a).x, (b).x) ? (a).x : (b).x; \
         (a).y = __hgt((a).y, (b).y) ? (a).y : (b).y; \
     } while (0)
+#define PPL_CUDA_MAX(a, b) a = a > b ? a : b
+
+__device__ inline float numerical_min(float a){
+    return -FLT_MAX;
+}
+
+__device__ inline int8_t numerical_min(int8_t a){
+    return -128;
+}
+
+__device__ inline half2 numerical_min(half2 a){
+    return HALF2_MIN;
+}
+
 
 template <int TILE_H, int TILE_W>
 __global__ void ppl_cukernel_pooling_max_f3s2_half(
@@ -95,10 +110,10 @@ __global__ void ppl_cukernel_pooling_max_f3s2_half(
 #endif
 }
 
-template <int TILE_H, int TILE_W>
+template <int TILE_H, int TILE_W, typename T>
 __global__ void ppl_cukernel_pooling_max_f3s2(
-    const float* input,
-    float* output,
+    const T* input,
+    T* output,
     int batch,
     int pad_channels,
     int in_height,
@@ -127,13 +142,13 @@ __global__ void ppl_cukernel_pooling_max_f3s2(
     int oy = (tx / partW) * TILE_H;
 
     // register blocking for input
-    float iregs[TILE_H * 2 + 1][TILE_W * 2 + 1];
+    T iregs[TILE_H * 2 + 1][TILE_W * 2 + 1];
     for (int i = 0; i < 2 * TILE_H + 1; i++) {
         for (int j = 0; j < 2 * TILE_W + 1; j++) {
             int iy = oy * 2 + i - pad_height;
             int ix = ox * 2 + j - pad_width;
             bool pred = (iy >= 0 && iy < in_height) && (ix >= 0 && ix < in_width);
-            iregs[i][j] = pred ? input[inOff + iy * in_width + ix] : -FLT_MAX;
+            iregs[i][j] = pred ? input[inOff + iy * in_width + ix] : numerical_min(T(0));
         }
     }
 
@@ -142,7 +157,7 @@ __global__ void ppl_cukernel_pooling_max_f3s2(
       for (int i = 0; i < TILE_H; i++) {
 #pragma unroll TILE_W
         for (int j = 0; j < TILE_W; j++) {
-            float val = iregs[i * 2 + 0][j * 2 + 0];
+            T val = iregs[i * 2 + 0][j * 2 + 0];
             val = (val > iregs[i * 2 + 0][j * 2 + 1]) ? val : iregs[i * 2 + 0][j * 2 + 1];
             val = (val > iregs[i * 2 + 0][j * 2 + 2]) ? val : iregs[i * 2 + 0][j * 2 + 2];
             val = (val > iregs[i * 2 + 1][j * 2 + 0]) ? val : iregs[i * 2 + 1][j * 2 + 0];
@@ -154,6 +169,72 @@ __global__ void ppl_cukernel_pooling_max_f3s2(
 
             if (oy + i < out_height && ox + j < out_width) {
                 output[outOff + (oy + i) * out_width + ox + j] = val;
+            }
+        }
+    }
+}
+
+template <int TILE_H, int TILE_W, typename T>
+__global__ void ppl_cukernel_pooling_max_f3s2(
+    const T* input,
+    T* output,
+    int batch,
+    int pad_channels,
+    int in_height,
+    int in_width,
+    int out_height,
+    int out_width,
+    int kernel_height,
+    int kernel_width,
+    int stride_height,
+    int stride_width,
+    int pad_height,
+    int pad_width,
+    float in_scale,
+    float out_scale)
+{
+    int tx = blockIdx.x * blockDim.x + threadIdx.x;
+    int c = blockIdx.y * blockDim.y + threadIdx.y;
+    int b = blockIdx.z;
+
+    if (c >= pad_channels) return;
+
+    int inOff = (b * pad_channels + c) * in_height * in_width;
+    int outOff = (b * pad_channels + c) * out_height * out_width;
+
+    int partW = (out_width + TILE_W - 1) / TILE_W;
+
+    int ox = (tx % partW) * TILE_W;
+    int oy = (tx / partW) * TILE_H;
+
+    // register blocking for input
+    T iregs[TILE_H * 2 + 1][TILE_W * 2 + 1];
+    for (int i = 0; i < 2 * TILE_H + 1; i++) {
+        for (int j = 0; j < 2 * TILE_W + 1; j++) {
+            int iy = oy * 2 + i - pad_height;
+            int ix = ox * 2 + j - pad_width;
+            bool pred = (iy >= 0 && iy < in_height) && (ix >= 0 && ix < in_width);
+            iregs[i][j] = pred ? input[inOff + iy * in_width + ix] : numerical_min(T(0));
+        }
+    }
+
+      // pooling max & store output
+#pragma unroll TILE_H
+      for (int i = 0; i < TILE_H; i++) {
+#pragma unroll TILE_W
+        for (int j = 0; j < TILE_W; j++) {
+            T val = iregs[i * 2 + 0][j * 2 + 0];
+            val = (val > iregs[i * 2 + 0][j * 2 + 1]) ? val : iregs[i * 2 + 0][j * 2 + 1];
+            val = (val > iregs[i * 2 + 0][j * 2 + 2]) ? val : iregs[i * 2 + 0][j * 2 + 2];
+            val = (val > iregs[i * 2 + 1][j * 2 + 0]) ? val : iregs[i * 2 + 1][j * 2 + 0];
+            val = (val > iregs[i * 2 + 1][j * 2 + 1]) ? val : iregs[i * 2 + 1][j * 2 + 1];
+            val = (val > iregs[i * 2 + 1][j * 2 + 2]) ? val : iregs[i * 2 + 1][j * 2 + 2];
+            val = (val > iregs[i * 2 + 2][j * 2 + 0]) ? val : iregs[i * 2 + 2][j * 2 + 0];
+            val = (val > iregs[i * 2 + 2][j * 2 + 1]) ? val : iregs[i * 2 + 2][j * 2 + 1];
+            val = (val > iregs[i * 2 + 2][j * 2 + 2]) ? val : iregs[i * 2 + 2][j * 2 + 2];
+
+            if (oy + i < out_height && ox + j < out_width) {
+                output[outOff + (oy + i) * out_width + ox + j] = round((float(val) * in_scale) / out_scale);
             }
         }
     }
@@ -225,10 +306,10 @@ __global__ void ppl_cukernel_pooling_max_f3s1_half(
 #endif
 }
 
-template <int TILE_H, int TILE_W>
+template <int TILE_H, int TILE_W, typename T>
 __global__ void ppl_cukernel_pooling_max_f3s1(
-    const float* input,
-    float* output,
+    const T* input,
+    T* output,
     int batch,
     int pad_channels,
     int in_height,
@@ -251,7 +332,7 @@ __global__ void ppl_cukernel_pooling_max_f3s1(
     int inOff = (b * pad_channels + c) * in_height * in_width;
     int outOff = (b * pad_channels + c) * out_height * out_width;
 
-    float iregs[TILE_H + 2][TILE_W + 2];
+    T iregs[TILE_H + 2][TILE_W + 2];
 
     int partW = (out_width + TILE_W - 1) / TILE_W;
 
@@ -264,14 +345,14 @@ __global__ void ppl_cukernel_pooling_max_f3s1(
             int iy = oy + i - pad_height;
             int ix = ox + j - pad_width;
             bool pred = (iy >= 0 && iy < in_height) && (ix >= 0 && ix < in_width);
-            iregs[i][j] = pred ? input[inOff + iy * in_width + ix] : -FLT_MAX;
+            iregs[i][j] = pred ? input[inOff + iy * in_width + ix] : numerical_min(T(0));
         }
     }
 
     // pooling max & store output
     for (int i = 0; i < TILE_H; i++) {
         for (int j = 0; j < TILE_W; j++) {
-            float val = iregs[i + 0][j + 0];
+            T val = iregs[i + 0][j + 0];
             val = (val > iregs[i + 0][j + 1]) ? val : iregs[i + 0][j + 1];
             val = (val > iregs[i + 0][j + 2]) ? val : iregs[i + 0][j + 2];
             val = (val > iregs[i + 1][j + 0]) ? val : iregs[i + 1][j + 0];
@@ -283,6 +364,71 @@ __global__ void ppl_cukernel_pooling_max_f3s1(
 
             if (oy + i < out_height && ox + j < out_width) {
                 output[outOff + (oy + i) * out_width + ox + j] = val;
+            }
+        }
+    }
+}
+
+template <int TILE_H, int TILE_W, typename T>
+__global__ void ppl_cukernel_pooling_max_f3s1(
+    const T* input,
+    T* output,
+    int batch,
+    int pad_channels,
+    int in_height,
+    int in_width,
+    int out_height,
+    int out_width,
+    int kernel_height,
+    int kernel_width,
+    int stride_height,
+    int stride_width,
+    int pad_height,
+    int pad_width,
+    float in_scale,
+    float out_scale)
+{
+    int tx = blockIdx.x * blockDim.x + threadIdx.x;
+    int c = blockIdx.y * blockDim.y + threadIdx.y;
+    int b = blockIdx.z;
+
+    if (c >= pad_channels) return;
+
+    int inOff = (b * pad_channels + c) * in_height * in_width;
+    int outOff = (b * pad_channels + c) * out_height * out_width;
+
+    T iregs[TILE_H + 2][TILE_W + 2];
+
+    int partW = (out_width + TILE_W - 1) / TILE_W;
+
+    int ox = (tx % partW) * TILE_W;
+    int oy = (tx / partW) * TILE_H;
+
+    // register blocking for input
+    for (int i = 0; i < TILE_H + 2; i++) {
+        for (int j = 0; j < TILE_W + 2; j++) {
+            int iy = oy + i - pad_height;
+            int ix = ox + j - pad_width;
+            bool pred = (iy >= 0 && iy < in_height) && (ix >= 0 && ix < in_width);
+            iregs[i][j] = pred ? input[inOff + iy * in_width + ix] : numerical_min(T(0));
+        }
+    }
+
+    // pooling max & store output
+    for (int i = 0; i < TILE_H; i++) {
+        for (int j = 0; j < TILE_W; j++) {
+            T val = iregs[i + 0][j + 0];
+            val = (val > iregs[i + 0][j + 1]) ? val : iregs[i + 0][j + 1];
+            val = (val > iregs[i + 0][j + 2]) ? val : iregs[i + 0][j + 2];
+            val = (val > iregs[i + 1][j + 0]) ? val : iregs[i + 1][j + 0];
+            val = (val > iregs[i + 1][j + 1]) ? val : iregs[i + 1][j + 1];
+            val = (val > iregs[i + 1][j + 2]) ? val : iregs[i + 1][j + 2];
+            val = (val > iregs[i + 2][j + 0]) ? val : iregs[i + 2][j + 0];
+            val = (val > iregs[i + 2][j + 1]) ? val : iregs[i + 2][j + 1];
+            val = (val > iregs[i + 2][j + 2]) ? val : iregs[i + 2][j + 2];
+
+            if (oy + i < out_height && ox + j < out_width) {
+                output[outOff + (oy + i) * out_width + ox + j] = round((float(val) * in_scale) / out_scale);
             }
         }
     }
@@ -414,10 +560,10 @@ __global__ void ppl_cukernel_pooling_max_common_half(
 #endif
 }
 
-template <int TILE_H, int TILE_W>
+template <int TILE_H, int TILE_W, typename T>
 __global__ void ppl_cukernel_pooling_max_common(
-    const float* input,
-    float* output,
+    const T* input,
+    T* output,
     int batch,
     int pad_channels,
     int in_height,
@@ -449,7 +595,7 @@ __global__ void ppl_cukernel_pooling_max_common(
     for (int i = 0; i < TILE_H; i++) {
         for (int j = 0; j < TILE_W; j++) {
 
-            float res = -FLT_MAX;
+            T res = numerical_min(T(0));
 
             // read input
             for (int fy = 0; fy < kernel_height; fy++) {
@@ -457,7 +603,7 @@ __global__ void ppl_cukernel_pooling_max_common(
                 int iy = (oy + i) * stride_height + fy - pad_height;
                 int ix = (ox + j) * stride_width + fx - pad_width;
                 bool pred = (iy >= 0 && iy < in_height) && (ix >= 0 && ix < in_width);
-                float ival = pred ? input[inOff + iy * in_width + ix] : -FLT_MAX;
+                T ival = pred ? input[inOff + iy * in_width + ix] : numerical_min(T(0));
 
                 res = (res > ival) ? res : ival;
                 }
@@ -471,10 +617,69 @@ __global__ void ppl_cukernel_pooling_max_common(
     }
 }
 
-template <int TILE_H, int TILE_W>
+template <int TILE_H, int TILE_W, typename T>
 __global__ void ppl_cukernel_pooling_max_common(
-    const float* input,
-    float* output,
+    const T* input,
+    T* output,
+    int batch,
+    int pad_channels,
+    int in_height,
+    int in_width,
+    int out_height,
+    int out_width,
+    int kernel_height,
+    int kernel_width,
+    int stride_height,
+    int stride_width,
+    int pad_height,
+    int pad_width,
+    float in_scale,
+    float out_scale)
+{
+    int tx = blockIdx.x * blockDim.x + threadIdx.x;
+    int c = blockIdx.y * blockDim.y + threadIdx.y;
+    int b = blockIdx.z;
+
+    if (c >= pad_channels) return;
+
+    int inOff = (b * pad_channels + c) * in_height * in_width;
+    int outOff = (b * pad_channels + c) * out_height * out_width;
+
+    int partW = (out_width + TILE_W - 1) / TILE_W;
+
+    int ox = (tx % partW) * TILE_W;
+    int oy = (tx / partW) * TILE_H;
+
+    // register blocking for input
+    for (int i = 0; i < TILE_H; i++) {
+        for (int j = 0; j < TILE_W; j++) {
+
+            T res = numerical_min(T(0));
+
+            // read input
+            for (int fy = 0; fy < kernel_height; fy++) {
+                for (int fx = 0; fx < kernel_width; fx++) {
+                int iy = (oy + i) * stride_height + fy - pad_height;
+                int ix = (ox + j) * stride_width + fx - pad_width;
+                bool pred = (iy >= 0 && iy < in_height) && (ix >= 0 && ix < in_width);
+                T ival = pred ? input[inOff + iy * in_width + ix] : numerical_min(T(0));
+
+                res = (res > ival) ? res : ival;
+                }
+            }
+
+            // store output
+            if (oy + i < out_height && ox + j < out_width) {
+                output[outOff + (oy + i) * out_width + ox + j] = round((float(res) * in_scale) / out_scale);
+            }
+        }
+    }
+}
+
+template <int TILE_H, int TILE_W, typename T>
+__global__ void ppl_cukernel_pooling_max_common(
+    const T* input,
+    T* output,
     int64_t *indices,
     int batch,
     int pad_channels,
@@ -507,7 +712,7 @@ __global__ void ppl_cukernel_pooling_max_common(
     for (int i = 0; i < TILE_H; i++) {
         for (int j = 0; j < TILE_W; j++) {
 
-            float res = -FLT_MAX;
+            T res = numerical_min(T(0));
             int64_t in_index = 0;
 
             // read input
@@ -516,7 +721,7 @@ __global__ void ppl_cukernel_pooling_max_common(
                     int iy = (oy + i) * stride_height + fy - pad_height;
                     int ix = (ox + j) * stride_width + fx - pad_width;
                     bool pred = (iy >= 0 && iy < in_height) && (ix >= 0 && ix < in_width);
-                    float ival = pred ? input[inOff + iy * in_width + ix] : -FLT_MAX;
+                    T ival = pred ? input[inOff + iy * in_width + ix] : numerical_min(T(0));
                     if (res < ival) {
                         res = ival;
                         in_index = inOff + iy * in_width + ix;
@@ -528,6 +733,71 @@ __global__ void ppl_cukernel_pooling_max_common(
             if (oy + i < out_height && ox + j < out_width) {
                 int64_t out_index = outOff + (oy + i) * out_width + ox + j;
                 output[out_index] = res;
+                indices[out_index] = in_index;
+            }
+        }
+    }
+}
+
+template <int TILE_H, int TILE_W, typename T>
+__global__ void ppl_cukernel_pooling_max_common(
+    const T* input,
+    T* output,
+    int64_t *indices,
+    int batch,
+    int pad_channels,
+    int in_height,
+    int in_width,
+    int out_height,
+    int out_width,
+    int kernel_height,
+    int kernel_width,
+    int stride_height,
+    int stride_width,
+    int pad_height,
+    int pad_width,
+    float in_scale,
+    float out_scale)
+{
+    int tx = blockIdx.x * blockDim.x + threadIdx.x;
+    int c = blockIdx.y * blockDim.y + threadIdx.y;
+    int b = blockIdx.z;
+
+    if (c >= pad_channels) return;
+
+    int inOff = (b * pad_channels + c) * in_height * in_width;
+    int outOff = (b * pad_channels + c) * out_height * out_width;
+
+    int partW = (out_width + TILE_W - 1) / TILE_W;
+
+    int ox = (tx % partW) * TILE_W;
+    int oy = (tx / partW) * TILE_H;
+
+    // register blocking for input
+    for (int i = 0; i < TILE_H; i++) {
+        for (int j = 0; j < TILE_W; j++) {
+
+            T res = numerical_min(T(0));
+            int64_t in_index = 0;
+
+            // read input
+            for (int fy = 0; fy < kernel_height; fy++) {
+                for (int fx = 0; fx < kernel_width; fx++) {
+                    int iy = (oy + i) * stride_height + fy - pad_height;
+                    int ix = (ox + j) * stride_width + fx - pad_width;
+                    bool pred = (iy >= 0 && iy < in_height) && (ix >= 0 && ix < in_width);
+                    T ival = pred ? input[inOff + iy * in_width + ix] : numerical_min(T(0));
+                    if (res < ival) {
+                        res = ival;
+                        in_index = inOff + iy * in_width + ix;
+                    }
+                }
+            }
+
+            // store output
+            if (oy + i < out_height && ox + j < out_width) {
+                int64_t out_index = outOff + (oy + i) * out_width + ox + j;
+                output[out_index] = round((float(res) * in_scale) / out_scale);
                 indices[out_index] = in_index;
             }
         }
@@ -727,6 +997,372 @@ __global__ void ppl_cukernel_pooling_max_common_half2_NHWC8(
 #endif
 }
 
+template <int TILE_H, int TILE_W, typename T>
+__global__ void ppl_cukernel_pooling_max_common_NHWC8(
+    const T* input,
+    T* output,
+    int batch,
+    int pad_channels,
+    int in_height,
+    int in_width,
+    int out_height,
+    int out_width,
+    int kernel_height,
+    int kernel_width,
+    int stride_height,
+    int stride_width,
+    int padding_height,
+    int padding_width)
+{
+    int c_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (c_idx >= pad_channels)
+        return;
+    int hw_idx = blockIdx.y * blockDim.y + threadIdx.y;
+    int b_idx  = blockIdx.z;
+
+    int in_off  = b_idx * in_height * in_width * pad_channels + c_idx;
+    int out_off = b_idx * out_height * out_width * pad_channels + c_idx;
+
+    int partW = (out_width + TILE_W - 1) / TILE_W;
+    int ox    = (hw_idx % partW) * TILE_W;
+    int oy    = (hw_idx / partW) * TILE_H;
+
+    // pooling
+    for (int i = 0; i < TILE_H; i++) {
+        for (int j = 0; j < TILE_W; j++) {
+            T res = numerical_min(T(0));
+            for (int ky = 0; ky < kernel_height; ky++) {
+                for (int kx = 0; kx < kernel_width; kx++) {
+                    // load input
+                    int ix        = (ox + j) * stride_width - padding_width + kx;
+                    int iy        = (oy + i) * stride_height - padding_height + ky;
+                    bool pred     = (ix >= 0 && ix < in_width) && (iy >= 0 && iy < in_height);
+                    int in_off_hw = (iy * in_width + ix) * pad_channels;
+                    T ival    = pred ? input[in_off + in_off_hw] : numerical_min(T(0));
+                    res = res > ival ? res : ival;
+                }
+            }
+            if (oy + i < out_height && ox + j < out_width) {
+                int out_off_h                           = (oy + i) * out_width * pad_channels;
+                int out_off_w                           = (ox + j) * pad_channels;
+                output[out_off + out_off_h + out_off_w] = res;
+            }
+        }
+    }
+}
+
+template <int TILE_H, int TILE_W, typename T>
+__global__ void ppl_cukernel_pooling_max_common_NHWC8(
+    const T* input,
+    T* output,
+    int64_t* indices,
+    int batch,
+    int pad_channels,
+    int in_height,
+    int in_width,
+    int out_height,
+    int out_width,
+    int kernel_height,
+    int kernel_width,
+    int stride_height,
+    int stride_width,
+    int padding_height,
+    int padding_width)
+{
+    int c_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (c_idx >= pad_channels)
+        return;
+    int hw_idx = blockIdx.y * blockDim.y + threadIdx.y;
+    int b_idx  = blockIdx.z;
+
+    int in_off  = b_idx * in_height * in_width * pad_channels + c_idx;
+    int out_off = b_idx * out_height * out_width * pad_channels + c_idx;
+
+    int partW = (out_width + TILE_W - 1) / TILE_W;
+    int ox    = (hw_idx % partW) * TILE_W;
+    int oy    = (hw_idx / partW) * TILE_H;
+
+    // pooling
+    for (int i = 0; i < TILE_H; i++) {
+        for (int j = 0; j < TILE_W; j++) {
+            T res = numerical_min(T(0));
+            int64_t in_index = 0;
+            for (int ky = 0; ky < kernel_height; ky++) {
+                for (int kx = 0; kx < kernel_width; kx++) {
+                    // load input
+                    int ix        = (ox + j) * stride_width - padding_width + kx;
+                    int iy        = (oy + i) * stride_height - padding_height + ky;
+                    bool pred     = (ix >= 0 && ix < in_width) && (iy >= 0 && iy < in_height);
+                    int in_off_hw = (iy * in_width + ix) * pad_channels;
+                    T ival    = pred ? input[in_off + in_off_hw] : numerical_min(T(0));
+                    if(res < ival) {
+                        res = ival;
+                        in_index = in_off + in_off_hw;
+                    }
+                }
+            }
+            if (oy + i < out_height && ox + j < out_width) {
+                int out_off_h                           = (oy + i) * out_width * pad_channels;
+                int out_off_w                           = (ox + j) * pad_channels;
+                output[out_off + out_off_h + out_off_w] = res;
+                indices[out_off + out_off_h + out_off_w] = in_index;
+            }
+        }
+    }
+}
+
+template <int TILE_H, int TILE_W, typename T>
+__global__ void ppl_cukernel_pooling_max_common_NHWC8(
+    const T* input,
+    T* output,
+    int batch,
+    int pad_channels,
+    int in_height,
+    int in_width,
+    int out_height,
+    int out_width,
+    int kernel_height,
+    int kernel_width,
+    int stride_height,
+    int stride_width,
+    int padding_height,
+    int padding_width,
+    float in_scale,
+    float out_scale)
+{
+    int c_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (c_idx >= pad_channels)
+        return;
+    int hw_idx = blockIdx.y * blockDim.y + threadIdx.y;
+    int b_idx  = blockIdx.z;
+
+    int in_off  = b_idx * in_height * in_width * pad_channels + c_idx;
+    int out_off = b_idx * out_height * out_width * pad_channels + c_idx;
+
+    int partW = (out_width + TILE_W - 1) / TILE_W;
+    int ox    = (hw_idx % partW) * TILE_W;
+    int oy    = (hw_idx / partW) * TILE_H;
+
+    // pooling
+    for (int i = 0; i < TILE_H; i++) {
+        for (int j = 0; j < TILE_W; j++) {
+            T res = numerical_min(T(0));
+            for (int ky = 0; ky < kernel_height; ky++) {
+                for (int kx = 0; kx < kernel_width; kx++) {
+                    // load input
+                    int ix        = (ox + j) * stride_width - padding_width + kx;
+                    int iy        = (oy + i) * stride_height - padding_height + ky;
+                    bool pred     = (ix >= 0 && ix < in_width) && (iy >= 0 && iy < in_height);
+                    int in_off_hw = (iy * in_width + ix) * pad_channels;
+                    T ival    = pred ? input[in_off + in_off_hw] : numerical_min(T(0));
+                    res = res > ival ? res : ival;
+                }
+            }
+            if (oy + i < out_height && ox + j < out_width) {
+                int out_off_h                           = (oy + i) * out_width * pad_channels;
+                int out_off_w                           = (ox + j) * pad_channels;
+                output[out_off + out_off_h + out_off_w] = round((float(res) * in_scale) / out_scale);
+            }
+        }
+    }
+}
+
+template <int TILE_H, int TILE_W, typename T>
+__global__ void ppl_cukernel_pooling_max_common_NHWC8(
+    const T* input,
+    T* output,
+    int64_t* indices,
+    int batch,
+    int pad_channels,
+    int in_height,
+    int in_width,
+    int out_height,
+    int out_width,
+    int kernel_height,
+    int kernel_width,
+    int stride_height,
+    int stride_width,
+    int padding_height,
+    int padding_width,
+    float in_scale,
+    float out_scale)
+{
+    int c_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (c_idx >= pad_channels)
+        return;
+    int hw_idx = blockIdx.y * blockDim.y + threadIdx.y;
+    int b_idx  = blockIdx.z;
+
+    int in_off  = b_idx * in_height * in_width * pad_channels + c_idx;
+    int out_off = b_idx * out_height * out_width * pad_channels + c_idx;
+
+    int partW = (out_width + TILE_W - 1) / TILE_W;
+    int ox    = (hw_idx % partW) * TILE_W;
+    int oy    = (hw_idx / partW) * TILE_H;
+
+    // pooling
+    for (int i = 0; i < TILE_H; i++) {
+        for (int j = 0; j < TILE_W; j++) {
+            T res = numerical_min(T(0));
+            int64_t in_index = 0;
+            for (int ky = 0; ky < kernel_height; ky++) {
+                for (int kx = 0; kx < kernel_width; kx++) {
+                    // load input
+                    int ix        = (ox + j) * stride_width - padding_width + kx;
+                    int iy        = (oy + i) * stride_height - padding_height + ky;
+                    bool pred     = (ix >= 0 && ix < in_width) && (iy >= 0 && iy < in_height);
+                    int in_off_hw = (iy * in_width + ix) * pad_channels;
+                    T ival    = pred ? input[in_off + in_off_hw] : numerical_min(T(0));
+                    if(res < ival) {
+                        res = ival;
+                        in_index = in_off + in_off_hw;
+                    }
+                }
+            }
+            if (oy + i < out_height && ox + j < out_width) {
+                int out_off_h                           = (oy + i) * out_width * pad_channels;
+                int out_off_w                           = (ox + j) * pad_channels;
+                output[out_off + out_off_h + out_off_w] = round((float(res) * in_scale) / out_scale);
+                indices[out_off + out_off_h + out_off_w] = in_index;
+            }
+        }
+    }
+}
+
+template <int TILE_H, int TILE_W, typename T>
+__global__ void ppl_cukernel_pooling_max_f3s2_NHWC8(
+    const T* input,
+    T* output,
+    int batch,
+    int pad_channels,
+    int in_height,
+    int in_width,
+    int out_height,
+    int out_width,
+    int kernel_height,
+    int kernel_width,
+    int stride_height,
+    int stride_width,
+    int padding_height,
+    int padding_width,
+    float in_scale,
+    float out_scale)
+{
+    int c_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (c_idx >= pad_channels)
+        return;
+    int hw_idx = blockIdx.y * blockDim.y + threadIdx.y;
+    int b_idx  = blockIdx.z;
+
+    int in_off  = b_idx * in_height * in_width * pad_channels + c_idx;
+    int out_off = b_idx * out_height * out_width * pad_channels + c_idx;
+
+    int partW = (out_width + TILE_W - 1) / TILE_W;
+    int ox    = (hw_idx % partW) * TILE_W;
+    int oy    = (hw_idx / partW) * TILE_H;
+
+    // register blocking for input
+    T iregs[TILE_H * 2 + 1][TILE_W * 2 + 1];
+    for (int i = 0; i < 2 * TILE_H + 1; i++) {
+        for (int j = 0; j < 2 * TILE_W + 1; j++) {
+            int iy        = oy * 2 + i - padding_height;
+            int ix        = ox * 2 + j - padding_width;
+            bool pred     = (iy >= 0 && iy < in_height) && (ix >= 0 && ix < in_width);
+            int in_off_hw = (iy * in_width + ix) * pad_channels;
+            T ival    = pred ? input[in_off + in_off_hw] : numerical_min(T(0));
+            iregs[i][j]   = ival;
+        }
+    }
+
+    // pooling max & store output
+#pragma unroll TILE_H
+    for (int i = 0; i < TILE_H; i++) {
+        for (int j = 0; j < TILE_W; j++) {
+            T val = iregs[i * 2 + 0][j * 2 + 0];
+            PPL_CUDA_MAX(val, iregs[i * 2 + 0][j * 2 + 1]);
+            PPL_CUDA_MAX(val, iregs[i * 2 + 0][j * 2 + 2]);
+            PPL_CUDA_MAX(val, iregs[i * 2 + 1][j * 2 + 0]);
+            PPL_CUDA_MAX(val, iregs[i * 2 + 1][j * 2 + 1]);
+            PPL_CUDA_MAX(val, iregs[i * 2 + 1][j * 2 + 2]);
+            PPL_CUDA_MAX(val, iregs[i * 2 + 2][j * 2 + 0]);
+            PPL_CUDA_MAX(val, iregs[i * 2 + 2][j * 2 + 1]);
+            PPL_CUDA_MAX(val, iregs[i * 2 + 2][j * 2 + 2]);
+
+            if (oy + i < out_height && ox + j < out_width) {
+                int out_off_h                           = (oy + i) * out_width * pad_channels;
+                int out_off_w                           = (ox + j) * pad_channels;
+                output[out_off + out_off_h + out_off_w] = round((float(val) * in_scale) / out_scale);
+            }
+        }
+    }
+}
+
+template <int TILE_H, int TILE_W, typename T>
+__global__ void ppl_cukernel_pooling_max_f3s1_NHWC8(
+    const T* input,
+    T* output,
+    int batch,
+    int pad_channels,
+    int in_height,
+    int in_width,
+    int out_height,
+    int out_width,
+    int kernel_height,
+    int kernel_width,
+    int stride_height,
+    int stride_width,
+    int padding_height,
+    int padding_width,
+    float in_scale,
+    float out_scale)
+{
+    int c_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (c_idx >= pad_channels)
+        return;
+    int hw_idx = blockIdx.y * blockDim.y + threadIdx.y;
+    int b_idx  = blockIdx.z;
+
+    int in_off  = b_idx * in_height * in_width * pad_channels + c_idx;
+    int out_off = b_idx * out_height * out_width * pad_channels + c_idx;
+
+    int partW = (out_width + TILE_W - 1) / TILE_W;
+    int ox    = (hw_idx % partW) * TILE_W;
+    int oy    = (hw_idx / partW) * TILE_H;
+
+    // register blocking for input
+    T iregs[TILE_H + 2][TILE_W + 2];
+    for (int i = 0; i < TILE_H + 2; i++) {
+        for (int j = 0; j < TILE_W + 2; j++) {
+            int iy        = oy + i - padding_height;
+            int ix        = ox + j - padding_width;
+            bool pred     = (iy >= 0 && iy < in_height) && (ix >= 0 && ix < in_width);
+            int in_off_hw = (iy * in_width + ix) * pad_channels;
+            T ival    = pred ? input[in_off + in_off_hw] : numerical_min(T(0));
+            iregs[i][j]   = ival;
+        }
+    }
+    // pooling max & store output
+    for (int i = 0; i < TILE_H; i++) {
+        for (int j = 0; j < TILE_W; j++) {
+            T val = iregs[i + 0][j + 0];
+            PPL_CUDA_MAX(val, iregs[i + 0][j + 1]);
+            PPL_CUDA_MAX(val, iregs[i + 0][j + 2]);
+            PPL_CUDA_MAX(val, iregs[i + 1][j + 0]);
+            PPL_CUDA_MAX(val, iregs[i + 1][j + 1]);
+            PPL_CUDA_MAX(val, iregs[i + 1][j + 2]);
+            PPL_CUDA_MAX(val, iregs[i + 2][j + 0]);
+            PPL_CUDA_MAX(val, iregs[i + 2][j + 1]);
+            PPL_CUDA_MAX(val, iregs[i + 2][j + 2]);
+
+            if (oy + i < out_height && ox < out_width) {
+                int out_off_h                           = (oy + i) * out_width * pad_channels;
+                int out_off_w                           = (ox + j) * pad_channels;
+                output[out_off + out_off_h + out_off_w] = round((float(val) * in_scale) / out_scale);
+            }
+        }
+    }
+}
+
 ppl::common::RetCode PPLCUDAMaxPoolingForwardImpFp16(
     cudaStream_t stream,
     ppl::nn::TensorShape* input_shape,
@@ -899,17 +1535,17 @@ ppl::common::RetCode PPLCUDAMaxPoolingForwardImpFp32(
         if (f3 && s1) {
             partH = (out_height + 5) / 6;
             dim_grid.x = (partH * partW + dim_block.x - 1) / dim_block.x;
-            ppl_cukernel_pooling_max_f3s1<6, 1><<<dim_grid, dim_block, 0, stream>>>(
+            ppl_cukernel_pooling_max_f3s1<6, 1, float><<<dim_grid, dim_block, 0, stream>>>(
               input, output, batch, pad_channels, in_height, in_width, out_height,
               out_width, kernel_height, kernel_width, stride_height, stride_width,
               pad_height, pad_width);
         } else if (f3 && s2) {
-            ppl_cukernel_pooling_max_f3s2<4, 1><<<dim_grid, dim_block, 0, stream>>>(
+            ppl_cukernel_pooling_max_f3s2<4, 1, float><<<dim_grid, dim_block, 0, stream>>>(
                 input, output, batch, pad_channels, in_height, in_width, out_height,
                 out_width, kernel_height, kernel_width, stride_height, stride_width,
                 pad_height, pad_width);
         } else {
-            ppl_cukernel_pooling_max_common<4, 1><<<dim_grid, dim_block, 0, stream>>>(
+            ppl_cukernel_pooling_max_common<4, 1, float><<<dim_grid, dim_block, 0, stream>>>(
                 input, output, batch, pad_channels, in_height, in_width, out_height,
                 out_width, kernel_height, kernel_width, stride_height, stride_width,
                 pad_height, pad_width);
@@ -948,14 +1584,167 @@ ppl::common::RetCode PPLCUDAMaxPoolingForwardImpFp32(
         dim3 dim_block(32, 4, 1);
         dim3 dim_grid;
         dim_grid.x = (partH * partW + dim_block.x - 1) / dim_block.x;
-        dim_grid.y = (pad_channels + dim_block.y - 1) / dim_block.y;
+        dim_grid.y = (pad_channels + dim_block.y - 1) / dim_block.y; //per thread per chl maxpool
         dim_grid.z = batch;
 
-        ppl_cukernel_pooling_max_common<4, 1><<<dim_grid, dim_block, 0, stream>>>(
+        ppl_cukernel_pooling_max_common<4, 1, float><<<dim_grid, dim_block, 0, stream>>>(
             input, output, indices, batch, pad_channels, in_height, in_width, out_height,
             out_width, kernel_height, kernel_width, stride_height, stride_width,
             pad_height, pad_width);
         return ppl::common::RC_SUCCESS;
+    } else {
+        return ppl::common::RC_UNSUPPORTED;
+    }
+}
+
+ppl::common::RetCode PPLCUDAMaxPoolingForwardImpInt8(
+    cudaStream_t stream,
+    ppl::nn::TensorShape* input_shape,
+    const int8_t* input,
+    ppl::nn::TensorShape* output_shape,
+    int8_t* output,
+    int kernel_height,
+    int kernel_width,
+    int stride_height,
+    int stride_width,
+    int pad_height,
+    int pad_width,
+    float in_scale,
+    float out_scale)
+{
+    int batch = output_shape->GetDim(0);
+    int channels = output_shape->GetDim(1);
+    int pad_channels = output_shape->GetDim(1) + output_shape->GetPadding1(1);
+    int out_height = output_shape->GetDim(2); int out_width = output_shape->GetDim(3);
+    int in_height = input_shape->GetDim(2); int in_width = input_shape->GetDim(3);
+
+    bool f3 = (kernel_height == 3) && (kernel_width == 3);
+    bool f2 = (kernel_height == 2) && (kernel_width == 2);
+    bool s1 = (stride_height == 1) && (stride_width == 1);
+    bool s2 = (stride_height == 2) && (stride_width == 2);
+
+    if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NDARRAY) {
+        // thread layout
+        int partH = (out_height + 3) / 4;
+        int partW = (out_width + 0) / 1;
+        dim3 dim_block(32, 4, 1);
+        dim3 dim_grid;
+        dim_grid.x = (partH * partW + dim_block.x - 1) / dim_block.x;
+        dim_grid.y = (pad_channels + dim_block.y - 1) / dim_block.y;
+        dim_grid.z = batch;
+
+        if (f3 && s1) {
+            partH = (out_height + 5) / 6;
+            dim_grid.x = (partH * partW + dim_block.x - 1) / dim_block.x;
+            ppl_cukernel_pooling_max_f3s1<6, 1, int8_t><<<dim_grid, dim_block, 0, stream>>>(
+              input, output, batch, pad_channels, in_height, in_width, out_height,
+              out_width, kernel_height, kernel_width, stride_height, stride_width,
+              pad_height, pad_width, in_scale, out_scale);
+        } else if (f3 && s2) {
+            ppl_cukernel_pooling_max_f3s2<4, 1, int8_t><<<dim_grid, dim_block, 0, stream>>>(
+                input, output, batch, pad_channels, in_height, in_width, out_height,
+                out_width, kernel_height, kernel_width, stride_height, stride_width,
+                pad_height, pad_width, in_scale, out_scale);
+        } else {
+            ppl_cukernel_pooling_max_common<4, 1, int8_t><<<dim_grid, dim_block, 0, stream>>>(
+                input, output, batch, pad_channels, in_height, in_width, out_height,
+                out_width, kernel_height, kernel_width, stride_height, stride_width,
+                pad_height, pad_width, in_scale, out_scale);
+        }
+        return ppl::common::RC_SUCCESS;
+    } else if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8) {
+        int partH             = (out_height + 3) / 4;
+        int partW             = (out_width + 0) / 1;
+        dim3 dim_block(32, 8, 1);
+        dim3 dim_grid;
+        dim_grid.x = (pad_channels + dim_block.x - 1) / dim_block.x;
+        dim_grid.y = (partH * partW + dim_block.y - 1) / dim_block.y;
+        dim_grid.z = batch;
+        if (f3 && s1) {
+            ppl_cukernel_pooling_max_f3s1_NHWC8<4, 1, int8_t><<<dim_grid,
+                                                              dim_block,
+                                                              0,
+                                                              stream>>>((const int8_t*)input, (int8_t*)output, batch, pad_channels, in_height, in_width, out_height, out_width, kernel_height, kernel_width, stride_height, stride_width, pad_height, pad_width, in_scale, out_scale);
+        } else if (f3 && s2) {
+            ppl_cukernel_pooling_max_f3s2_NHWC8<4, 1, int8_t><<<dim_grid,
+                                                              dim_block,
+                                                              0,
+                                                              stream>>>((const int8_t*)input, (int8_t*)output, batch, pad_channels, in_height, in_width, out_height, out_width, kernel_height, kernel_width, stride_height, stride_width, pad_height, pad_width, in_scale, out_scale);
+        } else if (f2 && s2) {
+            int partH             = out_height;
+            int partW             = out_width;
+            dim3 dim_block(32, 8, 1);
+            dim3 dim_grid;
+            dim_grid.x = (pad_channels + dim_block.x - 1) / dim_block.x;
+            dim_grid.y = (partH * partW + dim_block.y - 1) / dim_block.y;
+            dim_grid.z = batch;
+            ppl_cukernel_pooling_max_common_NHWC8<1, 1, int8_t><<<dim_grid,
+                                                                dim_block,
+                                                                0,
+                                                                stream>>>((const int8_t*)input, (int8_t*)output, batch, pad_channels, in_height, in_width, out_height, out_width, kernel_height, kernel_width, stride_height, stride_width, pad_height, pad_width, in_scale, out_scale);
+        } else {
+            ppl_cukernel_pooling_max_common_NHWC8<4, 1, int8_t><<<dim_grid,
+                                                                dim_block,
+                                                                0,
+                                                                stream>>>((const int8_t*)input, (int8_t*)output, batch, pad_channels, in_height, in_width, out_height, out_width, kernel_height, kernel_width, stride_height, stride_width, pad_height, pad_width, in_scale, out_scale);
+        }
+        return ppl::common::RC_SUCCESS;
+    } else {
+        return ppl::common::RC_UNSUPPORTED;
+    }
+}
+
+ppl::common::RetCode PPLCUDAMaxPoolingForwardImpInt8(
+    cudaStream_t stream,
+    ppl::nn::TensorShape* input_shape,
+    const int8_t* input,
+    ppl::nn::TensorShape* output_shape,
+    int8_t* output,
+    ppl::nn::TensorShape* indices_shape,
+    int64_t* indices,
+    int kernel_height,
+    int kernel_width,
+    int stride_height,
+    int stride_width,
+    int pad_height,
+    int pad_width,
+    float in_scale,
+    float out_scale)
+{
+    int batch = output_shape->GetDim(0);
+    int channels = output_shape->GetDim(1);
+    int pad_channels = output_shape->GetDim(1) + output_shape->GetPadding1(1);
+    int out_height = output_shape->GetDim(2); int out_width = output_shape->GetDim(3);
+    int in_height = input_shape->GetDim(2); int in_width = input_shape->GetDim(3);
+
+    if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NDARRAY) {
+        // thread layout
+        int partH = (out_height + 3) / 4;
+        int partW = (out_width + 0) / 1;
+        dim3 dim_block(32, 4, 1);
+        dim3 dim_grid;
+        dim_grid.x = (partH * partW + dim_block.x - 1) / dim_block.x;
+        dim_grid.y = (pad_channels + dim_block.y - 1) / dim_block.y; //per thread per chl maxpool
+        dim_grid.z = batch;
+
+        ppl_cukernel_pooling_max_common<4, 1, int8_t><<<dim_grid, dim_block, 0, stream>>>(
+            input, output, indices, batch, pad_channels, in_height, in_width, out_height,
+            out_width, kernel_height, kernel_width, stride_height, stride_width,
+            pad_height, pad_width, in_scale, out_scale);
+        return ppl::common::RC_SUCCESS;
+    } else if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8) {
+            int partH             = out_height;
+            int partW             = out_width;
+            dim3 dim_block(32, 8, 1);
+            dim3 dim_grid;
+            dim_grid.x = (pad_channels + dim_block.x - 1) / dim_block.x;
+            dim_grid.y = (partH * partW + dim_block.y - 1) / dim_block.y;
+            dim_grid.z = batch;
+            ppl_cukernel_pooling_max_common_NHWC8<1, 1, int8_t><<<dim_grid,
+                                                                dim_block,
+                                                                0,
+                                                                stream>>>((const int8_t*)input, (int8_t*)output, indices, batch, pad_channels, in_height, in_width, out_height, out_width, kernel_height, kernel_width, stride_height, stride_width, pad_height, pad_width, in_scale, out_scale);
+    return ppl::common::RC_SUCCESS;
     } else {
         return ppl::common::RC_UNSUPPORTED;
     }
@@ -972,7 +1761,9 @@ ppl::common::RetCode PPLCUDAMaxPoolingForwardImp(
     int stride_height,
     int stride_width,
     int padding_height,
-    int padding_width)
+    int padding_width,
+    float in_scale,
+    float out_scale)
 {
     if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT16) {
         return PPLCUDAMaxPoolingForwardImpFp16(
@@ -984,6 +1775,11 @@ ppl::common::RetCode PPLCUDAMaxPoolingForwardImp(
             stream, input_shape, (const float*)input, output_shape, (float*)output,
             kernel_height, kernel_width, stride_height, stride_width,
             padding_height, padding_width);
+    } else if (output_shape->GetDataType() == ppl::common::DATATYPE_INT8) {
+        return PPLCUDAMaxPoolingForwardImpInt8(
+            stream, input_shape, (const int8_t*)input, output_shape, (int8_t*)output,
+            kernel_height, kernel_width, stride_height, stride_width,
+            padding_height, padding_width, in_scale, out_scale);
     } else {
         return ppl::common::RC_UNSUPPORTED;
     }
@@ -1002,7 +1798,9 @@ ppl::common::RetCode PPLCUDAMaxPoolingForwardImp(
     int stride_height,
     int stride_width,
     int padding_height,
-    int padding_width)
+    int padding_width,
+    float in_scale,
+    float out_scale)
 {
     if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT16) {
         return PPLCUDAMaxPoolingForwardImpFp16(
@@ -1016,6 +1814,12 @@ ppl::common::RetCode PPLCUDAMaxPoolingForwardImp(
             indices_shape, indices,
             kernel_height, kernel_width, stride_height, stride_width,
             padding_height, padding_width);
+    } else if (output_shape->GetDataType() == ppl::common::DATATYPE_INT8) {
+        return PPLCUDAMaxPoolingForwardImpInt8(
+            stream, input_shape, (const int8_t*)input, output_shape, (int8_t*)output,
+            indices_shape, indices,
+            kernel_height, kernel_width, stride_height, stride_width,
+            padding_height, padding_width, in_scale, out_scale);
     } else {
         return ppl::common::RC_UNSUPPORTED;
     }

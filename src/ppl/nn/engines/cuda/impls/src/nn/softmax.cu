@@ -53,6 +53,7 @@ ppl::common::RetCode PPLCUDASoftmaxForwardImp(
     max_sum_shape.SetDim(0, N);
     max_sum_shape.SetDim(1, 1);
     max_sum_shape.SetDimCount(2);
+    
     auto status = PPLCUDAReduceForwardImp(stream, reduce_max, reduce_desc, input_shape, input, &max_sum_shape, max_sum_output);
     // sub
     ppl::nn::TensorShape nd_shape(*input_shape);

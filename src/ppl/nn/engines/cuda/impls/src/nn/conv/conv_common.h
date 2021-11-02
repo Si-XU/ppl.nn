@@ -38,6 +38,7 @@
 #define _INT4_TO_4INT_          4
 #define _INT4_TO_4FLOAT_        4
 #define _INT4_TO_8HALF_         8
+#define _INT4_TO_16CHAR_        16
 #define _C2_                    2
 #define _C4_                    4
 #define _C8_                    8
@@ -67,14 +68,6 @@ struct kernel_info_t
 {
     int kid;
 
-    std::string kname;
-
-    conv_ktype_t ktype;
-
-    lut_kernel_t* lut_kptr;
-    spk_kernel_t* spk_kptr;
-    idx_kernel_t* idx_kptr;
-
     int tile_m_per_cta;
     int tile_n_per_cta;
     int tile_k_per_cta;
@@ -90,6 +83,17 @@ struct kernel_info_t
     int flt_pad_size; // for idxn conv 
 
     int cta_size_in_thd;
+
+    std::string kname;
+
+    conv_ktype_t ktype;
+
+    lut_kernel_t* lut_kptr;
+    spk_kernel_t* spk_kptr;
+    idx_kernel_t* idx_kptr;
+    int8_lut_kernel_t* int8_lut_kptr;
+    int8_spk_kernel_t* int8_spk_kptr;
+    int8_idx_kernel_t* int8_idx_kptr;
 
     kernel_info_t()
     {
@@ -115,6 +119,18 @@ struct kernel_info_t
         flt_pad_size = -1;
 
         cta_size_in_thd = -1;
+    }
+
+    kernel_info_t(int kid_, conv_ktype_t ktype_, const char kname_[], int8_lut_kernel_t * lut_kptr_, int8_spk_kernel_t * spk_kptr_, int8_idx_kernel_t * idx_kptr_)
+    {
+        kid      = kid_;
+        ktype    = ktype_;
+        kname    = std::string(kname_);
+        int8_lut_kptr = lut_kptr_;
+        int8_spk_kptr = spk_kptr_;
+        int8_idx_kptr = idx_kptr_;
+
+        parse_kname();
     }
 
     kernel_info_t(int kid_, conv_ktype_t ktype_, const char kname_[], lut_kernel_t * lut_kptr_, spk_kernel_t * spk_kptr_, idx_kernel_t idx_kptr_)
@@ -145,9 +161,9 @@ struct kernel_info_t
             sscanf(kname_substrs[5].c_str(), "k%d",    &tile_k_per_cta);
             sscanf(kname_substrs[6].c_str(), "s%d",    &tile_k_per_step);
     
-            if(tile_k_per_step == 8)  flt_pad_size = 2;
-            else if(tile_k_per_step == 16) flt_pad_size = 4;
+            if(tile_k_per_step == 16)  flt_pad_size = 4;
             else if(tile_k_per_step == 32) flt_pad_size = 8;
+            else if(tile_k_per_step == 64) flt_pad_size = 16;
             else flt_pad_size = -1;
     
             cta_size_in_thd = (tile_m_per_cta / tile_m_per_warp) * \
@@ -249,6 +265,8 @@ __inline__ int GetPadSize(ppl::common::datatype_t type)
 	    pad_size = _INT4_TO_4FLOAT_;
     else if( type == ppl::common::DATATYPE_FLOAT16 )
 	    pad_size = _INT4_TO_8HALF_;
+    else if( type == ppl::common::DATATYPE_INT8 )
+	    pad_size = _INT4_TO_16CHAR_;
 
     return pad_size;
 }
@@ -351,4 +369,11 @@ void Initialize2spkConvFSKernelContainer(std::vector<kernel_info_t> & kernel_con
                    
 void InitializeIdxnConvKernelContainer(std::vector<kernel_info_t> & kernel_container);
 
+
+void InitializeInt82spkConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeInt82spkConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeInt82spkConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
+//void InitializeInt82spkConvFSKernelContainer(std::vector<kernel_info_t> & kernel_container);
+
+void InitializeInt8IdxnConvKernelContainer(std::vector<kernel_info_t> & kernel_container);
 #endif
