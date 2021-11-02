@@ -36,6 +36,8 @@ inline int AlignDataFormat(ppl::common::dataformat_t dt)
             return 32;
         case ppl::common::DATAFORMAT_NHWC8:
             return 8;
+        case ppl::common::DATAFORMAT_NHWC16:
+            return 16;
         default:
             return 1;
     }
@@ -60,10 +62,13 @@ struct ReFormatParam {
     bool mix_type;
     bool mix_format;
 
+    bool same_scale = 1;
+    int quant_stride = 1;
+    int quant_dim_size = 1;//output channel size
     int i_zero_point = 0;
     int o_zero_point = 0;
-    float i_step     = 1.0f;
-    float o_step     = 1.0f;
+    float *i_step = nullptr;
+    float *o_step = nullptr;
 
     ppl::common::dataformat_t in_format;
     ppl::common::dataformat_t out_format;
@@ -78,8 +83,9 @@ enum CVTFormatMode {
     NDARRAY_N4CX = 2,
     N4CX_NDARRAY = 11,
 
-    NDARRAY_NHWC8 = 31,
-    NHWC8_NDARRAY = 32,
+    NDARRAY_NHWC  = 31,
+    NHWC_NDARRAY  = 32,
+    NHWC8_NHWC16  = 33,
 };
 
 enum CVTTypeMode {

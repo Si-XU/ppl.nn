@@ -203,7 +203,7 @@ RetCode OptGraph::UpdateDims() {
         }
     }
 
-    LOG(INFO) << "Create " << tensor_impls_.size() << " TensorImpl";
+    LOG(DEBUG) << "Create " << tensor_impls_.size() << " TensorImpl";
     return RC_SUCCESS;
 }
 
@@ -314,7 +314,7 @@ RetCode OptGraph::AddBridgeKernels() {
         }
     }
 
-    LOG(INFO) << "added " << count << " new bridge kernels";
+    LOG(DEBUG) << "added " << count << " new bridge kernels";
     return RC_SUCCESS;
 }
 
@@ -401,6 +401,7 @@ RetCode OptGraph::InitQuantization() {
                 auto tensor_min = *((float*)(min_str.content.data()) + i);
                 temp_tensor_quant.scale[i] = (tensor_max - tensor_min) / ((1 << temp_tensor_quant.bit_width) - 1);
                 temp_tensor_quant.zero_point[i] = tensor_max + tensor_min;
+                //if (edge->GetName()=="211")    LOG(ERROR)<<temp_tensor_quant.scale[i] << " "<<tensor_max << " " << tensor_min << " " << temp_tensor_quant.bit_width;
             }
         } else {
             str = pair->second.fields.find("tensor_max")->second;
@@ -473,10 +474,10 @@ RetCode OptGraph::SelectAlgos(CudaDevice* device) {
     OptKernelOptions options(graph_, info_, resource_, args_, compile_set_, device, &tensor_impls_, &graph_quants, &graph_algos);
     UpdateTopologicalSort();
 
-    if (!PPLCudaComputeCapabilityEqual(7, 5, device->GetDeviceId())) {
-        LOG(ERROR) << "PPL is not support your GPU device right now.";
-        return RC_UNSUPPORTED;
-    }
+    // if (!PPLCudaComputeCapabilityEqual(7, 5, device->GetDeviceId())) {
+    //     LOG(ERROR) << "PPL is not support your GPU device right now.";
+    //     return RC_UNSUPPORTED;
+    // }
 
     AlgoGraph algo_graph(topo);
     // calculate the least time consuming
@@ -589,7 +590,7 @@ RetCode OptGraph::DeleteBridgeKernels() {
         }
     }
 
-    LOG(INFO) << "deleted " << count << " bridge kernels";
+    LOG(DEBUG) << "deleted " << count << " bridge kernels";
     return RC_SUCCESS;
 }
 
@@ -606,11 +607,11 @@ RetCode OptGraph::DoOptimize(CudaDevice* device) {
         return status;
     }
 
-    status = FuseOperator();
-    if (status != RC_SUCCESS) {
-        LOG(ERROR) << "Fuse operators failed: " << GetRetCodeStr(status);
-        return status;
-    }
+    // status = FuseOperator();
+    // if (status != RC_SUCCESS) {
+    //     LOG(ERROR) << "Fuse operators failed: " << GetRetCodeStr(status);
+    //     return status;
+    // }
 
     status = AddBridgeKernels();
     if (status != RC_SUCCESS) {
@@ -648,11 +649,11 @@ RetCode OptGraph::DoOptimize(CudaDevice* device) {
         return status;
     }
 
-    status = FuseOperator();
-    if (status != RC_SUCCESS) {
-        LOG(ERROR) << "Fuse operators failed: " << GetRetCodeStr(status);
-        return status;
-    }
+    // status = FuseOperator();
+    // if (status != RC_SUCCESS) {
+    //     LOG(ERROR) << "Fuse operators failed: " << GetRetCodeStr(status);
+    //     return status;
+    // }
 
     return RC_SUCCESS;
 }

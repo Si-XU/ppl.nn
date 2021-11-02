@@ -23,6 +23,7 @@
 #include "ppl/nn/common/logger.h"
 #include "ppl/nn/utils/utils.h"
 
+#include <string.h>
 using namespace ppl::common;
 
 namespace ppl { namespace nn { namespace cuda {
@@ -55,19 +56,205 @@ bool TuringIMMAImpgemm::IsSupported(const ir::Node* node, const OptKernelOptions
 double TuringIMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& options) {
     this->attr_param_ = *(reinterpret_cast<CudaConvParam*>(options.param));
     attr_param_.extra_param.algo_info.algo_type = "TuringIMMAImpgemm";
-    attr_param_.extra_param.algo_info.kid = 0;
+    auto shape_in1 = options.tensors->find(node->GetInput(1))->second->GetShape();
+    if (shape_in1.GetDim(2) == 1) {
+        attr_param_.extra_param.algo_info.kid = 1000;
+    } else if (shape_in1.GetDim(2) == 3 && shape_in1.GetDim(1)!=1) {
+        attr_param_.extra_param.algo_info.kid = 4000;
+    } else {
+        attr_param_.extra_param.algo_info.kid = 6006;
+    }
     double timer = 1e-4f; // TODO: add SelectAlgo
     return timer;
 }
 
 RetCode TuringIMMAImpgemm::ModifyParam(const ir::Node* node, OptKernelOptions& options) {
+    this->attr_param_ = *(reinterpret_cast<CudaConvParam*>(options.param));
     auto topo = options.graph->topo.get();
     auto data = options.graph->data.get();
     auto weight_edge = topo->GetEdgeById(node->GetInput(1));
     auto weight_node = topo->GetNodeById(weight_edge->GetProducer());
+    auto quants = options.quants;
+
+    auto shape_in0 = options.tensors->find(node->GetInput(0))->second->GetShape();
+    auto shape_in1 = options.tensors->find(node->GetInput(1))->second->GetShape();
+    auto shape_out = options.tensors->find(node->GetOutput(0))->second->GetShape();
+    auto align_size = ppl::common::cuda::GetDataFormatChannelAlignment(shape_in0.GetDataFormat());
+
+    RetCode status;
+    conv_param_t temp_conv_param;
+    ConvertToForwardConvParam(shape_in0, shape_in1, shape_out, attr_param_.param, temp_conv_param);
+
+    uint32_t k_per_grp = shape_in1.GetDim(0) / temp_conv_param.num_grp;
+    uint32_t k_per_grp_pad = (k_per_grp + align_size - 1) / align_size * align_size;
+
+    // Split weight format to group padding
+    auto stream = options.device->GetStream();
     auto weight_iter = data->constants.find(weight_node->GetInput(0));
+    if (weight_iter != data->constants.end() && // is a constant tensor and has not be loaded
+        options.info->constants.find(weight_node->GetInput(0)) == options.info->constants.end()) {
+        auto preedge_id = weight_node->GetInput(0);
+        auto postedge_id = node->GetInput(1);
+        auto preshape = options.tensors->find(preedge_id)->second->GetShape();
+        auto postshape = options.tensors->find(postedge_id)->second->GetShape();
+        auto newshape = postshape;
+        newshape.SetDim(0, k_per_grp_pad * temp_conv_param.num_grp);
+
+        RuntimeConstantInfo weight_constat_info;
+        {
+            BufferDesc buffer;
+            status = options.device->Realloc(newshape, &buffer);
+            if (status != RC_SUCCESS) {
+                LOG(ERROR) << "alloc buffer for constant failed: " << GetRetCodeStr(status);
+                return status;
+            }
+
+            weight_constat_info.Reshape(postshape); // give the init shape, but the actual shape is padded
+            weight_constat_info.SetBuffer(buffer, options.device, true);
+        }
+
+        ALLOC_BUFFERF_FOR_ALGO_SELECT(temp_buffer, postshape.GetBytesIncludingPadding(), RC_OUT_OF_MEMORY)
+#if 0
+e = cudaDeviceSynchronize();
+printf("modify %s\n", topo->GetEdgeById(preedge_id)->GetName().c_str());
+if(preedge_id == 696){
+printf("modify 696\nmodify 696\nmodify 696\nmodify 696\nmodify 696\nmodify 696\nmodify 696\nmodify 696\nmodify 696\nmodify 696\nmodify 696\nmodify 696\nmodify 696\nmodify 696\nmodify 696\nmodify 696\nmodify 696\nmodify 696\n");
+}
+if(preedge_id == 692){
+printf("modify 692\n");
+}   
+#endif
+        status = ((CudaDataConverter*)options.device->GetDataConverter())->ConvertFromHost(&temp_buffer, postshape, (*quants)[postedge_id], 
+                                                                     weight_iter->second.data.data(), preshape, (*quants)[preedge_id]);
+        if (status != RC_SUCCESS) {
+            LOG(ERROR) << node->GetName() << " copy constant failed: " << GetRetCodeStr(status);
+            return status;
+        }
+#if 0
+{
+if (strcmp(topo->GetEdgeById(preedge_id)->GetName().c_str(), "692") ==0) {
+int8_t* t = (int8_t*)malloc(32*16*3*3*sizeof(int8_t));
+cudaMemcpy(t, temp_buffer.addr, 32*3*3*16*sizeof(int8_t), cudaMemcpyDeviceToHost);
+printf("before cvt flt\n");
+for(int i = 0; i < 32*3*3*16; i++){
+    printf("(%4d,%4d)\t", i, t[i]);
+    if(i%16==15) printf("\n");
+ }
+printf("after cvt flt\n");
+}
+e = cudaDeviceSynchronize();
+}
+#endif
+cudaMemcpy(weight_constat_info.GetBufferDesc().addr, temp_buffer.addr, shape_in1.GetElementsIncludingPadding()*sizeof(int8_t), cudaMemcpyDeviceToDevice);
+        //PPLCUDAConvolutionCvtFlt(stream, weight_constat_info.GetBufferDesc().addr, temp_buffer.addr,
+        //                         shape_in0.GetDataType(), temp_conv_param);
+#if 0
+{
+if (strcmp(topo->GetEdgeById(preedge_id)->GetName().c_str(), "692") ==0) {
+int8_t* t = (int8_t*)malloc(32*16*3*3*sizeof(int8_t));
+cudaMemcpy(t, weight_constat_info.GetBufferDesc().addr, 32*16*3*3*sizeof(int8_t), cudaMemcpyDeviceToHost);
+printf("before cvt flt\n");
+for(int i = 0; i < 32*3*3*16; i++){
+    //if(i %16 !=0)  continue;
+    printf("(%4d,%4d)\t", i, t[i]);
+if(i%16==15) printf("\n");
+ }
+printf("after cvt flt\n");
+}
+e = cudaDeviceSynchronize();
+}
+#endif
+
+        options.info->constants.emplace(preedge_id, std::move(weight_constat_info));
+        options.tensors->find(preedge_id)->second->GetShape() = postshape;
+        options.quants->at(preedge_id) = (*quants)[postedge_id];
+        options.quants->at(preedge_id).type = postshape.GetDataType();
+        options.quants->at(preedge_id).format = postshape.GetDataFormat();
+    }
+
+
     reinterpret_cast<CudaConvParam*>(options.param)->extra_param.algo_info.is_initializer_weight =
         weight_iter != data->constants.end();
+
+    if (attr_param_.param.bias_term == 0) {
+        return RC_SUCCESS;
+    }
+
+    // Split bias format to group padding
+    auto bias_edge = topo->GetEdgeById(node->GetInput(2));
+    auto bias_node = topo->GetNodeById(bias_edge->GetProducer());
+    auto bias_iter = data->constants.find(bias_node->GetInput(0));
+    if (bias_iter != data->constants.end() && // is a constant tensor and has not be loaded
+        options.info->constants.find(bias_node->GetInput(0)) == options.info->constants.end()) {
+        auto preedge_id = bias_node->GetInput(0);
+        auto postedge_id = node->GetInput(2);
+        auto preshape = options.tensors->find(preedge_id)->second->GetShape();
+        auto postshape = options.tensors->find(postedge_id)->second->GetShape();
+        auto newshape = postshape;
+        newshape.SetDim(0, k_per_grp_pad * temp_conv_param.num_grp);
+        RuntimeConstantInfo bias_constat_info;
+        {
+            BufferDesc buffer;
+            status = options.device->Realloc(newshape, &buffer);
+            if (status != RC_SUCCESS) {
+                LOG(ERROR) << "alloc buffer for constant failed: " << GetRetCodeStr(status);
+                return status;
+            }
+
+            bias_constat_info.Reshape(postshape); // give the init shape, but the actual shape is padded
+            bias_constat_info.SetBuffer(buffer, options.device, true);
+        }
+
+        ALLOC_BUFFERF_FOR_ALGO_SELECT(temp_buffer, postshape.GetBytesIncludingPadding(), RC_OUT_OF_MEMORY)
+        status = options.device->GetDataConverter()->ConvertFromHost(&temp_buffer, postshape,
+                                                                     bias_iter->second.data.data(), preshape);
+        if (status != RC_SUCCESS) {
+            LOG(ERROR) << "copy constant failed: " << GetRetCodeStr(status);
+            return status;
+        }
+#if 0
+{
+if (strcmp(topo->GetEdgeById(preedge_id)->GetName().c_str(), "694") ==0) {
+float* t = (float*)malloc(32*16*sizeof(float));
+cudaMemcpy(t, temp_buffer.addr, 32*16*sizeof(float), cudaMemcpyDeviceToHost);
+printf("before cvt bias\n");
+for(int i = 0; i < 32*16; i++){
+    //if(i %16 !=0)  continue;
+    printf("(%d,%f)\t", i, t[i]);
+if(i%16==15) printf("\n");
+ }
+printf("end before cvt bias\n");
+}
+e = cudaDeviceSynchronize();
+}
+#endif
+
+//cudaMemcpy(bias_constat_info.GetBufferDesc().addr, temp_buffer.addr, preshape.GetElementsIncludingPadding()*sizeof(float), cudaMemcpyDeviceToDevice);
+        PPLCUDAConvolutionCvtBias(stream, bias_constat_info.GetBufferDesc().addr, temp_buffer.addr,
+                                  shape_in0.GetDataType(), temp_conv_param);
+#if 0
+{
+if (strcmp(topo->GetEdgeById(preedge_id)->GetName().c_str(), "694") ==0) {
+float* t = (float*)malloc(32*16*sizeof(float));
+cudaMemcpy(t, bias_constat_info.GetBufferDesc().addr, 32*16*sizeof(float), cudaMemcpyDeviceToHost);
+printf("after cvt bias\n");
+for(int i = 0; i < 32*16; i++){
+    //if(i %16 !=0)  continue;
+    printf("(%d,%f)\t", i, t[i]);
+if(i%16==15) printf("\n");
+ }
+printf("end after cvt bias\n");
+}
+}
+#endif
+
+        options.info->constants.emplace(preedge_id, std::move(bias_constat_info));
+        options.tensors->find(preedge_id)->second->GetShape() = postshape;
+        options.quants->at(preedge_id) = (*quants)[postedge_id];
+        options.quants->at(preedge_id).format = postshape.GetDataFormat();
+        options.quants->at(preedge_id).type = postshape.GetDataType();
+    }
+
     return RC_SUCCESS;
 }
 

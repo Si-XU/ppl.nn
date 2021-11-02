@@ -179,6 +179,8 @@ Define_uint32_opt("--device-id", g_flag_device_id, 0, "declare device id for cud
 Define_string_opt("--export-algo-file", g_flag_export_algo_file, "", "Export the selected best algo info into the json file.");
 Define_string_opt("--import-algo-file", g_flag_import_algo_file, "", "The objects in the json file declare best algo info for certain conv input shape");
 
+Define_string_opt("--quantization", g_flag_quantization, "", "declare json file saved quantization information");
+
 #include "ppl/nn/engines/cuda/engine_factory.h"
 #include "ppl/nn/engines/cuda/cuda_options.h"
 #include "ppl/nn/utils/array.h"
@@ -199,6 +201,7 @@ static inline bool RegisterCudaEngine(vector<unique_ptr<Engine>>* engines) {
     }
 
     cuda_engine->Configure(ppl::nn::CUDA_CONF_USE_DEFAULT_ALGORITHMS, g_flag_quick_select);
+    cuda_engine->Configure(ppl::nn::CUDA_CONF_SET_QUANTIZATION, g_flag_quantization.c_str());
 
     if (!g_flag_export_algo_file.empty()) {
         cuda_engine->Configure(ppl::nn::CUDA_CONF_EXPORT_ALGORITHMS, g_flag_export_algo_file.c_str());

@@ -61,6 +61,105 @@ ppl::common::RetCode ConvImmaKernel::BeforeExecute(KernelExecContext* ctx) {
 }
 
 ppl::common::RetCode ConvImmaKernel::DoExecute(KernelExecContext* ctx) {
+    conv_param_t temp_conv_param;
+    fuse_param_t temp_fuse_param;
+    quant_param_t temp_quant_param;
+
+    auto input = ctx->GetInput<TensorImpl>(0);
+    auto weight = ctx->GetInput<TensorImpl>(1);
+    auto output = ctx->GetOutput<TensorImpl>(0);
+    auto shape_in0 = input->GetShape();
+    auto shape_in1 = weight->GetShape();
+    auto shape_out = output->GetShape();
+
+    auto input_quant = GetCommonParam()->cuda_tensor_info->at(input->GetEdge()->GetId());
+    auto weight_quant = GetCommonParam()->cuda_tensor_info->at(weight->GetEdge()->GetId());
+    auto output_quant = GetCommonParam()->cuda_tensor_info->at(output->GetEdge()->GetId());
+    
+    auto input_scale = input_quant.scale[0];
+    int qw_size = ((shape_in1.GetDim(0) / param_->param.group + 15) / 16*16) * param_->param.group;
+    if (!weight_quant.per_chnnal) {
+        weight_quant.scale.insert(weight_quant.scale.begin(), qw_size, weight_quant.scale[0]);
+    }
+    auto h_weight_scale = weight_quant.scale.data();
+    auto output_scale = output_quant.scale[0];
+
+    BufferDesc weight_scale_desc;
+    GetCudaDevice()->Realloc(qw_size*sizeof(float), &weight_scale_desc);
+    BufferDescGuard __weight_scale_guard(&weight_scale_desc, [this](BufferDesc* buffer) -> void {
+        GetCudaDevice()->FreeTmpBuffer(buffer);
+    });
+    auto d_weight_scale = weight_scale_desc.addr;
+//FIXME
+{
+float *st = (float*)malloc(qw_size*sizeof(float));
+auto sz_per_grp = shape_in1.GetDim(0) / param_->param.group;
+auto sz_per_grp_pad = (shape_in1.GetDim(0) / param_->param.group + 15) / 16 * 16;
+for(int i = 0; i < qw_size; i++){
+    auto g_id = i / sz_per_grp_pad;
+    auto id = g_id*sz_per_grp + (i % sz_per_grp_pad);
+    st[i] = (i % sz_per_grp_pad) < sz_per_grp? h_weight_scale[id] : 0.f;
+}
+    cudaMemcpy(d_weight_scale, st, qw_size*sizeof(float), cudaMemcpyHostToDevice);
+free(st);
+}
+
+    temp_quant_param.in_scale     = input_scale;
+    temp_quant_param.out_scale    = 1 / output_scale;
+    temp_quant_param.d_flt_scale  = d_weight_scale;
+
+
+    ConvertToForwardConvParam(shape_in0, shape_in1, shape_out, param_->param, temp_conv_param);
+    ConvertToForwardFuseParam(ctx, GetCudaDevice(), param_->extra_param.fuse_info, temp_fuse_param);
+
+    if (temp_fuse_param.has_elt) {
+        //auto tps = param_->extra_param.fuse_info.types;
+        //auto ret = std::find(tps.begin(), tps.end(), "Add")
+        //if (ret == tps.end())
+        //    LOG(ERROR) << "fuse_info types error: no add op";
+        //int  id  =  ret - tps.begin();
+        //auto elt_id = param_extra_param.fuse_info.ind[id];
+        //auto elt = ctx->GetInput<TensorImpl>(3);
+        //auto elt_quant = GetCommonParam()->cuda_tensor_info->at(elt->GetEdge()->GetId());
+        //temp_quant_param.pre_scale = elt_quant.scale[0];
+        temp_quant_param.pre_scale = output_scale;
+    }
+    if (param_->extra_param.fuse_info.channel_offset >= 0) {
+         temp_quant_param.out_scale = 1 / GetCommonParam()->cuda_tensor_info->at(param_->extra_param.fuse_info.concat_edge_id).scale[0];
+    }
+
+
+    struct algo_param_t algo_param;
+    algo_param.kid = param_->extra_param.algo_info.kid;
+    algo_param.splitk = param_->extra_param.algo_info.splitk;
+    algo_param.splitf = param_->extra_param.algo_info.splitf;
+
+    uint64_t size = PPLCUDAConvolutionGetRuntimeBufSize(shape_in0.GetDataType(), temp_conv_param, algo_param.splitk,
+                                                        algo_param.splitf, ((uint64_t)8) * 1024 * 1024 * 1024);
+
+    BufferDesc tmp_buffer_desc;
+    auto status = GetCudaDevice()->AllocTmpBuffer(size, &tmp_buffer_desc);
+    if (status != ppl::common::RC_SUCCESS) {
+        LOG(ERROR) << "alloc tmp buffer size[" << size << "] for kernel[" << GetName()
+                   << "] failed: " << ppl::common::GetRetCodeStr(status);
+        return status;
+    }
+    BufferDescGuard __tmp_buffer_guard(&tmp_buffer_desc, [this](BufferDesc* buffer) -> void {
+        GetCudaDevice()->FreeTmpBuffer(buffer);
+    });
+    auto tmp_buffer = tmp_buffer_desc.addr;
+
+    auto stream = GetStream();
+
+    PPLCUDAConvolutionForwardImpInt8(
+        stream, shape_in0.GetDataType(), (int4*)input->GetBufferPtr(),
+        (int4*)weight->GetBufferPtr(), (int4*)output->GetBufferPtr(),
+        param_->param.bias_term ? (int4*)ctx->GetInput<TensorImpl>(2)->GetBufferPtr() : nullptr, (int4*)tmp_buffer,
+        algo_param, temp_conv_param, temp_quant_param, temp_fuse_param);
+
+    LOG(DEBUG) << "Excute IMMA conv with kernel id:" << param_->extra_param.algo_info.kid
+               << " and temp buffer size: " << size;
+ 
     return ppl::common::RC_SUCCESS;
 }
 

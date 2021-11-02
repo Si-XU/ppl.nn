@@ -242,6 +242,9 @@ protected:
         if (in_shape.GetDataType() == ppl::common::DATATYPE_UNKNOWN) {
             LOG(DEBUG) << "Input edge has unknown type.";
         }
+        if (in_shape.GetDataType() == ppl::common::DATATYPE_INT8) {
+            in_shape.SetDataType(ppl::common::DATATYPE_FLOAT16);
+        }
         for (uint32_t i = 0; i < info->GetOutputCount(); ++i) {
             auto& out_shape = info->GetOutput<TensorImpl>(i)->GetShape();
             out_shape.SetDataType(in_shape.GetDataType());

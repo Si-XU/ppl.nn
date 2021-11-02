@@ -18,7 +18,7 @@
 #include "cudakernel/arithmetic/arithmetic.h"
 #include "ppl/common/types.h"
 #include <cuda_fp16.h>
-#include <algorithm>
+#include<stdio.h>
 
 enum ArithmeticOpType {
     Arithmetic_Unknown = 0,
@@ -178,6 +178,56 @@ __device__ inline int32_t ppl_arithmetic_scalar<Arithmetic_PRelu, int32_t>(int32
     res         = (a > 0) ? res : res * b;
     return res;
 }
+
+template<ArithmeticOpType op_type, typename T>
+__device__ inline T ppl_arithmetic_scalar_int8(T a, T b, float in_scale0, float in_scale1, float out_scale);
+
+template<> __device__ inline int8_t ppl_arithmetic_scalar_int8<Arithmetic_Add, int8_t>(int8_t a, int8_t b, float in_scale0, float in_scale1, float out_scale) {
+    int res = round((a * in_scale0 + b * in_scale1) / out_scale);
+    if(res > 127) res = 127;
+    else if(res < -128) res = -128;
+    return res;
+}
+template<> __device__ inline int8_t ppl_arithmetic_scalar_int8<Arithmetic_Sub, int8_t>(int8_t a, int8_t b, float in_scale0, float in_scale1, float out_scale) {
+    int res = round((a * in_scale0 - b * in_scale1) / out_scale);
+    if(res > 127) res = 127;
+    else if(res < -128) res = -128;
+    return res;
+}
+template<> __device__ inline int8_t ppl_arithmetic_scalar_int8<Arithmetic_Mul, int8_t>(int8_t a, int8_t b, float in_scale0, float in_scale1, float out_scale) {
+    int res = round(a * b * in_scale0 * in_scale1 / out_scale);
+    if(res > 127) res = 127;
+    else if(res < -128) res = -128;
+    return res;
+}
+template<> __device__ inline int8_t ppl_arithmetic_scalar_int8<Arithmetic_Div, int8_t>(int8_t a, int8_t b, float in_scale0, float in_scale1, float out_scale) {
+    int res = round((float(a) / b * in_scale0 / in_scale1) / out_scale);
+    if(res > 127) res = 127;
+    else if(res < -128) res = -128;
+    return res;
+}
+template<> __device__ inline int8_t ppl_arithmetic_scalar_int8<Arithmetic_Max, int8_t>(int8_t a, int8_t b, float in_scale0, float in_scale1, float out_scale) {
+    return (a > b) ? a : b;
+}
+template<> __device__ inline int8_t ppl_arithmetic_scalar_int8<Arithmetic_Min, int8_t>(int8_t a, int8_t b, float in_scale0, float in_scale1, float out_scale) {
+    return (a > b) ? b : a;
+}
+template<> __device__ inline int8_t ppl_arithmetic_scalar_int8<Arithmetic_Pow, int8_t>(int8_t a, int8_t b, float in_scale0, float in_scale1, float out_scale) {
+    int res = powf(a, b);
+    if(res > 127) res = 127;
+    else if(res < -128) res = -128;
+    return res;
+}
+
+template<> __device__ inline int8_t ppl_arithmetic_scalar_int8<Arithmetic_PRelu, int8_t>(int8_t a, int8_t b, float in_scale0, float in_scale1, float out_scale) {
+    int res = a;
+    res = (a > 0) ? res : res * b;
+    res = round(res * in_scale0 / out_scale);
+    if(res > 127) res = 127;
+    else if(res < -128) res = -128;
+    return res;
+}
+
 
 template <>
 __device__ inline half ppl_arithmetic_scalar<Arithmetic_Add, half>(half a, half b)
@@ -520,7 +570,34 @@ __global__ void ppl_cukernel_arithmetic(
     output[out_index] = ppl_arithmetic_scalar<op_type, T>(input0[offset0], input1[offset1]);
 }
 
-template <ArithmeticOpType op_type, typename T>
+template<ArithmeticOpType op_type, typename T>
+__global__ void ppl_cukernel_arithmetic_int8(
+    const uint64_t num_elems,
+    const int dim_count, 
+    ArithmeticParam param,
+    const T *input0,
+    const T* input1,
+    T *output,
+    float in_scale0 = 0,
+    float in_scale1 = 0,
+    float out_scale = 0) {
+    uint64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index >= num_elems) return;
+
+    uint64_t out_index = index;
+    uint64_t offset0 = 0;
+    uint64_t offset1 = 0;
+    for (int i = 0; i < dim_count; i++) {
+        uint64_t dim_off = index / param.stride_out[i];
+        offset0 += dim_off * param.stride_in0[i];
+        offset1 += dim_off * param.stride_in1[i];
+        index = index % param.stride_out[i]; 
+    }
+    
+    output[out_index] = ppl_arithmetic_scalar_int8<op_type, T>(input0[offset0], input1[offset1], in_scale0, in_scale1, out_scale);
+}
+
+template<ArithmeticOpType op_type, typename T>
 __global__ void ppl_cukernel_arithmetic_nobroadcast(
     const uint64_t num_elems,
     const T *input0,
@@ -533,7 +610,21 @@ __global__ void ppl_cukernel_arithmetic_nobroadcast(
     output[index] = ppl_arithmetic_scalar<op_type, T>(input0[index], input1[index]);
 }
 
-template <ArithmeticOpType op_type, typename T>
+template<ArithmeticOpType op_type, typename T>
+__global__ void ppl_cukernel_arithmetic_nobroadcast_int8(
+    const uint64_t num_elems,
+    const T *input0,
+    const T* input1,
+    T *output,
+    float in_scale0 = 0,
+    float in_scale1 = 0,
+    float out_scale = 0) {
+    uint64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index >= num_elems) return;
+    output[index] = ppl_arithmetic_scalar_int8<op_type, T>(input0[index], input1[index], in_scale0, in_scale1, out_scale);
+}
+
+template<ArithmeticOpType op_type, typename T>
 __global__ void ppl_cukernel_arithmetic_one_scalar(
     const uint64_t num_elems,
     const bool first_shorter,
@@ -550,7 +641,25 @@ __global__ void ppl_cukernel_arithmetic_one_scalar(
     output[index]    = ppl_arithmetic_scalar<op_type, T>(input0[offset0], input1[offset1]);
 }
 
-template <ArithmeticOpType op_type, typename T>
+template<ArithmeticOpType op_type, typename T>
+__global__ void ppl_cukernel_arithmetic_one_scalar_int8(
+    const uint64_t num_elems,
+    const bool first_shorter, 
+    const T *input0,
+    const T* input1,
+    T *output,
+    float in_scale0 = 0,
+    float in_scale1 = 0,
+    float out_scale = 0) {
+    uint64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index >= num_elems) return;
+    int calc_index = 0;
+    uint64_t offset0 = first_shorter ? calc_index : index;
+    uint64_t offset1 = first_shorter ? index : calc_index;
+    output[index] = ppl_arithmetic_scalar_int8<op_type, T>(input0[offset0], input1[offset1], in_scale0, in_scale1, out_scale);
+}
+
+template<ArithmeticOpType op_type, typename T>
 __global__ void ppl_cukernel_arithmetic_one_dimension(
     const uint64_t num_elems,
     const int32_t inner_dim,
@@ -568,7 +677,26 @@ __global__ void ppl_cukernel_arithmetic_one_dimension(
     output[index]    = ppl_arithmetic_scalar<op_type, T>(input0[offset0], input1[offset1]);
 }
 
-template <ArithmeticOpType op_type, typename T>
+template<ArithmeticOpType op_type, typename T>
+__global__ void ppl_cukernel_arithmetic_one_dimension_int8(
+    const uint64_t num_elems,
+    const int32_t inner_dim,
+    const bool first_shorter, 
+    const T *input0,
+    const T* input1,
+    T *output,
+    float in_scale0 = 0,
+    float in_scale1 = 0,
+    float out_scale = 0) {
+    uint64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index >= num_elems) return;
+    int calc_index = index / inner_dim;
+    uint64_t offset0 = first_shorter ? calc_index : index;
+    uint64_t offset1 = first_shorter ? index : calc_index;
+    output[index] = ppl_arithmetic_scalar_int8<op_type, T>(input0[offset0], input1[offset1], in_scale0, in_scale1, out_scale);
+}
+
+template<ArithmeticOpType op_type, typename T>
 __global__ void ppl_cukernel_arithmetic_one_broadcast(
     const uint64_t num_elems,
     const int outer_stride,
@@ -589,7 +717,29 @@ __global__ void ppl_cukernel_arithmetic_one_broadcast(
     output[index]       = ppl_arithmetic_scalar<op_type, T>(input0[offset0], input1[offset1]);
 }
 
-template <ArithmeticOpType op_type, typename T>
+template<ArithmeticOpType op_type, typename T>
+__global__ void ppl_cukernel_arithmetic_one_broadcast_int8(
+    const uint64_t num_elems,
+    const int outer_stride, 
+    const int inner_dim, 
+    const bool first_shorter, 
+    const T *input0,
+    const T* input1,
+    T *output,
+    float in_scale0 = 0,
+    float in_scale1 = 0,
+    float out_scale = 0) {
+    uint64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index >= num_elems) return;
+    int inner_idx = index % inner_dim;
+    int outer_idx = index / outer_stride;
+    uint64_t calc_index = outer_idx * inner_dim + inner_idx;
+    uint64_t offset0 = first_shorter ? calc_index : index;
+    uint64_t offset1 = first_shorter ? index : calc_index;
+    output[index] = ppl_arithmetic_scalar_int8<op_type, T>(input0[offset0], input1[offset1], in_scale0, in_scale1, out_scale);
+}
+
+template<ArithmeticOpType op_type, typename T>
 ppl::common::RetCode PPLCUDAArithMeticForwardImp(
     cudaStream_t stream,
     const ppl::nn::TensorShape *input_shape0,
@@ -606,7 +756,6 @@ ppl::common::RetCode PPLCUDAArithMeticForwardImp(
     int axis               = 0;
     bool bidirectional     = false;
     int num_broadcast_dims = ppl_get_num_broadcast_dims(input_shape0, input_shape1, axis, bidirectional);
-
     if (!bidirectional && ((input_shape0->GetDimCount() < 2) || (input_shape1->GetDimCount() < 2))) {
         bool first_shorter = false;
         if (input_shape0->GetElementsIncludingPadding() < input_shape1->GetElementsIncludingPadding()) {
@@ -619,18 +768,21 @@ ppl::common::RetCode PPLCUDAArithMeticForwardImp(
             ppl_cukernel_arithmetic_one_dimension<op_type, T><<<grid_size, block_size, 0, stream>>>(num_elems, inner_dim, first_shorter, (const T *)input0, (const T *)input1, (T *)output);
         }
     } else if (num_broadcast_dims == 0) {
-        ppl_cukernel_arithmetic_nobroadcast<op_type, T><<<grid_size, block_size, 0, stream>>>(num_elems, (const T *)input0, (const T *)input1, (T *)output);
+        //printf("no broadcast \n");
+        ppl_cukernel_arithmetic_nobroadcast<op_type, T><<<grid_size, block_size, 0,
+            stream>>>(num_elems, (const T*)input0, (const T*)input1, (T*)output);
     } else {
         ArithmeticParam param;
         int packed_channel = 1;
         if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8) {
+            //printf("NHWC8 \n");
             if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT16) {
                 // one broadcast (or last dimensions broadcast)
                 if (ppl_feature_broadcast(input_shape0, input_shape1, &axis)) {
                     int inner_dim = output_shape->GetElementsToDimensionIncludingPadding(axis) *
                                     output_shape->GetElementsFromDimensionIncludingPadding(axis - 1) /
                                     output_shape->GetElementsIncludingPadding();
-                    int outer_stride   = output_shape->GetElementsFromDimensionIncludingPadding(1);
+                    int outer_stride =  output_shape->GetElementsFromDimensionIncludingPadding(1);
                     bool first_shorter = false;
                     if (input_shape0->GetRealDimCount() == input_shape1->GetRealDimCount() &&
                         input_shape0->GetDim(axis) < input_shape1->GetDim(axis)) {
@@ -656,9 +808,12 @@ ppl::common::RetCode PPLCUDAArithMeticForwardImp(
                 }
                 return ppl::common::RC_SUCCESS;
             }
-            ppl_arithmetic_prepare_strides_nhwc(input_shape0, input_shape1, output_shape, packed_channel, param.stride_in0, param.stride_in1, param.stride_out);
-            ppl_cukernel_arithmetic<op_type, T><<<grid_size, block_size, 0, stream>>>(num_elems, dim_count, param, (const T *)input0, (const T *)input1, (T *)output);
-        } else if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NDARRAY) {
+            ppl_arithmetic_prepare_strides_nhwc(input_shape0, input_shape1, output_shape, packed_channel,
+                param.stride_in0, param.stride_in1, param.stride_out);
+            ppl_cukernel_arithmetic<op_type, T><<<grid_size, block_size, 0,
+                stream>>>(num_elems, dim_count, param, (const T*)input0, (const T*)input1, (T*)output);
+         } else if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NDARRAY) {
+            //printf("NDARRAY \n");
             if (num_broadcast_dims == 1) {
                 int inner_dim = 1;
                 for (int it = axis + 1; it < dim_count; inner_dim *= output_shape->GetDim(it), ++it)
@@ -685,105 +840,155 @@ ppl::common::RetCode PPLCUDAArithMeticForwardImp(
     return ppl::common::RC_SUCCESS;
 }
 
-#define INSTANT(OPTYPE)                                                                               \
-    ppl::common::RetCode PPLCUDAArithMetic##OPTYPE##ForwardImp(                                       \
-        cudaStream_t stream,                                                                          \
-        const ppl::nn::TensorShape *input_shape0,                                                     \
-        const void *input0,                                                                           \
-        const ppl::nn::TensorShape *input_shape1,                                                     \
-        const void *input1,                                                                           \
-        const ppl::nn::TensorShape *output_shape,                                                     \
-        void *output)                                                                                 \
-    {                                                                                                 \
-        if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT16) {                           \
-            return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, half>(stream,                     \
-                                                                          input_shape0,               \
-                                                                          (const half *)input0,       \
-                                                                          input_shape1,               \
-                                                                          (const half *)input1,       \
-                                                                          output_shape,               \
-                                                                          (half *)output);            \
-        } else if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT32) {                    \
-            return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, float>(stream,                    \
-                                                                           input_shape0,              \
-                                                                           (const float *)input0,     \
-                                                                           input_shape1,              \
-                                                                           (const float *)input1,     \
-                                                                           output_shape,              \
-                                                                           (float *)output);          \
-        } else if (output_shape->GetDataType() == ppl::common::DATATYPE_INT64) {                      \
-            return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, int64_t>(stream,                  \
-                                                                             input_shape0,            \
-                                                                             (const int64_t *)input0, \
-                                                                             input_shape1,            \
-                                                                             (const int64_t *)input1, \
-                                                                             output_shape,            \
-                                                                             (int64_t *)output);      \
-        } else if (output_shape->GetDataType() == ppl::common::DATATYPE_INT32) {                      \
-            return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, int32_t>(stream,                  \
-                                                                             input_shape0,            \
-                                                                             (const int32_t *)input0, \
-                                                                             input_shape1,            \
-                                                                             (const int32_t *)input1, \
-                                                                             output_shape,            \
-                                                                             (int32_t *)output);      \
-        } else {                                                                                      \
-            return ppl::common::RC_UNSUPPORTED;                                                       \
-        }                                                                                             \
+template<ArithmeticOpType op_type, typename T>
+ppl::common::RetCode PPLCUDAArithMeticForwardImpInt8(
+    cudaStream_t stream,
+    const ppl::nn::TensorShape* input_shape0,
+    const T *input0,
+    const ppl::nn::TensorShape* input_shape1,
+    const T *input1,
+    const ppl::nn::TensorShape* output_shape,
+    T *output,
+    float in_scale0 = 0,
+    float in_scale1 = 0,
+    float out_scale = 0) {
+    uint64_t num_elems = output_shape->GetElementsIncludingPadding();
+    int dim_count = output_shape->GetDimCount();
+    int block_size = 256;
+    uint64_t grid_size = (num_elems + block_size - 1) / block_size;
+    int axis = 0; bool bidirectional = false;
+    int num_broadcast_dims = ppl_get_num_broadcast_dims(input_shape0, input_shape1, axis, bidirectional);
+    if (!bidirectional && ((input_shape0->GetDimCount() < 2) || (input_shape1->GetDimCount() < 2))) {
+        bool first_shorter = false;
+        if (input_shape0->GetElementsIncludingPadding() < input_shape1->GetElementsIncludingPadding()) {
+            first_shorter = true;
+        }
+        if (input_shape0->GetElementsIncludingPadding() == 1 || input_shape1->GetElementsIncludingPadding() == 1) {
+            ppl_cukernel_arithmetic_one_scalar_int8<op_type, T><<<grid_size, block_size, 0,
+                stream>>>(num_elems, first_shorter, (const T*)input0, (const T*)input1, (T*)output, in_scale0, in_scale1, out_scale);
+        } else {
+            int inner_dim = output_shape->GetElementsIncludingPadding() / input_shape0->GetDim(0);
+            ppl_cukernel_arithmetic_one_dimension_int8<op_type, T><<<grid_size, block_size, 0,
+                stream>>>(num_elems, inner_dim, first_shorter, (const T*)input0, (const T*)input1, (T*)output, in_scale0, in_scale1, out_scale);
+        }
+    } else if (num_broadcast_dims == 0) {
+        ppl_cukernel_arithmetic_nobroadcast_int8<op_type, T><<<grid_size, block_size, 0,
+            stream>>>(num_elems, (const T*)input0, (const T*)input1, (T*)output, in_scale0, in_scale1, out_scale);
+    } else {
+        ArithmeticParam param;
+        int packed_channel = 1;
+        if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8) {
+            ppl_arithmetic_prepare_strides_nhwc(input_shape0, input_shape1, output_shape, packed_channel,
+                param.stride_in0, param.stride_in1, param.stride_out);
+            ppl_cukernel_arithmetic_int8<op_type, T><<<grid_size, block_size, 0, stream>>>(num_elems, dim_count, param, (const T*)input0, (const T*)input1, (T*)output, in_scale0, in_scale1, out_scale);
+         } else if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NDARRAY) {
+            if (num_broadcast_dims == 1) {
+                int inner_dim = 1;
+                for(int it = axis + 1; it < dim_count; inner_dim *= output_shape->GetDim(it), ++it);
+                int outer_stride = inner_dim * output_shape->GetDim(axis);
+                bool first_shorter = false;
+                if (input_shape0->GetRealDimCount() == input_shape1->GetRealDimCount() &&
+                    input_shape0->GetDim(axis) < input_shape1->GetDim(axis)) {
+                    first_shorter = true;
+                }
+                if (input_shape0->GetElementsExcludingPadding() < input_shape1->GetElementsExcludingPadding())  {
+                    first_shorter = true;
+                }
+                ppl_cukernel_arithmetic_one_broadcast_int8<op_type, T><<<grid_size, block_size, 0,
+                    stream>>>(num_elems, outer_stride, inner_dim, first_shorter, (const T*)input0, (const T*)input1, (T*)output, in_scale0, in_scale1, out_scale);
+                return ppl::common::RC_SUCCESS;
+            }
+            ppl_arithmetic_prepare_strides(input_shape0, input_shape1,
+                output_shape, packed_channel, param.stride_in0, param.stride_in1, param.stride_out);
+            ppl_cukernel_arithmetic_int8<op_type, T><<<grid_size, block_size, 0, stream>>>(num_elems, dim_count, param, (const T*)input0, (const T*)input1, (T*)output, in_scale0, in_scale1, out_scale);
+        } else {
+            return ppl::common::RC_UNSUPPORTED;
+        }
     }
 
-#define INSTANT_LIMNHWC8(OPTYPE)                                                                      \
-    ppl::common::RetCode PPLCUDAArithMetic##OPTYPE##ForwardImp(                                       \
-        cudaStream_t stream,                                                                          \
-        const ppl::nn::TensorShape *input_shape0,                                                     \
-        const void *input0,                                                                           \
-        const ppl::nn::TensorShape *input_shape1,                                                     \
-        const void *input1,                                                                           \
-        const ppl::nn::TensorShape *output_shape,                                                     \
-        void *output)                                                                                 \
-    {                                                                                                 \
-        if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8) {                         \
-            if (input_shape0->GetDimCount() >= 2 && (input_shape0->GetDim(1) & 0x7))                  \
-                return ppl::common::RC_UNSUPPORTED;                                                   \
-            if (input_shape1->GetDimCount() >= 2 && (input_shape1->GetDim(1) & 0x7))                  \
-                return ppl::common::RC_UNSUPPORTED;                                                   \
-        }                                                                                             \
-        if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT16) {                           \
-            return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, half>(stream,                     \
-                                                                          input_shape0,               \
-                                                                          (const half *)input0,       \
-                                                                          input_shape1,               \
-                                                                          (const half *)input1,       \
-                                                                          output_shape,               \
-                                                                          (half *)output);            \
-        } else if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT32) {                    \
-            return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, float>(stream,                    \
-                                                                           input_shape0,              \
-                                                                           (const float *)input0,     \
-                                                                           input_shape1,              \
-                                                                           (const float *)input1,     \
-                                                                           output_shape,              \
-                                                                           (float *)output);          \
-        } else if (output_shape->GetDataType() == ppl::common::DATATYPE_INT64) {                      \
-            return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, int64_t>(stream,                  \
-                                                                             input_shape0,            \
-                                                                             (const int64_t *)input0, \
-                                                                             input_shape1,            \
-                                                                             (const int64_t *)input1, \
-                                                                             output_shape,            \
-                                                                             (int64_t *)output);      \
-        } else if (output_shape->GetDataType() == ppl::common::DATATYPE_INT32) {                      \
-            return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, int32_t>(stream,                  \
-                                                                             input_shape0,            \
-                                                                             (const int32_t *)input0, \
-                                                                             input_shape1,            \
-                                                                             (const int32_t *)input1, \
-                                                                             output_shape,            \
-                                                                             (int32_t *)output);      \
-        } else {                                                                                      \
-            return ppl::common::RC_UNSUPPORTED;                                                       \
-        }                                                                                             \
-    }
+    return ppl::common::RC_SUCCESS;
+}
+
+
+#define INSTANT(OPTYPE) \
+ppl::common::RetCode PPLCUDAArithMetic##OPTYPE##ForwardImp( \
+    cudaStream_t stream, \
+    const ppl::nn::TensorShape* input_shape0, \
+    const void *input0, \
+    const ppl::nn::TensorShape* input_shape1, \
+    const void *input1, \
+    const ppl::nn::TensorShape* output_shape, \
+    void *output, \
+    float in_scale0 = 0, \
+    float in_scale1 = 0, \
+    float out_scale = 0) { \
+    if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT16) { \
+        return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, half>(stream, \
+            input_shape0, (const half*)input0, input_shape1, \
+            (const half*)input1, output_shape, (half*)output); \
+    } else if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT32) { \
+        return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, float>(stream, \
+            input_shape0, (const float*)input0, input_shape1, \
+            (const float*)input1, output_shape, (float*)output); \
+    } else if (output_shape->GetDataType() == ppl::common::DATATYPE_INT64) { \
+        return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, int64_t>(stream, \
+            input_shape0, (const int64_t*)input0, input_shape1, \
+            (const int64_t*)input1, output_shape, (int64_t*)output); \
+    } else if(output_shape->GetDataType() == ppl::common::DATATYPE_INT32) { \
+        return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, int32_t>(stream, \
+            input_shape0, (const int32_t*)input0, input_shape1, \
+            (const int32_t*)input1, output_shape, (int32_t*)output); \
+    } else if(output_shape->GetDataType() == ppl::common::DATATYPE_INT8) { \
+        return PPLCUDAArithMeticForwardImpInt8<Arithmetic_##OPTYPE, int8_t>(stream, \
+            input_shape0, (const int8_t*)input0, input_shape1, \
+            (const int8_t*)input1, output_shape, (int8_t*)output, in_scale0, in_scale1, out_scale); \
+    } else { \
+        return ppl::common::RC_UNSUPPORTED; \
+    } \
+}
+
+#define INSTANT_LIMNHWC8(OPTYPE) \
+ppl::common::RetCode PPLCUDAArithMetic##OPTYPE##ForwardImp( \
+    cudaStream_t stream, \
+    const ppl::nn::TensorShape* input_shape0, \
+    const void *input0, \
+    const ppl::nn::TensorShape* input_shape1, \
+    const void *input1, \
+    const ppl::nn::TensorShape* output_shape, \
+    void *output, \
+    float in_scale0 = 0, \
+    float in_scale1 = 0, \
+    float out_scale = 0) { \
+    if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8) { \
+        if (input_shape0->GetDimCount() >= 2 && (input_shape0->GetDim(1) & 0x7)) \
+            return ppl::common::RC_UNSUPPORTED; \
+        if (input_shape1->GetDimCount() >= 2 && (input_shape1->GetDim(1) & 0x7)) \
+            return ppl::common::RC_UNSUPPORTED; \
+    } \
+    if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT16) { \
+        return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, half>(stream, \
+            input_shape0, (const half*)input0, input_shape1, \
+            (const half*)input1, output_shape, (half*)output); \
+    } else if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT32) { \
+        return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, float>(stream, \
+            input_shape0, (const float*)input0, input_shape1, \
+            (const float*)input1, output_shape, (float*)output); \
+    } else if (output_shape->GetDataType() == ppl::common::DATATYPE_INT64) { \
+        return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, int64_t>(stream, \
+            input_shape0, (const int64_t*)input0, input_shape1, \
+            (const int64_t*)input1, output_shape, (int64_t*)output); \
+    } else if(output_shape->GetDataType() == ppl::common::DATATYPE_INT32) { \
+        return PPLCUDAArithMeticForwardImp<Arithmetic_##OPTYPE, int32_t>(stream, \
+            input_shape0, (const int32_t*)input0, input_shape1, \
+            (const int32_t*)input1, output_shape, (int32_t*)output); \
+    } else if(output_shape->GetDataType() == ppl::common::DATATYPE_INT8) { \
+        return PPLCUDAArithMeticForwardImpInt8<Arithmetic_##OPTYPE, int8_t>(stream, \
+            input_shape0, (const int8_t*)input0, input_shape1, \
+            (const int8_t*)input1, output_shape, (int8_t*)output, in_scale0, in_scale1, out_scale); \
+    } else { \
+        return ppl::common::RC_UNSUPPORTED; \
+    } \
+} 
 
 INSTANT(Add);
 INSTANT(Sub);

@@ -219,6 +219,7 @@ RetCode GemmAlgorithm::ModifyParam(const ir::Node* node, OptKernelOptions& optio
         reinterpret_cast<CudaGemmParam*>(options.param)->param.transB = 1;
         options.info->constants.emplace(preedge_id, std::move(weight_constat_info));
         options.tensors->find(preedge_id)->second->GetShape() = postshape;
+        options.quants->at(preedge_id) = options.quants->at(postedge_id);
         options.quants->at(preedge_id).format = postshape.GetDataFormat();
         options.quants->at(preedge_id).type = postshape.GetDataType();
     } else {
@@ -268,6 +269,7 @@ RetCode GemmAlgorithm::ModifyParam(const ir::Node* node, OptKernelOptions& optio
 
         options.info->constants.emplace(preedge_id, std::move(bias_constat_info));
         options.tensors->find(preedge_id)->second->GetShape() = postshape;
+        options.quants->at(preedge_id) = options.quants->at(postedge_id);
         options.quants->at(preedge_id).format = postshape.GetDataFormat();
         options.quants->at(preedge_id).type = postshape.GetDataType();
     }

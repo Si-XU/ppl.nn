@@ -42,6 +42,10 @@ ppl::common::RetCode SoftmaxKernel::DoExecute(KernelExecContext* ctx) {
 
     auto input = ctx->GetInput<TensorImpl>(0);
     auto output = ctx->GetOutput<TensorImpl>(0);
+    auto input_quant = GetCommonParam()->cuda_tensor_info->at(input->GetEdge()->GetId());
+    auto input_scale = input_quant.scale[0];
+    auto output_quant = GetCommonParam()->cuda_tensor_info->at(output->GetEdge()->GetId());
+    auto output_scale = output_quant.scale[0];
 
     status = PPLCUDASoftmaxForwardImp(GetStream(), &input->GetShape(), input->GetBufferPtr(), &output->GetShape(),
                                       output->GetBufferPtr(), tmp_buffer, param_->axis);

@@ -31,21 +31,22 @@
 #include "cudakernel/nn/conv/conv_fp16.h"
 #include "cudakernel/common/common.h"
 
-#define WARP_SIZE        32
-#define _2HALF_TO_INT_   2
-#define _4INT_TO_INT4_   4
-#define _INT_TO_4BYTE_   4
-#define _INT4_TO_4INT_   4
-#define _INT4_TO_4FLOAT_ 4
-#define _INT4_TO_8HALF_  8
-#define _C2_             2
-#define _C4_             4
-#define _C8_             8
-#define _BYTE128_        128
+#define WARP_SIZE               32
+#define _2HALF_TO_INT_          2
+#define _4INT_TO_INT4_          4
+#define _INT_TO_4BYTE_          4
+#define _INT4_TO_4INT_          4
+#define _INT4_TO_4FLOAT_        4
+#define _INT4_TO_8HALF_         8
+#define _INT4_TO_16CHAR_        16
+#define _C2_                    2
+#define _C4_                    4
+#define _C8_                    8
+#define _BYTE128_               128
 
-#define Max(x, y) (((x) > (y)) ? (x) : (y))
+#define Max(x, y)         (((x) > (y))  ? (x) : (y))
 
-#define MAX_SPLIT_SIZE 18
+#define MAX_SPLIT_SIZE          18
 
 #define ADD_KERNEL(_ktype, _kname, _lut_kptr, _spk_kptr, _idx_kptr) \
     kernel_container.push_back(kernel_info_t(kernel_container.size(), _ktype, _kname, _lut_kptr, _spk_kptr, _idx_kptr));
@@ -69,14 +70,6 @@ typedef uint32_t conv_ktype_t;
 struct kernel_info_t {
     int kid;
 
-    std::string kname;
-
-    conv_ktype_t ktype;
-
-    lut_kernel_t *lut_kptr;
-    spk_kernel_t *spk_kptr;
-    idx_kernel_t *idx_kptr;
-
     int tile_m_per_cta;
     int tile_n_per_cta;
     int tile_k_per_cta;
@@ -92,6 +85,17 @@ struct kernel_info_t {
     int flt_pad_size; // for idxn conv
 
     int cta_size_in_thd;
+
+    std::string kname;
+
+    conv_ktype_t ktype;
+
+    lut_kernel_t* lut_kptr;
+    spk_kernel_t* spk_kptr;
+    idx_kernel_t* idx_kptr;
+    int8_lut_kernel_t* int8_lut_kptr;
+    int8_spk_kernel_t* int8_spk_kptr;
+    int8_idx_kernel_t* int8_idx_kptr;
 
     kernel_info_t()
     {
@@ -119,7 +123,19 @@ struct kernel_info_t {
         cta_size_in_thd = -1;
     }
 
-    kernel_info_t(int kid_, conv_ktype_t ktype_, const char kname_[], lut_kernel_t *lut_kptr_, spk_kernel_t *spk_kptr_, idx_kernel_t idx_kptr_)
+    kernel_info_t(int kid_, conv_ktype_t ktype_, const char kname_[], int8_lut_kernel_t * lut_kptr_, int8_spk_kernel_t * spk_kptr_, int8_idx_kernel_t * idx_kptr_)
+    {
+        kid      = kid_;
+        ktype    = ktype_;
+        kname    = std::string(kname_);
+        int8_lut_kptr = lut_kptr_;
+        int8_spk_kptr = spk_kptr_;
+        int8_idx_kptr = idx_kptr_;
+
+        parse_kname();
+    }
+
+    kernel_info_t(int kid_, conv_ktype_t ktype_, const char kname_[], lut_kernel_t * lut_kptr_, spk_kernel_t * spk_kptr_, idx_kernel_t idx_kptr_)
     {
         kid      = kid_;
         ktype    = ktype_;
@@ -153,20 +169,16 @@ struct kernel_info_t {
         if (ktype == CONV_IDXN_C2 || ktype == CONV_IDXN_C4 || ktype == CONV_IDXN_C32) {
             sscanf(kname_substrs[3].c_str(), "b%dx%d", &tile_m_per_cta, &tile_n_per_cta);
             sscanf(kname_substrs[4].c_str(), "w%dx%d", &tile_m_per_warp, &tile_n_per_warp);
-            sscanf(kname_substrs[5].c_str(), "k%d", &tile_k_per_cta);
-            sscanf(kname_substrs[6].c_str(), "s%d", &tile_k_per_step);
-
-            if (tile_k_per_step == 8)
-                flt_pad_size = 2;
-            else if (tile_k_per_step == 16)
-                flt_pad_size = 4;
-            else if (tile_k_per_step == 32)
-                flt_pad_size = 8;
-            else
-                flt_pad_size = -1;
-
-            cta_size_in_thd = (tile_m_per_cta / tile_m_per_warp) *
-                              (tile_n_per_cta / tile_n_per_warp) *
+            sscanf(kname_substrs[5].c_str(), "k%d",    &tile_k_per_cta);
+            sscanf(kname_substrs[6].c_str(), "s%d",    &tile_k_per_step);
+    
+            if(tile_k_per_step == 16)  flt_pad_size = 4;
+            else if(tile_k_per_step == 32) flt_pad_size = 8;
+            else if(tile_k_per_step == 64) flt_pad_size = 16;
+            else flt_pad_size = -1;
+    
+            cta_size_in_thd = (tile_m_per_cta / tile_m_per_warp) * \
+                              (tile_n_per_cta / tile_n_per_warp) * \
                               WARP_SIZE;
         } else if (ktype == CONV_2SPK_F1 || ktype == CONV_2SPK_F3 || ktype == CONV_2SPK_FN || ktype == CONV_2SPK_FS) {
             if (strstr(kname_substrs[3].c_str(), "f1"))
@@ -356,10 +368,12 @@ struct kernel_info_t {
 __inline__ int GetPadSize(ppl::common::datatype_t type)
 {
     unsigned int pad_size = 0;
-    if (type == ppl::common::DATATYPE_FLOAT32)
-        pad_size = _INT4_TO_4FLOAT_;
-    else if (type == ppl::common::DATATYPE_FLOAT16)
-        pad_size = _INT4_TO_8HALF_;
+    if( type == ppl::common::DATATYPE_FLOAT32 )
+	    pad_size = _INT4_TO_4FLOAT_;
+    else if( type == ppl::common::DATATYPE_FLOAT16 )
+	    pad_size = _INT4_TO_8HALF_;
+    else if( type == ppl::common::DATATYPE_INT8 )
+	    pad_size = _INT4_TO_16CHAR_;
 
     return pad_size;
 }
@@ -465,4 +479,11 @@ void InitializeIdxnConvKernelContainer(std::vector<kernel_info_t> &kernel_contai
 void InitializeSwzlConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
 void InitializeSwzlConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
 void InitializeSwzlConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
+
+void InitializeInt82spkConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeInt82spkConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeInt82spkConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
+//void InitializeInt82spkConvFSKernelContainer(std::vector<kernel_info_t> & kernel_container);
+
+void InitializeInt8IdxnConvKernelContainer(std::vector<kernel_info_t> & kernel_container);
 #endif

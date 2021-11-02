@@ -18,12 +18,12 @@
 #include "ppl/nn/engines/cuda/kernel.h"
 
 #include <chrono>
-
+#include <memory>
+#include <fstream>
 #include "ppl/common/allocator.h"
 #include "ppl/nn/common/logger.h"
 
 using namespace ppl::common;
-using namespace std;
 
 namespace ppl { namespace nn { namespace cuda {
 
@@ -52,7 +52,6 @@ RetCode CudaKernel::Init() {
         return RC_OTHER_ERROR;
     }
 #endif
-
     auto status = barrier_.Init();
     if (status != RC_SUCCESS) {
         LOG(ERROR) << "create barrier for kernel[" << GetName() << "] failed: " << GetRetCodeStr(status);
