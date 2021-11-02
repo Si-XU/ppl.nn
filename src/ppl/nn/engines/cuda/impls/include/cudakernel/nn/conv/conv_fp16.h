@@ -35,6 +35,12 @@ struct conv_param_t{
         int has_bias;           //int4* bias; 
 };
 
+struct quant_param_t {
+    float in_scale;
+    void *d_flt_scale;
+    float out_scale;
+};
+
 struct fuse_param_t{
         int has_activation = 0;// 1: relu,  2: sigmoid
 	bool has_clip = false;        float clip_min;     float clip_max; 
@@ -96,6 +102,33 @@ void PPLCUDAConvolutionForwardImp(
 	int4* d_temp_buf, 
         algo_param_t &algo_param,
 	conv_param_t &conv_param, 
+	fuse_param_t &fuse_param);
+
+ppl::common::RetCode PPLCUDAConvolutionSelectKernelInt8(
+        cudaStream_t &stream, 
+        ppl::common::datatype_t type,
+        int4* d_input,
+        int4* d_flt,
+        int4* d_output,
+	int4* bias,
+	int4* d_temp_buf, 
+        algo_param_t &algo_param,
+	conv_param_t &conv_param, 
+        quant_param_t &quant_param,
+	fuse_param_t &fuse_param,
+	uint64_t workspace = (uint64_t)8*1024*1024*1024);
+
+void PPLCUDAConvolutionForwardImpInt8(
+        cudaStream_t &stream, 
+        ppl::common::datatype_t type,
+        int4* d_input,
+        int4* d_flt,
+        int4* d_output,
+	int4* bias,
+	int4* d_temp_buf, 
+        algo_param_t &algo_param,
+	conv_param_t &conv_param, 
+        quant_param_t &quant_param,
 	fuse_param_t &fuse_param);
 
 
