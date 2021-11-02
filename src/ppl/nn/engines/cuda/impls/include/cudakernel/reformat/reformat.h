@@ -36,6 +36,8 @@ inline int AlignDataFormat(ppl::common::dataformat_t dt)
             return 32;
         case ppl::common::DATAFORMAT_NHWC8:
             return 8;
+        case ppl::common::DATAFORMAT_NHWC16:
+            return 16;
         default:
             return 1;
     }
