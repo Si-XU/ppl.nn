@@ -89,6 +89,8 @@ Define_uint32_opt("--device-id", g_flag_device_id, 0, "declare device id for cud
 
 Define_string_opt("--algo-info", g_algo_info, "", "declare best algo index for certain conv input shape");
 
+Define_string_opt("--quantization", g_flag_quantization, "", "declare json file saved quantization information");
+
 #include "ppl/nn/engines/cuda/engine_factory.h"
 #include "ppl/nn/engines/cuda/cuda_options.h"
 
@@ -111,6 +113,7 @@ static inline bool RegisterCudaEngine(vector<unique_ptr<Engine>>* engines) {
     cuda_engine->Configure(ppl::nn::CUDA_CONF_SET_OUTPUT_TYPE, g_flag_output_type.c_str());
     cuda_engine->Configure(ppl::nn::CUDA_CONF_USE_DEFAULT_ALGORITHMS, g_flag_quick_select);
     cuda_engine->Configure(ppl::nn::CUDA_CONF_SET_ALGORITHM, g_algo_info.c_str());
+    cuda_engine->Configure(ppl::nn::CUDA_CONF_SET_QUANTIZATION, g_flag_quantization.c_str());
 
     if (!g_flag_compiler_dims.empty()) {
         cuda_engine->Configure(ppl::nn::CUDA_CONF_SET_COMPILER_INPUT_SHAPE, g_flag_compiler_dims.c_str());

@@ -92,7 +92,6 @@ __global__ void cuda_kernel_cvt<FLOAT32_INT8>(size_t num_elems, int channels, in
     JUDGE(num_elems)
     int c_id = (id / stride) % channels;
     float o_step = param.o_step[c_id];
-printf("step: %f, %d, %d, %d\t", o_step, c_id, channels, stride);
     *((int8_t*)output + id) = _float2int8(*((float*)input + id), o_step, param.o_zero_point);
 }
 template <>

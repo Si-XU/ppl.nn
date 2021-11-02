@@ -148,7 +148,6 @@ void PPLCUDAConvolutionCvtFlt(
         flt_group_padding<int8_t><<<grid, cta_size, 0, stream>>>((int8_t*)output, (int8_t*)input, in_size_per_grp, num_grp, num_chl_per_grp_pad,
         out_size_per_grp);
     }
-e = cudaDeviceSynchronize();
 //{
 //int8_t *t = (int8_t*)malloc(32*16*3*3*sizeof(int8_t));
 //cudaMemcpy(t, output, 32*16*3*3*sizeof(int8_t), cudaMemcpyDeviceToHost);

@@ -14,6 +14,8 @@ if(NOT Python3_FOUND)
     message(FATAL_ERROR "cannot find python3")
 endif()
 execute_process(
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/int8_2spk/gen_2spk_int8_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_2spk
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/int8_idxn/gen_idxn_int8_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_idxn
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/2spk/gen_2spk_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/idxn/gen_idxn_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn
     OUTPUT_VARIABLE conv_kernels_codegen
@@ -25,6 +27,11 @@ file(GLOB_RECURSE CUDA_SRC ${CUDA_SRC} ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk/f*_
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk/init*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/idxn_kernels*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/init*.cu)
+
+file(GLOB_RECURSE CUDA_SRC ${CUDA_SRC} ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_2spk/f*_kernels.cu
+                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_2spk/init*.cu
+                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_idxn/idxn_kernels*.cu
+                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_idxn/init*.cu)
 
 file(GLOB_RECURSE CUDA_SRC ${CUDA_SRC} src/arithmetic/*.cu
                                        src/memory/*.cu

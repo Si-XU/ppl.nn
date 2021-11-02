@@ -910,14 +910,14 @@ void PPLCUDAConvolutionForwardImpInt8(
     int4 *pad_input = d_input;
     int4 *pad_output = d_output;
 {
-int8_t *t = (int8_t*)malloc(2*32*112*112*sizeof(int8_t));
-cudaMemcpy(t, d_input, 2*32*112*112*sizeof(int8_t), cudaMemcpyDeviceToHost);
-printf("input before group padding\n");
-for(int i = 0; i < 32; i++){
-    printf("%d\t", t[i]);
-}
-printf("\n");
-free(t);
+// int8_t *t = (int8_t*)malloc(2*32*112*112*sizeof(int8_t));
+// cudaMemcpy(t, d_input, 2*32*112*112*sizeof(int8_t), cudaMemcpyDeviceToHost);
+// printf("input before group padding\n");
+// for(int i = 0; i < 32; i++){
+//     printf("%d\t", t[i]);
+// }
+// printf("\n");
+// free(t);
 }
 
     if(is_in_grp_pad) {
@@ -927,14 +927,14 @@ free(t);
         PPLCUDAConvolutionCvtInput(stream, pad_input, d_input, type, conv_param);
     }
 {
-int8_t *t = (int8_t*)malloc(2*32*112*112*sizeof(int8_t));
-cudaMemcpy(t, pad_input, 2*32*112*112*sizeof(int8_t), cudaMemcpyDeviceToHost);
-printf("input after group padding\n");
-for(int i = 0; i < 32; i++){
-    printf("%d\t", t[i*16]);
-}
-printf("\n");
-free(t);
+// int8_t *t = (int8_t*)malloc(2*32*112*112*sizeof(int8_t));
+// cudaMemcpy(t, pad_input, 2*32*112*112*sizeof(int8_t), cudaMemcpyDeviceToHost);
+// printf("input after group padding\n");
+// for(int i = 0; i < 32; i++){
+//     printf("%d\t", t[i*16]);
+// }
+// printf("\n");
+// free(t);
 }
 
     if(is_out_grp_pad) {
@@ -1032,15 +1032,15 @@ free(t);
     }
 #endif
 
-{
-int8_t *t = (int8_t*)malloc(2*32*112*112*sizeof(int8_t));
-cudaMemcpy(t, conv_out, 2*32*112*112*sizeof(int8_t), cudaMemcpyDeviceToHost);
-for(int i = 0; i < 32; i++){
-    printf("%f\t", t[i*16]*0.030147);
-}
-printf("\n");
-free(t);
-}
+// {
+// int8_t *t = (int8_t*)malloc(2*32*112*112*sizeof(int8_t));
+// cudaMemcpy(t, conv_out, 2*32*112*112*sizeof(int8_t), cudaMemcpyDeviceToHost);
+// for(int i = 0; i < 32; i++){
+//     printf("%f\t", t[i*16]*0.030147);
+// }
+// printf("\n");
+// free(t);
+// }
     if(is_out_grp_pad) {
         PPLCUDAConvolutionCvtOutput(stream, d_output, final_out, type, conv_param);
     }

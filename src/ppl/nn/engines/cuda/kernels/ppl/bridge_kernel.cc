@@ -57,13 +57,19 @@ ppl::common::RetCode BridgeKernel::DoExecute(KernelExecContext* ctx) {
     auto input = ctx->GetInput<TensorImpl>(0);
     auto output = ctx->GetOutput<TensorImpl>(0);
     ppl::common::RetCode status = ppl::common::RC_SUCCESS;
+    auto input_quant = GetCommonParam()->cuda_tensor_info->at(input->GetEdge()->GetId());
+    auto output_quant = GetCommonParam()->cuda_tensor_info->at(output->GetEdge()->GetId());
 
-    if (input->GetEdge()->CalcConsumerCount() == 1 && input->GetType() == TENSORTYPE_NORMAL && EqualTypeAndFormat(input, output)) {
-        output->TransferBufferFrom(input);
+    auto converter = output->GetDevice()->GetDataConverter();
+    if (input->GetShape().GetDataType() != ppl::common::DATATYPE_INT8 &&
+        output->GetShape().GetDataType() != ppl::common::DATATYPE_INT8) {
+        status = converter->Convert(&output->GetBufferDesc(), output->GetShape(), input->GetBufferDesc(), input->GetShape());
     } else {
-        auto converter = output->GetDevice()->GetDataConverter();
-        status =
-            converter->Convert(&output->GetBufferDesc(), output->GetShape(), input->GetBufferDesc(), input->GetShape());
+        auto input_id = input->GetEdge()->GetId();
+        auto input_quant = GetCommonParam()->cuda_tensor_info->at(input_id);
+        auto output_id = output->GetEdge()->GetId();
+        auto output_quant = GetCommonParam()->cuda_tensor_info->at(output_id);
+        status = ((CudaDataConverter*)converter)->Convert(&output->GetBufferDesc(), output->GetShape(), output_quant, input->GetBufferDesc(), input->GetShape(), input_quant);
     }
     return status;
 }
