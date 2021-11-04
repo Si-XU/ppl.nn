@@ -61,6 +61,14 @@
         _scale[0] = ((float2*)_d_scale)[dCv1_idx[0]]; \
     if( dCv1_x_valid[1] && dCv1_y_valid[0] ) \
         _scale[1] = ((float2*)_d_scale)[dCv1_idx[1]]; \
+/*
+if (dCv1_idy[0] * num_flt_v2 + dCv1_idx[0] == 32/4)    printf("init kernelout inscale: %d, %f %f\t", dCv1_idx[0]*2, _scale[0].x, _scale[0].y); \
+if(tid==0 && blockIdx.z==0 && blockIdx.x==0 && blockIdx.z==0) {\
+    printf("flt scale: %x\n", _d_scale); \
+    for(int i=0; i<96*16; i++) \
+    if(((float*)d_flt_scale)[i]!=0.f)    printf("%d:%f, ", i, ((float*)d_flt_scale)[i]); \
+}\
+*/\
     if( dCv1_x_valid[0] && dCv1_y_valid[0] ){ \
         _scale[0].x *= in_scale; \
         _scale[0].y *= in_scale; \
@@ -69,6 +77,9 @@
         _scale[1].x *= in_scale; \
         _scale[1].y *= in_scale; \
     } \
+/*
+if (dCv1_idy[0] * num_flt_v2 + dCv1_idx[0] == 32/4)    printf("kernelout inscale: %f \t", _scale[0].x); \
+*/\
 }
 #define LOAD_SCALE_x4(_scale, _d_scale){ \
     if( dCv1_x_valid[0] && dCv1_y_valid[0] ) \

@@ -26,6 +26,7 @@ namespace ppl { namespace nn { namespace cuda {
 
 RetCode ReluOp::Init(const OptKernelOptions& options) {
     infer_type_func_ = [this](InputOutputInfo* info, std::vector<CudaTensorQuant>* quant, datatype_t type) -> RetCode {
+        type == DATATYPE_FLOAT16;
         ppl::common::RetCode status;
         if (type == DATATYPE_UNKNOWN) {
             status = InferInheritedType(info);

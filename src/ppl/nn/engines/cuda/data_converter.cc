@@ -270,8 +270,9 @@ RetCode CudaDataConverter::Convert(BufferDesc* dst, const TensorShape& dst_desc,
 
     if (param.in_format == param.out_format && param.in_type == param.out_type && src_quant.scale == dst_quant.scale) {
         device_->Copy(dst, src, dst_desc);
-    } else if (param.in_format == param.out_format ||
-              (param.in_type == param.out_type && src_quant.scale == dst_quant.scale)) {
+    } else if ( param.in_format == param.out_format ||
+               (param.in_type == param.out_type && src_quant.scale == dst_quant.scale)
+              ) {
         PPLCUDADataConvert(device_->GetStream(), src.addr, dst->addr, nullptr, param);
     } else {
         auto shape_size = src_desc.GetElementsIncludingPadding() * GetSizeOfDataType(dst_desc.GetDataType());
@@ -285,6 +286,7 @@ RetCode CudaDataConverter::Convert(BufferDesc* dst, const TensorShape& dst_desc,
         BufferDescGuard __tmp_buffer_guard__(&tmp_buffer_desc, [this](BufferDesc* buffer) {
             device_->Free(buffer);
         });
+
 
         PPLCUDADataConvert(device_->GetStream(), src.addr, dst->addr, tmp_buffer_desc.addr, param);
     }

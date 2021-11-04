@@ -726,8 +726,9 @@ ppl::common::RetCode SetReLayoutParam(
     const ppl::nn::cuda::CudaTensorQuant& output_quant)
 {
     SetReLayoutParam(param, input, output);
-    param->quant_stride = input.GetDataFormat() == DATAFORMAT_NDARRAY? param->n_inner : 1;
+    param->same_scale = IsFloatEqual(input_quant.scale, output_quant.scale);
     if (input_quant.per_chnnal) {
+        param->quant_stride = input.GetDataFormat() == DATAFORMAT_NDARRAY? param->n_inner : 1;
         param->quant_dim_size = param->n_outer;
         param->quant_stride *= param->channel;
     }
@@ -746,15 +747,15 @@ void PPLCUDADataConvert(
     void* tempBuf,
     ReFormatParam& param)
 {
-    if (param.in_format != param.out_format && param.in_type != param.out_type) {
-        PPLCUDACVTTypePerTensor(stream, param.quant_dim_size, param.quant_stride, input, tempBuf, param);
+    if (param.in_format != param.out_format && (param.in_type != param.out_type || !param.same_scale)) {
+        PPLCUDACVTTypePerTensor(stream, input, tempBuf, param);
         PPLCUDACVTFormat(stream, tempBuf, output, param);
         return;
-    } else if (param.in_format != param.out_format) {
+    } else if (param.in_format != param.out_format && (param.in_type = param.out_type && param.same_scale)) {
         PPLCUDACVTFormat(stream, input, output, param);
         return;
-    } else if (param.in_type != param.out_type) {
-        PPLCUDACVTTypePerTensor(stream, param.quant_dim_size, param.quant_stride, input, output, param);
+    } else if (param.in_type != param.out_type || !param.same_scale) {
+        PPLCUDACVTTypePerTensor(stream, input, output, param);
         return;
     } else {
         return;

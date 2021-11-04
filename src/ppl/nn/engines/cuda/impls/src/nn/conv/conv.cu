@@ -894,7 +894,8 @@ void PPLCUDAConvolutionForwardImpInt8(
     int num_chl_per_grp_pad = Align(num_chl_per_grp, pad_size);
     int num_flt_per_grp_pad = Align(num_flt_per_grp, pad_size);
 
-    if(!g_int8_kernel_container[kid].CheckKernelTypeFeasible(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk)) {printf( "[ERROR]: conv kernel does not math with conv param\n");}
+    //if(!g_int8_kernel_container[kid].CheckKernelTypeFeasible(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk)) {printf( "[ERROR]: conv kernel does not math with conv param\n");}
+//printf("kernel name: %s\n", g_int8_kernel_container[kid].kname.c_str());
     int in_hw  = conv_param.in_height * conv_param.in_width;
     int flt_hw = conv_param.flt_height * conv_param.flt_width;
     int out_hw = conv_param.out_height * conv_param.out_width;
@@ -909,33 +910,70 @@ void PPLCUDAConvolutionForwardImpInt8(
 
     int4 *pad_input = d_input;
     int4 *pad_output = d_output;
-{
-// int8_t *t = (int8_t*)malloc(2*32*112*112*sizeof(int8_t));
-// cudaMemcpy(t, d_input, 2*32*112*112*sizeof(int8_t), cudaMemcpyDeviceToHost);
-// printf("input before group padding\n");
-// for(int i = 0; i < 32; i++){
-//     printf("%d\t", t[i]);
-// }
-// printf("\n");
-// free(t);
-}
 
     if(is_in_grp_pad) {
 	    pad_input = d_temp_buf; 
 	    buf_off_v4 += GetCvtInputSize(type, conv_param, num_chl_per_grp_pad) / (_4INT_TO_INT4_ * _INT_TO_4BYTE_);
 
         PPLCUDAConvolutionCvtInput(stream, pad_input, d_input, type, conv_param);
+//if(conv_param.num_flt==96 && conv_param.num_grp==96 && conv_param.flt_height==3 && conv_param.num_chl==96){
+//   float *t = (float*)malloc(2*112*112*32*sizeof(float));
+//   cudaMemcpy(t, quant_param.d_flt_scale, 96*16*sizeof(float), cudaMemcpyDeviceToHost);
+//   printf("in conv weight_scale: %x\n", quant_param.d_flt_scale);
+//   for(int i = 0; i < 96; i++){
+//   printf("%f\t", t[i*16]);
+//   }
+//   free(t);
+//}
+
+//if(conv_param.num_flt==24 && conv_param.num_grp==24 && conv_param.flt_height==3 && conv_param.num_chl==24){
+//int8_t *t = (int8_t*)malloc(2*56*56*32*16*sizeof(int8_t));
+//int8_t *t1 = (int8_t*)malloc(2*56*56*32*sizeof(int8_t));
+//int8_t *t2 = (int8_t*)malloc(2*56*56*32*16*sizeof(int8_t));
+//cudaMemcpy(t1, d_input, 2*56*56*32*sizeof(int8_t), cudaMemcpyDeviceToHost);
+//cudaMemcpy(t2, pad_input, 2*56*56*24*16*sizeof(int8_t), cudaMemcpyDeviceToHost);
+//printf("convinput\n");
+//    for(int i = 0; i < 2*56*56*24*16; i++){
+//        //t[i] = i%16==0? t1[i/16] : (int8_t)0;
+//        //t[i] = i%16==0? (int8_t)1 : (int8_t)0;
+//        //t[i] = i%16==0? (int8_t)(i/16/24%4) : (int8_t)0;
+//        int cout = i/16%24;
+//        int w = i/16/24%56;
+//        int h = i/16/24/56;
+//        if(i%16==0)  if(cout==0 && w<=3 && h<=3)  printf("(%d,%d,%d):%4d,%d\t", h,w,cout, (int)t2[i], t[i]);
+//        //if(i%16==15) printf("\n");
+//    }
+//    for(int i = 0; i < 2*56*56*32; i++){
+//        //t[i] = i%16==0? t1[i/16] : (int8_t)0;
+//        //t[i] = i%16==0? (int8_t)1 : (int8_t)0;
+//        //t[i] = i%16==0? (int8_t)(i/16/24%4) : (int8_t)0;
+//        int cout = i%32;
+//        int w = i/32%56;
+//        int h = i/32/56;
+//        if(i%16==0)  if(cout==0 && w<=3 && h<=3)  printf("pre_in:(%d,%d,%d):%4d\t", h,w,cout, (int)t1[i]);
+//        //if(i%16==15) printf("\n");
+//    }
+//
+//    //for(int i = 0; i < 2*112*112*32*16; i++){
+//    //    if(t[i] != t2[i])    printf("error cvtinput\t");
+//    //}
+////cudaMemcpy(pad_input, t, 2*56*56*24*16*sizeof(int8_t), cudaMemcpyHostToDevice);
+//free(t);
+//free(t1);
+//free(t2);
+//printf("convinput done\n");
+//}
+
     }
-{
-// int8_t *t = (int8_t*)malloc(2*32*112*112*sizeof(int8_t));
-// cudaMemcpy(t, pad_input, 2*32*112*112*sizeof(int8_t), cudaMemcpyDeviceToHost);
-// printf("input after group padding\n");
-// for(int i = 0; i < 32; i++){
-//     printf("%d\t", t[i*16]);
-// }
-// printf("\n");
-// free(t);
-}
+//if(conv_param.num_flt==96 && conv_param.num_grp==96 && conv_param.flt_height==3 && conv_param.num_chl==96){
+//   float *t = (float*)malloc(2*112*112*32*sizeof(float));
+//   cudaMemcpy(t, quant_param.d_flt_scale, 96*16*sizeof(float), cudaMemcpyDeviceToHost);
+//   printf("in conv weight_scale: %x\n", quant_param.d_flt_scale);
+//   for(int i = 0; i < 96; i++){
+//   printf("%f\t", t[i*16]);
+//   }
+//   free(t);
+//}
 
     if(is_out_grp_pad) {
 	    pad_output = d_temp_buf + buf_off_v4;
@@ -1032,15 +1070,6 @@ void PPLCUDAConvolutionForwardImpInt8(
     }
 #endif
 
-// {
-// int8_t *t = (int8_t*)malloc(2*32*112*112*sizeof(int8_t));
-// cudaMemcpy(t, conv_out, 2*32*112*112*sizeof(int8_t), cudaMemcpyDeviceToHost);
-// for(int i = 0; i < 32; i++){
-//     printf("%f\t", t[i*16]*0.030147);
-// }
-// printf("\n");
-// free(t);
-// }
     if(is_out_grp_pad) {
         PPLCUDAConvolutionCvtOutput(stream, d_output, final_out, type, conv_param);
     }

@@ -90,7 +90,7 @@
             \
             _flt_n_valid  =  _flt_n_id < num_flt_per_grp; \
             \
-            _dBv1_off  =   grp_id   * flt_hwc_v2 * num_flt_per_grp_pad + \
+            _dBv1_off  =   grp_id   * flt_hwc_v2 * num_flt_per_grp + \
                           _flt_n_id * flt_hwc_v2 + \
                            tid_x; \
         }

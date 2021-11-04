@@ -2,7 +2,7 @@
 
 workdir=`pwd`
 x86_64_build_dir="${workdir}/x86-64-build"
-cuda_build_dir="${workdir}/cuda-debug"
+cuda_build_dir="${workdir}/cuda-build"
 
 if [[ `uname` == "Linux" ]]; then
     processor_num=`cat /proc/cpuinfo | grep processor | grep -v grep | wc -l`

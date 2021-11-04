@@ -18,12 +18,12 @@
 #include "ppl/nn/engines/cuda/kernel.h"
 
 #include <chrono>
-
+#include <memory>
+#include <fstream>
 #include "ppl/common/allocator.h"
 #include "ppl/nn/common/logger.h"
 
 using namespace ppl::common;
-using namespace std;
 
 namespace ppl { namespace nn { namespace cuda {
 
@@ -52,7 +52,6 @@ RetCode CudaKernel::Init() {
         return RC_OTHER_ERROR;
     }
 #endif
-
     auto status = barrier_.Init();
     if (status != RC_SUCCESS) {
         LOG(ERROR) << "create barrier for kernel[" << GetName() << "] failed: " << GetRetCodeStr(status);
@@ -153,6 +152,32 @@ RetCode CudaKernel::Execute(KernelExecContext* ctx) {
     if (CanDoExecute(*ctx)) {
         status = DoExecute(ctx);
     }
+
+    auto output = ctx->GetOutput<TensorImpl>(0);
+    int save_bytes = output->GetShape().GetDataType() == ppl::common::DATATYPE_FLOAT16 ||
+                        output->GetShape().GetDataType() == ppl::common::DATATYPE_INT8 ?
+                    sizeof(float) * output->GetShape().GetElementsExcludingPadding() :
+                    output->GetShape().GetBytesExcludingPadding();
+    std::unique_ptr<char[]> out_data(new char[save_bytes]);
+    TensorShape tmp_shape(output->GetShape());
+    if(output->GetShape().GetDataType() == ppl::common::DATATYPE_FLOAT16) {
+        tmp_shape.SetDataType(ppl::common::DATATYPE_FLOAT32);
+    } else if(output->GetShape().GetDataType() == ppl::common::DATATYPE_INT8) {
+        tmp_shape.SetDataType(ppl::common::DATATYPE_FLOAT32);
+    } else {
+        tmp_shape.SetDataType(output->GetShape().GetDataType());
+    }
+    tmp_shape.SetDataFormat(ppl::common::DATAFORMAT_NDARRAY);
+    auto output_quant = common_param_->cuda_tensor_info->at(output->GetEdge()->GetId());
+    CudaTensorQuant convert_quant;
+//if(output->GetShape().GetDataFormat() == ppl::common::DATAFORMAT_NDARRAY && output->GetShape().GetDataType() == ppl::common::DATATYPE_FLOAT32){
+//    (CudaDataConverter*)GetDevice()->CopyToHost((void*)out_data.get(), output->GetBufferDesc(), output->GetShape());
+//}else{
+    ((CudaDataConverter*)GetDevice()->GetDataConverter())->ConvertToHost((void*)out_data.get(), tmp_shape, convert_quant, output->GetBufferDesc(), output->GetShape(), output_quant);
+//}
+    std::string outputname = output->GetName();
+    std::ofstream out_fs(outputname + ".dat");
+    out_fs.write((char*)out_data.get(), save_bytes);
 
 #ifndef NDEBUG
     auto run_end_ts = std::chrono::system_clock::now();
