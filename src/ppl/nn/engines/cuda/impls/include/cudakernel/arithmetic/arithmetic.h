@@ -45,7 +45,10 @@ ppl::common::RetCode PPLCUDAArithMeticMulForwardImp(
     const ppl::nn::TensorShape* input_shape1,
     const void* input1,
     const ppl::nn::TensorShape* output_shape,
-    void* output);
+    void* output,
+    float in_scale0,
+    float in_scale1,
+    float out_scale);
 
 ppl::common::RetCode PPLCUDAArithMeticDivForwardImp(
     cudaStream_t stream,
