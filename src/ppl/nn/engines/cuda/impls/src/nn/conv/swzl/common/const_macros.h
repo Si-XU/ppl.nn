@@ -371,7 +371,12 @@
 
 #define SM_A_SIZE               ((TILE_M_PER_CTA) * (TILE_K_PER_CTA) / (_2HALF_TO_INT_))
 #define SM_B_SIZE               ((TILE_K_PER_CTA) * (TILE_N_PER_CTA) / (_2HALF_TO_INT_))
+
+#if TILE_M_PER_WARP == 8
+#define SM_C_SIZE               ((TILE_M_PER_CTA) * (TILE_N_PER_MMA) * (CTA_SIZE_X_IN_WARP) * (_2MMA_) / (_2HALF_TO_INT_))
+#elif TILE_M_PER_WARP == 16 || TILE_M_PER_WARP == 32 || TILE_M_PER_WARP == 64
 #define SM_C_SIZE               ((TILE_M_PER_CTA) * (TILE_N_PER_MMA) * (CTA_SIZE_X_IN_WARP) / (_2HALF_TO_INT_))
+#endif
 
 #define SM_A_1BUF               (SM_A_SIZE)
 #define SM_B_1BUF               (SM_B_SIZE)

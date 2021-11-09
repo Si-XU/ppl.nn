@@ -40,8 +40,19 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     uint ldg_idx   =  tid % TILE_K_V8_PER_CTA;
     uint ldg_idy   =  tid / TILE_K_V8_PER_CTA;
 
+#if TILE_K_PER_CTA == 8
+    uint sts_idx   =   0;
+    uint sts_idy   =   tid;
+#elif TILE_K_PER_CTA == 16
+    uint sts_idx   = ((tid & 0x1) ^ ( (tid & 0xf) >> 3));
+    uint sts_idy   =   tid >> 1;
+#elif TILE_K_PER_CTA == 32
+    uint sts_idx   = ((tid & 0x3) ^ ( (tid & 0x1f) >> 3));
+    uint sts_idy   =   tid >> 2;
+#elif TILE_K_PER_CTA == 64
     uint sts_idx   = ((tid & 0x7) ^ ( (tid & 0x3f) >> 3));
     uint sts_idy   =   tid >> 3;
+#endif
 
     uint out_tid   =  warp_idy * WARP_SIZE_IN_THD + local_tid;
 
@@ -212,7 +223,15 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #endif
 
     uint lds_idy =  local_tid;
+#if TILE_K_PER_CTA == 8
+    uint lds_idx =  0;
+#elif TILE_K_PER_CTA == 16
+    uint lds_idx = (local_tid / K_ROWS_PER_SMEM_ROW) & 0x1;
+#elif TILE_K_PER_CTA == 32
+    uint lds_idx = (local_tid / K_ROWS_PER_SMEM_ROW) & 0x3;
+#elif TILE_K_PER_CTA == 64
     uint lds_idx = (local_tid / K_ROWS_PER_SMEM_ROW) & 0x7;
+#endif
 
     uint sAv1_read  =  warp_idy   * TILE_M_PER_WARP        * TILE_K_V2_PER_CTA +
 #if TILE_M_PER_WARP == 8
@@ -238,10 +257,14 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #endif
 
     int db0_sBv1[REG_sBv1_SIZE];
+#if TILE_K_PER_CTA == 16 || TILE_K_PER_CTA == 32 || TILE_K_PER_CTA == 64
     int db1_sBv1[REG_sBv1_SIZE];
+#endif
 
     int db0_sAv1[REG_sAv1_SIZE];
+#if TILE_K_PER_CTA == 16 || TILE_K_PER_CTA == 32 || TILE_K_PER_CTA == 64
     int db1_sAv1[REG_sAv1_SIZE];
+#endif
 
 #if defined(FLT_SIZE1)
     LOAD_dAv4(reg_dAv4, dA, dAv4_off, flt_c_v8_valid, flt_n_valid);
@@ -275,8 +298,10 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     READ_sAv1(db0_sAv1, smp_base_v1, sAv1_read);
     READ_sBv1(db0_sBv1, smp_base_v1, sBv1_read);
 
+#if TILE_K_PER_CTA == 16 || TILE_K_PER_CTA == 32 || TILE_K_PER_CTA == 64
     FWD_KGROUP_STEP1(sAv1_read);
     FWD_KGROUP_STEP1(sBv1_read);
+#endif
 
 #if defined(ENABLE_SPLITK)
     for (uint j = 0; j < flt_hw * DivUp(num_chl_per_spk, TILE_K_PER_CTA); j++)
@@ -303,14 +328,17 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
         FWD_LUT(lut_id);
 #endif
 
+#if TILE_K_PER_CTA == 16 || TILE_K_PER_CTA == 32 || TILE_K_PER_CTA == 64
         READ_sAv1(db1_sAv1, smp_base_v1, sAv1_read);
         READ_sBv1(db1_sBv1, smp_base_v1, sBv1_read);
 
         FWD_KGROUP_STEP2(sAv1_read);
         FWD_KGROUP_STEP2(sBv1_read);
+#endif
 
         MMA_INSTS(C, db0_sBv1, db0_sAv1);
 
+#if TILE_K_PER_CTA == 32 || TILE_K_PER_CTA == 64
         READ_sAv1(db0_sAv1, smp_base_v1, sAv1_read);
         READ_sBv1(db0_sBv1, smp_base_v1, sBv1_read);
 
@@ -324,7 +352,9 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
         FWD_KGROUP_STEP4(sAv1_read);
         FWD_KGROUP_STEP4(sBv1_read);
+#endif
 
+#if TILE_K_PER_CTA == 64
         MMA_INSTS(C, db0_sBv1, db0_sAv1);
 
         READ_sAv1(db0_sAv1, smp_base_v1, sAv1_read);
@@ -356,6 +386,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
         FWD_KGROUP_STEP8(sAv1_read);
         FWD_KGROUP_STEP8(sBv1_read);
+#endif
 
 #if defined(USE_1BUF)
         __syncthreads();
@@ -364,7 +395,11 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
         WRITE_sAv4(sm_base_v4, sAv4_write, reg_dAv4);
         WRITE_sBv4(sm_base_v4, sBv4_write, reg_dBv4);
 
+#if TILE_K_PER_CTA == 16
+        MMA_INSTS(C, db1_sBv1, db1_sAv1);
+#elif TILE_K_PER_CTA == 32 || TILE_K_PER_CTA == 64
         MMA_INSTS(C, db0_sBv1, db0_sAv1);
+#endif
 
 #if defined(USE_2BUF)
         SWITCH_BUFFER(sAv4_write, SM_A_V4_1BUF, 0);
@@ -379,10 +414,14 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
         READ_sAv1(db0_sAv1, smp_base_v1, sAv1_read);
         READ_sBv1(db0_sBv1, smp_base_v1, sBv1_read);
 
+#if TILE_K_PER_CTA == 16 || TILE_K_PER_CTA == 32 || TILE_K_PER_CTA == 64
         FWD_KGROUP_STEP1(sAv1_read);
         FWD_KGROUP_STEP1(sBv1_read);
+#endif
 
+#if TILE_K_PER_CTA == 32 || TILE_K_PER_CTA == 64
         MMA_INSTS(C, db1_sBv1, db1_sAv1);
+#endif
     }
 
     __syncthreads();

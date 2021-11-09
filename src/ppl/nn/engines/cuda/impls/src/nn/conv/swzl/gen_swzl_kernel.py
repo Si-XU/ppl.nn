@@ -326,7 +326,7 @@ def GenAllKernels(parent_path):
         spk_source_file = SpkSourceFile(parent_path, flt_size)
 
         for buf_size in [1, 2]:
-            for k_size in [64]:
+            for k_size in [8, 16, 32, 64]:
                 for warp_y in [8, 16, 32, 64]:
                     for warp_x in [16, 32, 64, 128]:
                         for cta_y_num in [1, 2, 4]:
@@ -335,7 +335,7 @@ def GenAllKernels(parent_path):
                                     continue
                                 if warp_y == 64 and warp_x == 128:
                                     continue
-                                if cta_y_num == 1 and cta_x_num == 1:
+                                if cta_y_num == 1 and cta_x_num == 1 and k_size == 64:
                                     continue
                                 if cta_y_num == 4 and cta_x_num == 4:
                                     continue
