@@ -80,7 +80,6 @@ double TuringHMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
     this->attr_param_ = *(reinterpret_cast<CudaConvParam*>(options.param));
     attr_param_.extra_param.algo_info.algo_type = "TuringHMMAImpgemm";
     attr_param_.extra_param.algo_info.kernel_index = 5100;
-
     // If the node has selcted, return answer directly
     auto pair = selection_res_.find(node->GetId());
     if (pair != selection_res_.end()) {
@@ -98,7 +97,19 @@ double TuringHMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
     auto shape_out = options.tensors->find(node->GetOutput(0))->second->GetShape();
     auto align_size = ppl::common::cuda::GetDataFormatChannelAlignment(shape_in0.GetDataFormat());
     ConvertToForwardConvParam(shape_in0, shape_in1, shape_out, attr_param_.param, temp_conv_param);
-    ConvertToEmptyFuseParam(temp_fuse_param);
+    
+    InputOutputInfo IOinfo;
+    IOinfo.SetAcquireObjectFunc([options](edgeid_t eid, uint32_t, Device*) -> EdgeObject* {
+        auto iter = options.tensors->find(eid);
+        if (iter == options.tensors->end()) {
+            return nullptr;
+        }
+        return iter->second.get();
+    });
+    IOinfo.SetNode(node);
+    
+    // This line is used to set fuse param.
+    ConvertToForwardFuseParam(&IOinfo, options.device, attr_param_.extra_param.fuse_info, temp_fuse_param);
 
     auto algo_info = options.algos->find(GetConvShapeString(temp_conv_param));
     if (algo_info != options.algos->end()) {
@@ -134,6 +145,13 @@ double TuringHMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
     ALLOC_BUFFERF_FOR_ALGO_SELECT(weight_buffer, shape_in1.GetBytesIncludingPadding(), ALGO_MAX_TIME)
     ALLOC_BUFFERF_FOR_ALGO_SELECT(bias_buffer, shape_in2.GetBytesIncludingPadding(), ALGO_MAX_TIME)
     ALLOC_BUFFERF_FOR_ALGO_SELECT(output_buffer, shape_out.GetBytesIncludingPadding(), ALGO_MAX_TIME)
+
+
+    if (temp_fuse_param.has_elt) {
+        auto shape_in3 = options.tensors->find(node->GetInput(3))->second->GetShape();
+        ALLOC_BUFFERF_FOR_ALGO_SELECT(elementwise_buffer, shape_in3.GetBytesIncludingPadding(), ALGO_MAX_TIME)
+        temp_fuse_param.pre_data = elementwise_buffer.addr;
+    }
 
     uint64_t size = PPLCUDAConvolutionGetCompilationBufSize(shape_in0.GetDataType(), temp_conv_param);
     ALLOC_BUFFERF_FOR_ALGO_SELECT(temp_buffer, size, ALGO_MAX_TIME)
