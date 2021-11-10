@@ -133,8 +133,6 @@ ppl::common::RetCode Gene2spkKernel(std::string& file_res, std::string& kname, i
         file_str << "#define MAX_LUT_SIZE 128\n\n";
         file_str << "#define MAX_SPLITK_SIZE 8\n\n";
         file_str << "struct lut_t{ int idx[MAX_LUT_SIZE]; };\n\n";
-        file_str << "struct chl_lut_t{ int idx[MAX_SPLITK_SIZE + 1]; };\n\n";
-        file_str << "struct kloop_lut_t{ int idx[MAX_SPLITK_SIZE + 1]; };\n\n";
     }
 
     WriteIncludeFile(file_str, "/2spk/common/const_macros.h");
