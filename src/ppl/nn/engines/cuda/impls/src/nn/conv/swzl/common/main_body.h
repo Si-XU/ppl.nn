@@ -34,13 +34,9 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
     int4 Rv4[OUTPUT_BLKS_PER_STEP];
 
-#if defined(ENABLE_FUSE) || ((defined(ENABLE_SPLITF) || defined(ENABLE_SPLITK)) && (TILE_K_PER_CTA > TILE_K_PER_SET))
-    __half2 *h2R = (__half2 *)Rv4;
-#endif
-
 #if defined(ENABLE_FUSE)
+    __half2 *h2R = (__half2 *)Rv4;
     __half *hR = (__half *)Rv4;
-	int * Rv1 = (int *) Rv4;
 #endif
 
     uint tid       =  threadIdx.x;
@@ -69,8 +65,38 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
     uint out_tid   =  warp_idy * WARP_SIZE_IN_THD + local_tid;
 
-    uint cta_idx   = blockIdx.x;
-    uint cta_idy   = blockIdx.y;
+    /////////////////////////
+    //  cta layout
+    uint cta_idx   = 0;
+    uint cta_idy   = 0;
+
+    uint lsb_y_mask = 0x7;
+    uint lsb_y_bits = 3;
+
+    while(1)
+    {
+        uint msb_cta_y  =  blockIdx.y & (~lsb_y_mask);
+        uint lsb_cta_y  =  blockIdx.y &   lsb_y_mask;
+
+        uint flip_cta_y =  blockIdx.y &  (lsb_y_mask + 0x1);
+        uint tail_cta_y =  blockIdx.y |   lsb_y_mask;
+
+        uint local_cta_id = lsb_cta_y * gridDim.x + blockIdx.x;
+
+        if(tail_cta_y < gridDim.y)
+        {
+            cta_idy = msb_cta_y | (local_cta_id & lsb_y_mask);
+
+            cta_idx = local_cta_id >> lsb_y_bits;
+            if(flip_cta_y) cta_idx = gridDim.x + (~cta_idx);
+
+            break;
+        }
+        else {
+            lsb_y_mask = lsb_y_mask >> 1;
+            lsb_y_bits = lsb_y_bits -  1;
+        }
+    }
 
 #if defined(ENABLE_SPLITK)
     uint grp_id    = blockIdx.z % num_grp;
@@ -463,7 +489,9 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
         __syncthreads();
 
+#if defined(ENABLE_FUSE)
         ADD_BIAS_V4(has_bias, bias);
+#endif
 
 #if defined(ENABLE_FUSE)
 
