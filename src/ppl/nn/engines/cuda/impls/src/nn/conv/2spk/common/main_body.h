@@ -426,12 +426,10 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
                         dCv4_idy * num_flt_per_grp_pad_v8 * num_grp +
                         dCv4_idx;
 
-#if defined(ENABLE_FUSE)
         ADD_BIAS_V4(has_bias, bias);
-#endif
 
 #if defined(ENABLE_FUSE)
-        uint concatV4_off = 0;
+        uint concat_v4_off = 0;
 
         FUSE_RELU_V4(has_relu);
         FUSE_CLIP_V4(has_clip, clip_max, clip_min);
@@ -442,7 +440,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
         FUSE_CLIP_V4(has_elt_clip, elt_clip_max, elt_clip_min);
         FUSE_PRELU_V4(has_elt_prelu, elt_prelu, elt_leaky);
 
-        SET_CONCAT_OFF_V4(has_concat, concatV4_off);
+        SET_CONCAT_OFF_V4(has_concat, concat_v4_off);
 #endif
 
         OUTPUT_PRC_HALF(Rv4);
