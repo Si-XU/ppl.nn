@@ -27,7 +27,10 @@ ppl::common::RetCode PPLCUDAArithMeticAddForwardImp(
     const ppl::nn::TensorShape* input_shape1,
     const void* input1,
     const ppl::nn::TensorShape* output_shape,
-    void* output);
+    void* output,
+    float in_scale0,
+    float in_scale1,
+    float out_scale);
 
 ppl::common::RetCode PPLCUDAArithMeticSubForwardImp(
     cudaStream_t stream,
@@ -36,7 +39,10 @@ ppl::common::RetCode PPLCUDAArithMeticSubForwardImp(
     const ppl::nn::TensorShape* input_shape1,
     const void* input1,
     const ppl::nn::TensorShape* output_shape,
-    void* output);
+    void* output,
+    float in_scale0,
+    float in_scale1,
+    float out_scale);
 
 ppl::common::RetCode PPLCUDAArithMeticMulForwardImp(
     cudaStream_t stream,
@@ -57,7 +63,10 @@ ppl::common::RetCode PPLCUDAArithMeticDivForwardImp(
     const ppl::nn::TensorShape* input_shape1,
     const void* input1,
     const ppl::nn::TensorShape* output_shape,
-    void* output);
+    void* output,
+    float in_scale0,
+    float in_scale1,
+    float out_scale);
 
 ppl::common::RetCode PPLCUDAArithMeticMaxForwardImp(
     cudaStream_t stream,
@@ -66,7 +75,10 @@ ppl::common::RetCode PPLCUDAArithMeticMaxForwardImp(
     const ppl::nn::TensorShape* input_shape1,
     const void* input1,
     const ppl::nn::TensorShape* output_shape,
-    void* output);
+    void* output,
+    float in_scale0,
+    float in_scale1,
+    float out_scale);
 
 ppl::common::RetCode PPLCUDAArithMeticMinForwardImp(
     cudaStream_t stream,
@@ -75,7 +87,10 @@ ppl::common::RetCode PPLCUDAArithMeticMinForwardImp(
     const ppl::nn::TensorShape* input_shape1,
     const void* input1,
     const ppl::nn::TensorShape* output_shape,
-    void* output);
+    void* output,
+    float in_scale0,
+    float in_scale1,
+    float out_scale);
 
 ppl::common::RetCode PPLCUDAArithMeticPowForwardImp(
     cudaStream_t stream,
@@ -84,7 +99,10 @@ ppl::common::RetCode PPLCUDAArithMeticPowForwardImp(
     const ppl::nn::TensorShape* input_shape1,
     const void* input1,
     const ppl::nn::TensorShape* output_shape,
-    void* output);
+    void* output,
+    float in_scale0,
+    float in_scale1,
+    float out_scale);
 
 ppl::common::RetCode PPLCUDAArithMeticPReluForwardImp(
     cudaStream_t stream,
@@ -93,5 +111,8 @@ ppl::common::RetCode PPLCUDAArithMeticPReluForwardImp(
     const ppl::nn::TensorShape* input_shape1,
     const void* input1,
     const ppl::nn::TensorShape* output_shape,
-    void* output);
+    void* output,
+    float in_scale0,
+    float in_scale1,
+    float out_scale);
 #endif //PPLCUDA_KERNEL_INCLUDE_ARITHMETIC_ARITHMETIC_H_

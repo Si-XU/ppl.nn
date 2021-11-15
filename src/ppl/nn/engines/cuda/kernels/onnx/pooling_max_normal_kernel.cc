@@ -49,34 +49,9 @@ ppl::common::RetCode PoolingMaxNormalKernel::DoExecute(KernelExecContext* ctx) {
         }
 
         if (ctx->GetOutputCount() == 1) {
-            // printf("input: \n");
-            // int8_t* a = new int8_t[64*112*112*4];
-            // input->CopyToHost(a);
-            // for(int k = 2; k < 3; k++){
-            //     std::cout << "batch " << k << std::endl; 
-            //     for(int i = 0; i < 112; i++) {
-            //         for(int j = 0; j < 112; j++)
-            //             printf("%d, ",a[k*112*112+i*112+j]);
-            //         std::cout << std::endl;
-            //     }
-            // }
             status = PPLCUDAMaxPoolingForwardImp(GetStream(), &input->GetShape(), input->GetBufferPtr(),
                                                  &output->GetShape(), output->GetBufferPtr(), kernel_h, kernel_w,
                                                  stride_h, stride_w, pad_h, pad_w, input_quant.scale[0], output_quant.scale[0]);
-            
-            // printf("output: \n");
-            // std::cout << input->GetType() << std::endl;
-            // int8_t* b = new int8_t[64*56*56*4];
-            // output->CopyToHost(b);
-            // for(int k = 2; k < 3; k++){
-            //     std::cout << "batch " << k << std::endl; 
-            //     for(int i = 0; i < 56; i++) {
-            //         for(int j = 0; j < 56; j++)
-            //             printf("%d, ", b[k*56*56+i*56+j]);
-            //         std::cout << std::endl;
-            //     }
-            // }
-
         } else if (ctx->GetOutputCount() == 2) {
             auto indices = ctx->GetOutput<TensorImpl>(1);
             status = PPLCUDAMaxPoolingForwardImp(GetStream(), &input->GetShape(), input->GetBufferPtr(),

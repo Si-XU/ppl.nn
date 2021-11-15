@@ -1664,7 +1664,6 @@ ppl::common::RetCode PPLCUDAMaxPoolingForwardImpInt8(
               out_width, kernel_height, kernel_width, stride_height, stride_width,
               pad_height, pad_width, in_scale, out_scale);
         } else if (f3 && s2) {
-            printf("f3s2 \n");
             ppl_cukernel_pooling_max_f3s2<4, 1, int8_t><<<dim_grid, dim_block, 0, stream>>>(
                 input, output, batch, pad_channels, in_height, in_width, out_height,
                 out_width, kernel_height, kernel_width, stride_height, stride_width,
