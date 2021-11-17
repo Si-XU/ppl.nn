@@ -39,6 +39,7 @@ struct quant_param_t {
     float in_scale;
     void *d_flt_scale;
     float out_scale;
+    float pre_scale;
 };
 
 struct fuse_param_t{

@@ -62,7 +62,7 @@ struct ReFormatParam {
     bool mix_type;
     bool mix_format;
 
-    bool same_scale;
+    bool same_scale = 1;
     int quant_stride = 1;
     int quant_dim_size = 1;//output channel size
     int i_zero_point = 0;

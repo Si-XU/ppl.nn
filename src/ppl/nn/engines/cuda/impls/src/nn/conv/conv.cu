@@ -136,7 +136,7 @@
             conv_param.hole_height,        conv_param.hole_width,                       \
             conv_param.has_bias,           bias,                                        \
 	    quant_param.in_scale,          quant_param.d_flt_scale,                     \
-	    quant_param.out_scale,                                                      \
+	    quant_param.out_scale,         quant_param.pre_scale,                       \
             fuse_param.has_activation,     clip_min,                                    \
             fuse_param.has_clip,           clip_max,                                    \
             fuse_param.has_prelu,          (const void *) fuse_param.prelu,             \
@@ -168,7 +168,7 @@
             conv_param.hole_height,        conv_param.hole_width,                       \
             conv_param.has_bias,           bias,                                        \
 	    quant_param.in_scale,          quant_param.d_flt_scale,                     \
-	    quant_param.out_scale,                                                      \
+	    quant_param.out_scale,         quant_param.pre_scale,                       \
             fuse_param.has_activation,     clip_min,                                    \
             fuse_param.has_clip,           clip_max,                                    \
             fuse_param.has_prelu,          (const void *) fuse_param.prelu,             \
