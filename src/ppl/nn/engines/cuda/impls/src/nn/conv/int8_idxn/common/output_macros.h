@@ -282,150 +282,106 @@
         { \
        	    if(_has_prelu == 1 && dCv1_x_valid[0]) \
             { \
-                _Pragma("unroll") \
-	            for(int i = 0; i < _INT_TO_2HALF_; i++) \
-                { \
-                    if(dCv1_y_valid[0] && __hlt(hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i], _leaky); \
-                    \
-                    if(dCv1_y_valid[1] && __hlt(hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i], _leaky); \
-	            } \
-	        } \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 0].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 0].x * _leaky; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 0].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 0].y * _leaky; \
+            } \
             \
        	    if(_has_prelu == 2 && dCv1_x_valid[0]) \
             { \
-	            int      _scale0_v1 = ((int  *) _prelu) [dCv1_idx[0]]; \
-	            __half * _hscale0  = (__half *) &_scale0_v1; \
+	            int  _scale0_v1 = ((int  *) _prelu) [dCv1_idx[0]]; \
+	            float* _hscale0 = (float *) &_scale0_v1; \
                 \
-                _Pragma("unroll") \
-	            for(int i = 0; i < _INT_TO_2HALF_; i++) \
-                { \
-                    if(dCv1_y_valid[0] && __hlt(hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i], _hscale0[i]); \
-                    \
-                    if(dCv1_y_valid[1] && __hlt(hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i], _hscale0[i]); \
-	            } \
-	        } \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 0].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 0].x * _hscale0[0]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 0].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 0].y * _hscale0[1]; \
+	    } \
             \
        	    if(_has_prelu == 3 && dCv1_x_valid[0]) \
             { \
-                int      _scale0_v1 = dCv1_y_valid[0] ? ((int   *) _prelu) [dCv1_idy[0] * num_flt_v2 + dCv1_idx[0]] : 0; \
-                int      _scale1_v1 = dCv1_y_valid[1] ? ((int   *) _prelu) [dCv1_idy[1] * num_flt_v2 + dCv1_idx[0]] : 0; \
+                int   _scale0_v1 = dCv1_y_valid[0] ? ((int *) _prelu) [dCv1_idy[0] * num_flt_v2 + dCv1_idx[0]] : 0; \
+                float *_hscale0  = (float *) &_scale0_v1; \
                 \
-	            __half * _hscale0  = (__half *) &_scale0_v1; \
-	            __half * _hscale1  = (__half *) &_scale1_v1; \
-                \
-                _Pragma("unroll") \
-	            for(int i = 0; i < _INT_TO_2HALF_; i++) \
-                { \
-                    if(dCv1_y_valid[0] && __hlt(hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i], _hscale0[i]); \
-                    \
-                    if(dCv1_y_valid[1] && __hlt(hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i], _hscale1[i]); \
-	            } \
-	        } \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 0].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 0].x * _hscale0[0]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 0].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 0].y * _hscale0[1]; \
+	    } \
         }
 
 #define FUSE_PRELU_1x2_V1(_has_prelu, _prelu, _leaky) \
         { \
        	    if(_has_prelu == 1) \
             { \
-                _Pragma("unroll") \
-	            for(int i = 0; i < _INT_TO_2HALF_; i++) \
-                { \
-                    if(dCv1_y_valid[0] && dCv1_x_valid[0] && __hlt(hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i], _leaky); \
-                    if(dCv1_y_valid[0] && dCv1_x_valid[1] && __hlt(hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i], _leaky); \
-                    \
-                    if(dCv1_y_valid[1] && dCv1_x_valid[0] && __hlt(hC[(Cv1_off + 2) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 2) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 2) * _INT_TO_2HALF_ + i], _leaky); \
-                    if(dCv1_y_valid[1] && dCv1_x_valid[1] && __hlt(hC[(Cv1_off + 3) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 3) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 3) * _INT_TO_2HALF_ + i], _leaky); \
-	            } \
-	        } \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 0].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 0].x * _leaky; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 0].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 0].y * _leaky; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 1].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 1].x * _leaky; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 1].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 1].y * _leaky; \
+	    } \
             \
        	    if(_has_prelu == 2) \
             { \
-	            int      _scale0_v1 = dCv1_x_valid[0] ? ((int  *) _prelu) [dCv1_idx[0]] : 0; \
-	            int      _scale1_v1 = dCv1_x_valid[1] ? ((int  *) _prelu) [dCv1_idx[1]] : 0; \
-	            __half * _hscale0  = (__half *) &_scale0_v1; \
-	            __half * _hscale1  = (__half *) &_scale1_v1; \
+	            int     _scale0_v1 = dCv1_x_valid[0] ? ((int  *) _prelu) [dCv1_idx[0]] : 0; \
+	            int     _scale1_v1 = dCv1_x_valid[1] ? ((int  *) _prelu) [dCv1_idx[1]] : 0; \
+	            float * _hscale0  = (float *) &_scale0_v1; \
+	            float * _hscale1  = (float *) &_scale1_v1; \
                 \
-                _Pragma("unroll") \
-	            for(int i = 0; i < _INT_TO_2HALF_; i++) \
-                { \
-                    if(dCv1_y_valid[0] && dCv1_x_valid[0] && __hlt(hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i], _hscale0[i]); \
-                    if(dCv1_y_valid[0] && dCv1_x_valid[1] && __hlt(hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i], _hscale1[i]); \
-                    \
-                    if(dCv1_y_valid[1] && dCv1_x_valid[0] && __hlt(hC[(Cv1_off + 2) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 2) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 2) * _INT_TO_2HALF_ + i], _hscale0[i]); \
-                    if(dCv1_y_valid[1] && dCv1_x_valid[1] && __hlt(hC[(Cv1_off + 3) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 3) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 3) * _INT_TO_2HALF_ + i], _hscale1[i]); \
-	            } \
-	        } \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 0].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 0].x * _hscale0[0]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 0].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 0].y * _hscale0[1]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 1].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 1].x * _hscale1[0]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 1].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 1].y * _hscale1[1]; \
+	    } \
             \
        	    if(_has_prelu == 3) \
             { \
                 int      _scale00_v1 = (dCv1_y_valid[0] && dCv1_x_valid[0]) ? ((int   *) _prelu) [dCv1_idy[0] * num_flt_v2 + dCv1_idx[0]] : 0; \
                 int      _scale01_v1 = (dCv1_y_valid[0] && dCv1_x_valid[1]) ? ((int   *) _prelu) [dCv1_idy[0] * num_flt_v2 + dCv1_idx[1]] : 0; \
                 \
-                int      _scale10_v1 = (dCv1_y_valid[1] && dCv1_x_valid[0]) ? ((int   *) _prelu) [dCv1_idy[1] * num_flt_v2 + dCv1_idx[0]] : 0; \
-                int      _scale11_v1 = (dCv1_y_valid[1] && dCv1_x_valid[1]) ? ((int   *) _prelu) [dCv1_idy[1] * num_flt_v2 + dCv1_idx[1]] : 0; \
+	            float * _hscale0  = (float *) &_scale00_v1; \
+	            float * _hscale1  = (float *) &_scale01_v1; \
                 \
-	            __half * _hscale00  = (__half *) &_scale00_v1; \
-	            __half * _hscale01  = (__half *) &_scale01_v1; \
-                \
-	            __half * _hscale10  = (__half *) &_scale10_v1; \
-	            __half * _hscale11  = (__half *) &_scale11_v1; \
-                \
-                _Pragma("unroll") \
-	            for(int i = 0; i < _INT_TO_2HALF_; i++) \
-                { \
-                    if(dCv1_y_valid[0] && dCv1_x_valid[0] && __hlt(hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i], _hscale00[i]); \
-                    if(dCv1_y_valid[0] && dCv1_x_valid[1] && __hlt(hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i], _hscale01[i]); \
-                    \
-                    if(dCv1_y_valid[1] && dCv1_x_valid[0] && __hlt(hC[(Cv1_off + 2) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 2) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 2) * _INT_TO_2HALF_ + i], _hscale10[i]); \
-                    if(dCv1_y_valid[1] && dCv1_x_valid[1] && __hlt(hC[(Cv1_off + 3) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 3) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 3) * _INT_TO_2HALF_ + i], _hscale11[i]); \
-	            } \
-	        } \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 0].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 0].x * _hscale0[0]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 0].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 0].y * _hscale0[1]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 1].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 1].x * _hscale1[0]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 1].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 1].y * _hscale1[1]; \
+	    } \
         }
 
 #define FUSE_PRELU_1x4_V1(_has_prelu, _prelu, _leaky) \
         { \
        	    if(_has_prelu == 1) \
             { \
-                _Pragma("unroll") \
-	            for(int i = 0; i < _INT_TO_2HALF_; i++) \
-                { \
-                    if(dCv1_y_valid[0] && dCv1_x_valid[0] && __hlt(hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i], _leaky); \
-                    if(dCv1_y_valid[0] && dCv1_x_valid[1] && __hlt(hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i], _leaky); \
-                    if(dCv1_y_valid[0] && dCv1_x_valid[2] && __hlt(hC[(Cv1_off + 2) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 2) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 2) * _INT_TO_2HALF_ + i], _leaky); \
-                    if(dCv1_y_valid[0] && dCv1_x_valid[3] && __hlt(hC[(Cv1_off + 3) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 3) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 3) * _INT_TO_2HALF_ + i], _leaky); \
-                    \
-                    if(dCv1_y_valid[1] && dCv1_x_valid[0] && __hlt(hC[(Cv1_off + 4) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 4) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 4) * _INT_TO_2HALF_ + i], _leaky); \
-                    if(dCv1_y_valid[1] && dCv1_x_valid[1] && __hlt(hC[(Cv1_off + 5) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 5) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 5) * _INT_TO_2HALF_ + i], _leaky); \
-                    if(dCv1_y_valid[1] && dCv1_x_valid[2] && __hlt(hC[(Cv1_off + 6) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 6) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 6) * _INT_TO_2HALF_ + i], _leaky); \
-                    if(dCv1_y_valid[1] && dCv1_x_valid[3] && __hlt(hC[(Cv1_off + 7) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 7) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 7) * _INT_TO_2HALF_ + i], _leaky); \
-	            } \
-	        } \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 0].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 0].x * _leaky; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 0].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 0].y * _leaky; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 1].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 1].x * _leaky; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 1].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 1].y * _leaky; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 2].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 2].x * _leaky; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 2].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 2].y * _leaky; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 3].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 3].x * _leaky; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 3].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 3].y * _leaky; \
+	    } \
             \
        	    if(_has_prelu == 2) \
             { \
@@ -433,33 +389,28 @@
 	            int      _scale1_v1 = dCv1_x_valid[1] ? ((int  *) _prelu) [dCv1_idx[1]] : 0; \
 	            int      _scale2_v1 = dCv1_x_valid[2] ? ((int  *) _prelu) [dCv1_idx[2]] : 0; \
 	            int      _scale3_v1 = dCv1_x_valid[3] ? ((int  *) _prelu) [dCv1_idx[3]] : 0; \
-	            __half * _hscale0  = (__half *) &_scale0_v1; \
-	            __half * _hscale1  = (__half *) &_scale1_v1; \
-	            __half * _hscale2  = (__half *) &_scale2_v1; \
-	            __half * _hscale3  = (__half *) &_scale3_v1; \
+	            float * _hscale0  = (float *) &_scale0_v1; \
+	            float * _hscale1  = (float *) &_scale1_v1; \
+	            float * _hscale2  = (float *) &_scale2_v1; \
+	            float * _hscale3  = (float *) &_scale3_v1; \
                 \
-                _Pragma("unroll") \
-	            for(int i = 0; i < _INT_TO_2HALF_; i++) \
-                { \
-                    if(dCv1_y_valid[0] && dCv1_x_valid[0] && __hlt(hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i], _hscale0[i]); \
-                    if(dCv1_y_valid[0] && dCv1_x_valid[1] && __hlt(hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i], _hscale1[i]); \
-                    if(dCv1_y_valid[0] && dCv1_x_valid[2] && __hlt(hC[(Cv1_off + 2) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 2) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 2) * _INT_TO_2HALF_ + i], _hscale2[i]); \
-                    if(dCv1_y_valid[0] && dCv1_x_valid[3] && __hlt(hC[(Cv1_off + 3) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 3) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 3) * _INT_TO_2HALF_ + i], _hscale3[i]); \
-                    \
-                    if(dCv1_y_valid[1] && dCv1_x_valid[0] && __hlt(hC[(Cv1_off + 4) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 4) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 4) * _INT_TO_2HALF_ + i], _hscale0[i]); \
-                    if(dCv1_y_valid[1] && dCv1_x_valid[1] && __hlt(hC[(Cv1_off + 5) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 5) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 5) * _INT_TO_2HALF_ + i], _hscale1[i]); \
-                    if(dCv1_y_valid[1] && dCv1_x_valid[2] && __hlt(hC[(Cv1_off + 6) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 6) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 6) * _INT_TO_2HALF_ + i], _hscale2[i]); \
-                    if(dCv1_y_valid[1] && dCv1_x_valid[3] && __hlt(hC[(Cv1_off + 7) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 7) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 7) * _INT_TO_2HALF_ + i], _hscale3[i]); \
-	            } \
-	        } \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 0].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 0].x * _hscale0[0]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 0].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 0].y * _hscale0[1]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 1].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 1].x * _hscale1[0]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 1].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 1].y * _hscale1[1]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 2].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 2].x * _hscale2[0]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 2].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 2].y * _hscale2[1]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 3].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 3].x * _hscale3[0]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 3].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 3].y * _hscale3[1]; \
+	    } \
             \
        	    if(_has_prelu == 3) \
             { \
@@ -468,43 +419,28 @@
                 int      _scale02_v1 = (dCv1_y_valid[0] && dCv1_x_valid[2]) ? ((int   *) _prelu) [dCv1_idy[0] * num_flt_v2 + dCv1_idx[2]] : 0; \
                 int      _scale03_v1 = (dCv1_y_valid[0] && dCv1_x_valid[3]) ? ((int   *) _prelu) [dCv1_idy[0] * num_flt_v2 + dCv1_idx[3]] : 0; \
                 \
-                int      _scale10_v1 = (dCv1_y_valid[1] && dCv1_x_valid[0]) ? ((int   *) _prelu) [dCv1_idy[1] * num_flt_v2 + dCv1_idx[0]] : 0; \
-                int      _scale11_v1 = (dCv1_y_valid[1] && dCv1_x_valid[1]) ? ((int   *) _prelu) [dCv1_idy[1] * num_flt_v2 + dCv1_idx[1]] : 0; \
-                int      _scale12_v1 = (dCv1_y_valid[1] && dCv1_x_valid[2]) ? ((int   *) _prelu) [dCv1_idy[1] * num_flt_v2 + dCv1_idx[2]] : 0; \
-                int      _scale13_v1 = (dCv1_y_valid[1] && dCv1_x_valid[3]) ? ((int   *) _prelu) [dCv1_idy[1] * num_flt_v2 + dCv1_idx[3]] : 0; \
+	            float * _hscale0  = (float *) &_scale00_v1; \
+	            float * _hscale1  = (float *) &_scale01_v1; \
+	            float * _hscale2  = (float *) &_scale02_v1; \
+	            float * _hscale3  = (float *) &_scale03_v1; \
                 \
-	            __half * _hscale00  = (__half *) &_scale00_v1; \
-	            __half * _hscale01  = (__half *) &_scale01_v1; \
-	            __half * _hscale02  = (__half *) &_scale02_v1; \
-	            __half * _hscale03  = (__half *) &_scale03_v1; \
-                \
-	            __half * _hscale10  = (__half *) &_scale10_v1; \
-	            __half * _hscale11  = (__half *) &_scale11_v1; \
-	            __half * _hscale12  = (__half *) &_scale12_v1; \
-	            __half * _hscale13  = (__half *) &_scale13_v1; \
-                \
-                _Pragma("unroll") \
-	            for(int i = 0; i < _INT_TO_2HALF_; i++) \
-                { \
-                    if(dCv1_y_valid[0] && dCv1_x_valid[0] && __hlt(hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 0) * _INT_TO_2HALF_ + i], _hscale00[i]); \
-                    if(dCv1_y_valid[0] && dCv1_x_valid[1] && __hlt(hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 1) * _INT_TO_2HALF_ + i], _hscale01[i]); \
-                    if(dCv1_y_valid[0] && dCv1_x_valid[2] && __hlt(hC[(Cv1_off + 2) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 2) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 2) * _INT_TO_2HALF_ + i], _hscale02[i]); \
-                    if(dCv1_y_valid[0] && dCv1_x_valid[3] && __hlt(hC[(Cv1_off + 3) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 3) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 3) * _INT_TO_2HALF_ + i], _hscale03[i]); \
-                    \
-                    if(dCv1_y_valid[1] && dCv1_x_valid[0] && __hlt(hC[(Cv1_off + 4) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 4) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 4) * _INT_TO_2HALF_ + i], _hscale10[i]); \
-                    if(dCv1_y_valid[1] && dCv1_x_valid[1] && __hlt(hC[(Cv1_off + 5) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 5) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 5) * _INT_TO_2HALF_ + i], _hscale11[i]); \
-                    if(dCv1_y_valid[1] && dCv1_x_valid[2] && __hlt(hC[(Cv1_off + 6) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 6) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 6) * _INT_TO_2HALF_ + i], _hscale12[i]); \
-                    if(dCv1_y_valid[1] && dCv1_x_valid[3] && __hlt(hC[(Cv1_off + 7) * _INT_TO_2HALF_ + i], 0)) \
-                        hC[(Cv1_off + 7) * _INT_TO_2HALF_ + i] = __hmul(hC[(Cv1_off + 7) * _INT_TO_2HALF_ + i], _hscale13[i]); \
-	            } \
-	        } \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 0].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 0].x * _hscale0[0]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 0].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 0].y * _hscale0[1]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 1].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 1].x * _hscale1[0]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 1].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 1].y * _hscale1[1]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 2].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 2].x * _hscale2[0]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 2].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 2].y * _hscale2[1]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 3].x < 0) \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 3].x * _hscale3[0]; \
+                if(dCv1_y_valid[0] && fCv2[Cv1_off + 3].y < 0) \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 3].y * _hscale3[1]; \
+	    } \
         }
 
 //////////////////////////////////////////////////////
@@ -515,58 +451,61 @@
         { \
 	        if(_has_elt) \
             { \
-                if(dCv1_y_valid[0] && dCv1_x_valid[0]) h2C[Cv1_off + 0] = __hadd2(h2C[Cv1_off + 0], ((__half2 *) _pre_data) [dCv1_idy[0] * num_flt_v2 + dCv1_idx[0]]); \
-                \
-                if(dCv1_y_valid[1] && dCv1_x_valid[0]) h2C[Cv1_off + 1] = __hadd2(h2C[Cv1_off + 1], ((__half2 *) _pre_data) [dCv1_idy[1] * num_flt_v2 + dCv1_idx[0]]); \
-	        } \
+                if(dCv1_y_valid[0] && dCv1_x_valid[0]) { \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 0].x + (int)((int8_t*) _pre_data) [(dCv1_idy[0] * num_flt_v2 + dCv1_idx[0])*_INT16_TO_INT8_ + 0] * pre_scale; \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 0].y + (int)((int8_t*) _pre_data) [(dCv1_idy[0] * num_flt_v2 + dCv1_idx[0])*_INT16_TO_INT8_ + 1] * pre_scale; \
+                } \
+	    } \
         }
 
 #define FUSE_ELT_1x2_V1(_has_elt, _pre_data) \
         { \
 	        if(_has_elt) \
             { \
-                if(dCv1_y_valid[0] && dCv1_x_valid[0]) h2C[Cv1_off + 0] = __hadd2(h2C[Cv1_off + 0], ((__half2 *) _pre_data) [dCv1_idy[0] * num_flt_v2 + dCv1_idx[0]]); \
-                if(dCv1_y_valid[0] && dCv1_x_valid[1]) h2C[Cv1_off + 1] = __hadd2(h2C[Cv1_off + 1], ((__half2 *) _pre_data) [dCv1_idy[0] * num_flt_v2 + dCv1_idx[1]]); \
-                \
-                if(dCv1_y_valid[1] && dCv1_x_valid[0]) h2C[Cv1_off + 2] = __hadd2(h2C[Cv1_off + 2], ((__half2 *) _pre_data) [dCv1_idy[1] * num_flt_v2 + dCv1_idx[0]]); \
-                if(dCv1_y_valid[1] && dCv1_x_valid[1]) h2C[Cv1_off + 3] = __hadd2(h2C[Cv1_off + 3], ((__half2 *) _pre_data) [dCv1_idy[1] * num_flt_v2 + dCv1_idx[1]]); \
-	        } \
+                if(dCv1_y_valid[0] && dCv1_x_valid[0]) { \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 0].x + (int)((int8_t*) _pre_data) [(dCv1_idy[0] * num_flt_v2 + dCv1_idx[0])*_INT16_TO_INT8_ + 0] * pre_scale; \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 0].y + (int)((int8_t*) _pre_data) [(dCv1_idy[0] * num_flt_v2 + dCv1_idx[0])*_INT16_TO_INT8_ + 1] * pre_scale; \
+                } \
+                if(dCv1_y_valid[0] && dCv1_x_valid[1]) { \
+                    fCv2[Cv1_off + 1].x = fCv2[Cv1_off + 1].x + (int)((int8_t*) _pre_data) [(dCv1_idy[0] * num_flt_v2 + dCv1_idx[1])*_INT16_TO_INT8_ + 0] * pre_scale; \
+                    fCv2[Cv1_off + 1].y = fCv2[Cv1_off + 1].y + (int)((int8_t*) _pre_data) [(dCv1_idy[0] * num_flt_v2 + dCv1_idx[1])*_INT16_TO_INT8_ + 1] * pre_scale; \
+                } \
+	    } \
         }
 
 #define FUSE_ELT_1x4_V1(_has_elt, _pre_data) \
         { \
 	        if(_has_elt) \
             { \
-                if(dCv1_y_valid[0] && dCv1_x_valid[0]) h2C[Cv1_off + 0] = __hadd2(h2C[Cv1_off + 0], ((__half2 *) _pre_data) [dCv1_idy[0] * num_flt_v2 + dCv1_idx[0]]); \
-                if(dCv1_y_valid[0] && dCv1_x_valid[1]) h2C[Cv1_off + 1] = __hadd2(h2C[Cv1_off + 1], ((__half2 *) _pre_data) [dCv1_idy[0] * num_flt_v2 + dCv1_idx[1]]); \
-                if(dCv1_y_valid[0] && dCv1_x_valid[2]) h2C[Cv1_off + 2] = __hadd2(h2C[Cv1_off + 2], ((__half2 *) _pre_data) [dCv1_idy[0] * num_flt_v2 + dCv1_idx[2]]); \
-                if(dCv1_y_valid[0] && dCv1_x_valid[3]) h2C[Cv1_off + 3] = __hadd2(h2C[Cv1_off + 3], ((__half2 *) _pre_data) [dCv1_idy[0] * num_flt_v2 + dCv1_idx[3]]); \
-                \
-                if(dCv1_y_valid[1] && dCv1_x_valid[0]) h2C[Cv1_off + 4] = __hadd2(h2C[Cv1_off + 4], ((__half2 *) _pre_data) [dCv1_idy[1] * num_flt_v2 + dCv1_idx[0]]); \
-                if(dCv1_y_valid[1] && dCv1_x_valid[1]) h2C[Cv1_off + 5] = __hadd2(h2C[Cv1_off + 5], ((__half2 *) _pre_data) [dCv1_idy[1] * num_flt_v2 + dCv1_idx[1]]); \
-                if(dCv1_y_valid[1] && dCv1_x_valid[2]) h2C[Cv1_off + 6] = __hadd2(h2C[Cv1_off + 6], ((__half2 *) _pre_data) [dCv1_idy[1] * num_flt_v2 + dCv1_idx[2]]); \
-                if(dCv1_y_valid[1] && dCv1_x_valid[3]) h2C[Cv1_off + 7] = __hadd2(h2C[Cv1_off + 7], ((__half2 *) _pre_data) [dCv1_idy[1] * num_flt_v2 + dCv1_idx[3]]); \
-	        } \
+                if(dCv1_y_valid[0] && dCv1_x_valid[0]) { \
+                    fCv2[Cv1_off + 0].x = fCv2[Cv1_off + 0].x + (int)((int8_t*) _pre_data) [(dCv1_idy[0] * num_flt_v2 + dCv1_idx[0])*_INT16_TO_INT8_ + 0] * pre_scale; \
+                    fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 0].y + (int)((int8_t*) _pre_data) [(dCv1_idy[0] * num_flt_v2 + dCv1_idx[0])*_INT16_TO_INT8_ + 1] * pre_scale; \
+                } \
+                if(dCv1_y_valid[0] && dCv1_x_valid[1]) { \
+                    fCv2[Cv1_off + 1].x = fCv2[Cv1_off + 1].x + (int)((int8_t*) _pre_data) [(dCv1_idy[0] * num_flt_v2 + dCv1_idx[1])*_INT16_TO_INT8_ + 0] * pre_scale; \
+                    fCv2[Cv1_off + 1].y = fCv2[Cv1_off + 1].y + (int)((int8_t*) _pre_data) [(dCv1_idy[0] * num_flt_v2 + dCv1_idx[1])*_INT16_TO_INT8_ + 1] * pre_scale; \
+                } \
+                if(dCv1_y_valid[0] && dCv1_x_valid[2]) { \
+                    fCv2[Cv1_off + 2].x = fCv2[Cv1_off + 2].x + (int)((int8_t*) _pre_data) [(dCv1_idy[0] * num_flt_v2 + dCv1_idx[2])*_INT16_TO_INT8_ + 0] * pre_scale; \
+                    fCv2[Cv1_off + 2].y = fCv2[Cv1_off + 2].y + (int)((int8_t*) _pre_data) [(dCv1_idy[0] * num_flt_v2 + dCv1_idx[2])*_INT16_TO_INT8_ + 1] * pre_scale; \
+                } \
+                if(dCv1_y_valid[0] && dCv1_x_valid[1]) { \
+                    fCv2[Cv1_off + 3].x = fCv2[Cv1_off + 3].x + (int)((int8_t*) _pre_data) [(dCv1_idy[0] * num_flt_v2 + dCv1_idx[3])*_INT16_TO_INT8_ + 0] * pre_scale; \
+                    fCv2[Cv1_off + 3].y = fCv2[Cv1_off + 3].y + (int)((int8_t*) _pre_data) [(dCv1_idy[0] * num_flt_v2 + dCv1_idx[3])*_INT16_TO_INT8_ + 1] * pre_scale; \
+                } \
+	    } \
         }
 
 //////////////////////////////////////////////////////
 // concat macros
 //////////////////////////////////////////////////////
-#define OFF(_off, i)    ( _off#i )
 
 //FIXME _INT4_TO_4HALF2_
 #define SET_CONCAT_OFF_V1(_has_concat, _concat_v1_off0) \
         { \
                 _concat_v1_off0 = dCv1_idy[0] * num_flt_v2; \
-                /*_concat_v1_off1 = dCv1_idy[1] * num_flt_v2;*/ \
-		/*for(int b = 0; b < BLK_M_PER_MMA; b++){ \
-                    OFF(_concat_v1_off, b) = dCv1_idy[0] * num_flt_v2; \
-		}*/ \
 	        if(_has_concat) \
             { \
-                if(dCv1_y_valid[0]) _concat_v1_off0 = concat_offset_v8 * _INT4_TO_4HALF2_ + dCv1_idy[0] * concat_stride_v8 * _INT4_TO_4HALF2_; \
-		/*for(int b = 0; b < BLK_M_PER_MMA; b++){ \
-                    if(dCv1_y_valid[b]) OFF(_concat_v1_off, b) = concat_offset_v8 * _INT4_TO_4HALF2_ + dCv1_idy[b] * concat_stride_v8 * _INT4_TO_4HALF2_; \
-	        }*/ \
+                if(dCv1_y_valid[0]) _concat_v1_off0 = concat_offset_v16 * _INT4_TO_8HALF_ + dCv1_idy[0] * concat_stride_v16 * _INT4_TO_8HALF_; \
 	    } \
         }

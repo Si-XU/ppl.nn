@@ -38,17 +38,17 @@
         int hole_height,              int hole_width,             \
         int  has_bias,                const int4* bias,           \
 	float in_scale,               void *d_flt_scale,          \
-        float out_scale,                                          \
+        float out_scale,              float pre_scale,            \
         int  has_relu,                const float clip_min,     \
 	bool has_clip,                const float clip_max,     \
         int  has_prelu,               const void* prelu,          \
         bool has_elt,                 const int4* pre_data,       \
         int  has_elt_relu,            const float elt_clip_min, \
-	    bool has_elt_clip,            const float elt_clip_max, \
+	bool has_elt_clip,            const float elt_clip_max, \
         int has_elt_prelu,            const void* elt_prelu,      \
         const float leaky,           const float elt_leaky,     \
-        bool has_concat,              int concat_offset_v8,       \
-        int concat_stride_v8
+        bool has_concat,              int concat_offset_v16,       \
+        int concat_stride_v16
 
 ////////////////////////////////////////
 // align functions
@@ -140,6 +140,7 @@
 #define _INT4_TO_4INT_          4
 #define _INT4_TO_4HALF2_        4
 #define _INT4_TO_8HALF_         8
+#define _INT16_TO_INT8_         2 
 
 ////////////////////////////////////////
 // mma size macros

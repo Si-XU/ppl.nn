@@ -131,12 +131,12 @@
         { \
 	        if( _has_elt && dCv4_x_valid && dCv4_y_valid ) \
             { \
-	            int4   _elt_v4 = ((int4 *)   _pre_data) [dCv4_off]; \
-	            float *_elt = (float *) &_elt_v4; \
+	            int  _elt_v4 = ((int *)   _pre_data) [dCv4_off]; \
+	            int8_t *_elt = (int8_t *) &_elt_v4; \
                 \
                 _Pragma("unroll") \
 	            for(int i = 0; i < _INT4_TO_4INT_; i++){ \
-			_fR[i] += _elt[i]; \
+			_fR[i] += (int)_elt[i] * pre_scale; \
 	            } \
 	        } \
         }
@@ -145,7 +145,7 @@
         { \
 	        if( _has_concat && dCv4_x_valid && dCv4_y_valid ) \
             { \
-	            dCv4_off = concat_offset_v4 + dCv4_idy * concat_stride_v4 + dCv4_base + dCv4_idx; \
+	            dCv4_off = concat_offset_v16 + dCv4_idy * concat_stride_v16 + dCv4_base + dCv4_idx; \
 	        } \
         }
         

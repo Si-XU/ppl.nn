@@ -60,13 +60,13 @@ ppl::common::RetCode PPLCUDASoftmaxForwardImp(
     nd_shape.SetDim(0, N);
     nd_shape.SetDim(1, D);
     nd_shape.SetDimCount(2);
-    status = PPLCUDAArithMeticSubForwardImp(stream, &nd_shape, input, &max_sum_shape, max_sum_output, &nd_shape, output);
+    status = PPLCUDAArithMeticSubForwardImp(stream, &nd_shape, input, &max_sum_shape, max_sum_output, &nd_shape, output,1,1,1);
     // exp
     status = PPLCUDAExpForwardImp(stream, &nd_shape, output, &nd_shape, output);
     //reduce sum
     ReduceParam reduce_sum = ReduceSum;
     status = PPLCUDAReduceForwardImp(stream, reduce_sum, reduce_desc, &nd_shape, output, &max_sum_shape, max_sum_output);
     //div
-    status = PPLCUDAArithMeticDivForwardImp(stream, &nd_shape, output, &max_sum_shape, max_sum_output, &nd_shape, output);
+    status = PPLCUDAArithMeticDivForwardImp(stream, &nd_shape, output, &max_sum_shape, max_sum_output, &nd_shape, output,1,1,1);
     return status;
 }

@@ -63,7 +63,7 @@
         int hole_height,              int hole_width,             \
         int  has_bias,                const int4* bias,           \
 	float in_scale,               void *d_flt_scale,          \
-        float out_scale,                                          \
+        float out_scale,              float pre_scale,            \
         int  has_relu,                const float clip_min,     \
 	    bool has_clip,                const float clip_max,     \
         int  has_prelu,               const void* prelu,          \
@@ -72,8 +72,8 @@
 	    bool has_elt_clip,            const float elt_clip_max, \
         int has_elt_prelu,            const void* elt_prelu,      \
         const float leaky,           const float elt_leaky,     \
-        bool has_concat,              int concat_offset_v4,       \
-        int concat_stride_v4
+        bool has_concat,              int concat_offset_v16,       \
+        int concat_stride_v16
 
 ////////////////////////////////////////
 // align functions
