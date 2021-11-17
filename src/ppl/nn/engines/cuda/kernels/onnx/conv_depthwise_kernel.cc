@@ -84,7 +84,7 @@ ppl::common::RetCode ConvDepthwiseKernel::DoExecute(KernelExecContext* ctx) {
         }
         auto stream = GetStream();
         PPLCUDADepthwiseConvertFilter(stream, ctx->GetInput<TensorImpl>(1)->GetBufferPtr(), weight_buffer.addr,
-                                      temp_conv_param);
+                                      temp_conv_param, shape_out.GetDataType());
     }
     BufferDescGuard __tmp_buffer_guard__(&weight_buffer, [this](BufferDesc* buffer) {
         GetDevice()->Free(buffer);
@@ -96,7 +96,7 @@ ppl::common::RetCode ConvDepthwiseKernel::DoExecute(KernelExecContext* ctx) {
         param_->extra_param.algo_info.is_initializer_weight ? ctx->GetInput<TensorImpl>(1)->GetBufferPtr()
                                                             : weight_buffer.addr,
         param_->param.bias_term ? ctx->GetInput<TensorImpl>(2)->GetBufferPtr() : nullptr, temp_conv_param,
-        temp_fuse_param, ctx->GetOutput<TensorImpl>(0)->GetBufferPtr());
+        temp_fuse_param, ctx->GetOutput<TensorImpl>(0)->GetBufferPtr(), shape_out.GetDataType());
 
     LOG(DEBUG) << "Excute Depthwise conv with kernel id:" << param_->extra_param.algo_info.kernel_index;
     return ppl::common::RC_SUCCESS;

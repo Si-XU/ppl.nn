@@ -57,8 +57,8 @@
     fuse_param_t fuse_params
 
 
-template<int TILE_H, int TILE_W, int KERNEL_H, int KERNEL_W, int STRIRDE_H, int STRIRDE_W>
-__forceinline__ __device__  void load_weight(const half* filter, int c_idx, int paddingc, half flt_val[KERNEL_H][KERNEL_W]) {
+template<int TILE_H, int TILE_W, int KERNEL_H, int KERNEL_W, int STRIRDE_H, int STRIRDE_W, typename T>
+__forceinline__ __device__  void load_weight(const T* filter, int c_idx, int paddingc, T flt_val[KERNEL_H][KERNEL_W]) {
     int offset = c_idx;
 #pragma unroll
     for (int i = 0; i < KERNEL_H; i++){
@@ -71,10 +71,10 @@ __forceinline__ __device__  void load_weight(const half* filter, int c_idx, int 
 }
 
 
-template<int TILE_H, int TILE_W, int SRC_TILE_H, int SRC_TILE_W, int KERNEL_H, int KERNEL_W, int STRIRDE_H, int STRIRDE_W, bool INSCOPE>
-__forceinline__ __device__ void load_feature(const half* input, int base_offset, int paddingc,
+template<int TILE_H, int TILE_W, int SRC_TILE_H, int SRC_TILE_W, int KERNEL_H, int KERNEL_W, int STRIRDE_H, int STRIRDE_W, bool INSCOPE, typename T>
+__forceinline__ __device__ void load_feature(const T* input, int base_offset, int paddingc,
                                     int idx_h, int idx_w, int in_height, int in_width,
-                                    half pic_val[SRC_TILE_H][SRC_TILE_W]) {
+                                    T pic_val[SRC_TILE_H][SRC_TILE_W]) {
     bool pred_height = true;
 #pragma unroll
     for (int i = 0; i < SRC_TILE_H; i++) {
@@ -82,16 +82,16 @@ __forceinline__ __device__ void load_feature(const half* input, int base_offset,
 #pragma unroll
         for (int j = 0; j < SRC_TILE_W; j++) {
             bool pred_width = pred_height && (idx_w + j < in_width) && (idx_w + j >= 0);
-            pic_val[i][j] = pred_width ? input[base_offset + i * in_width * paddingc + j * paddingc] : __float2half(0.0f);
+            pic_val[i][j] = pred_width ? input[base_offset + i * in_width * paddingc + j * paddingc] : T(0.0f);
         }
     }
 }
 
 
-template<int TILE_H, int TILE_W, int SRC_TILE_H, int SRC_TILE_W, int KERNEL_H, int KERNEL_W, int STRIRDE_H, int STRIRDE_W, bool INSCOPE>
-__forceinline__ __device__ void load_feature_inpic(const half* input, int base_offset, int paddingc,
+template<int TILE_H, int TILE_W, int SRC_TILE_H, int SRC_TILE_W, int KERNEL_H, int KERNEL_W, int STRIRDE_H, int STRIRDE_W, bool INSCOPE, typename T>
+__forceinline__ __device__ void load_feature_inpic(const T* input, int base_offset, int paddingc,
                                     int idx_h, int idx_w, int in_height, int in_width,
-                                    half pic_val[SRC_TILE_H][SRC_TILE_W]) {
+                                    T pic_val[SRC_TILE_H][SRC_TILE_W]) {
 #pragma unroll
     for (int i = 0; i < SRC_TILE_H; i++) {
 #pragma unroll
@@ -215,9 +215,9 @@ __forceinline__ __device__ void fuse_process(
 #endif  
 }
 
-template<int TILE_H, int TILE_W>
+template<int TILE_H, int TILE_W, typename T>
 __forceinline__ __device__ void write_global(
-    half out_val[TILE_H][TILE_W],
+    T out_val[TILE_H][TILE_W],
     int h_idx,
     int w_idx,
     int c_idx,
@@ -226,7 +226,7 @@ __forceinline__ __device__ void write_global(
     int channels,
     int paddingc,
     int base_offset,
-    half* output)
+    T* output)
 {
 #if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
 #pragma unroll
@@ -236,7 +236,7 @@ __forceinline__ __device__ void write_global(
             bool in_padding = h_idx * TILE_H + i < out_height && w_idx * TILE_W + j < out_width;
             if (in_padding)
 	    {
-                output[base_offset + i * out_width * paddingc + j * paddingc] = c_idx < channels ? out_val[i][j] : (half)0.0f;
+                output[base_offset + i * out_width * paddingc + j * paddingc] = c_idx < channels ? out_val[i][j] : (T)0.0f;
             }
         }
     }
@@ -301,7 +301,7 @@ __global__ void ppl_cuda_depthwise_hmma(
     int in_w_idx = (w_idx * TILE_W) * STRIRDE_W - pad_width;
     int in_h_idx = (h_idx * TILE_H) * STRIRDE_H - pad_height;
 
-    bool src_in_pic = (in_w_idx >= 0) && (in_w_idx + SRC_TILE_W < in_w_idx) && (in_h_idx >= 0) && (in_h_idx + SRC_TILE_H < in_h_idx);
+    bool src_in_pic = (in_w_idx >= 0) && (in_w_idx + SRC_TILE_W < in_width) && (in_h_idx >= 0) && (in_h_idx + SRC_TILE_H < in_height);
     int base_offset = n_idx * in_batch_stride + in_h_idx * in_height_stride + in_w_idx * in_width_stride + c_idx;
 
     if (src_in_pic) {
@@ -326,7 +326,7 @@ __global__ void ppl_cuda_depthwise_hmma(
         base_offset = fuse_params.concat_offset + n_idx * out_height * out_width * paddingc + h_idx  * TILE_H * out_width * paddingc + w_idx * TILE_W * paddingc + c_idx;
         output = (half*)fuse_params.post_concat;
     }
-    write_global<TILE_H, TILE_W>(out_val, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, output);
+    write_global<TILE_H, TILE_W, half>(out_val, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, output);
 #endif
 }
 
