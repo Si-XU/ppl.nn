@@ -81,6 +81,13 @@ double DepthwiseDirect::ExcuteTimer(const ir::Node* node, OptKernelOptions& opti
     ConvertToForwardConvParam(shape_in0, shape_in1, shape_out, attr_param_.param, temp_conv_param);
     ConvertToEmptyFuseParam(temp_fuse_param);
 
+    auto input_id0 = options.tensors->find(node->GetInput(0))->second->GetEdge()->GetId();
+    auto input_id1 = options.tensors->find(node->GetInput(1))->second->GetEdge()->GetId();
+    auto input_quant0 = options.quants->at(input_id0);
+    auto input_quant1 = options.quants->at(input_id1);
+    auto output_id = options.tensors->find(node->GetOutput(0))->second->GetEdge()->GetId();
+    auto output_quant = options.quants->at(output_id);
+
     if (options.args->quick_select) {
         return 0.0f;
     }
@@ -111,12 +118,12 @@ double DepthwiseDirect::ExcuteTimer(const ir::Node* node, OptKernelOptions& opti
     // Do select
     auto stream = options.device->GetStream();
     auto kernel_id = PPLCUDADepthwiseSelectKernel(stream, input_buffer.addr, weight_buffer.addr, bias_buffer.addr, 1,
-                                                  temp_conv_param, temp_fuse_param, output_buffer.addr, shape_out.GetDataType());
+                                                  temp_conv_param, temp_fuse_param, output_buffer.addr, shape_out.GetDataType(), input_quant0.scale[0], input_quant1.scale[0], output_quant.scale[0]);
     attr_param_.extra_param.algo_info.kernel_index = kernel_id;
 
     auto run_begin_ts = std::chrono::system_clock::now();
     PPLCUDADepthwiseForwardCudaImp(stream, kernel_id, input_buffer.addr, weight_buffer.addr, bias_buffer.addr,
-                                   temp_conv_param, temp_fuse_param, output_buffer.addr, shape_out.GetDataType());
+                                   temp_conv_param, temp_fuse_param, output_buffer.addr, shape_out.GetDataType(), input_quant0.scale[0], input_quant1.scale[0], output_quant.scale[0]);
     auto run_end_ts = std::chrono::system_clock::now();
     auto diff = std::chrono::duration_cast<std::chrono::microseconds>(run_end_ts - run_begin_ts);
     double timer = (double)diff.count() / 1000;

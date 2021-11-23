@@ -68,7 +68,10 @@ int PPLCUDADepthwiseSelectKernel(
 	struct conv_param_t &conv_param, 
 	struct fuse_param_t &fuse_param,
     void* output,
-    ppl::common::datatype_t type)
+    ppl::common::datatype_t type,
+    float pic_scale,
+    float flt_scale,
+    float out_scale)
 {
     GETPARAM
     if(func_vec.empty())  InitKernelList(func_vec, type);
@@ -106,7 +109,7 @@ int PPLCUDADepthwiseSelectKernel(
                 padc_fast, hw_fast, width_fast,
                 in_height, in_width, kernel_h, kernel_w, pad_h, pad_w, stride_h, stride_w, hole_h, hole_w,
                 tile_height, tile_width, channels, paddingc, out_height, out_width, 
-                in_batch_stride, in_height_stride, in_width_stride, elems, (int8_t*)output, fuse_param);
+                in_batch_stride, in_height_stride, in_width_stride, elems, (int8_t*)output, fuse_param, pic_scale, flt_scale, out_scale);
             }
         }
         cudaEventRecord(end, stream);
@@ -128,7 +131,10 @@ void PPLCUDADepthwiseForwardCudaImp(
     conv_param_t &conv_param, 
     fuse_param_t &fuse_param,
     void* output,
-    ppl::common::datatype_t type)
+    ppl::common::datatype_t type,
+    float pic_scale,
+    float flt_scale,
+    float out_scale)
 {
     GETPARAM
     if (func_vec.empty()) InitKernelList(func_vec, type);
@@ -155,6 +161,6 @@ void PPLCUDADepthwiseForwardCudaImp(
         padc_fast, hw_fast, width_fast,
         in_height, in_width, kernel_h, kernel_w, pad_h, pad_w, stride_h, stride_w, hole_h, hole_w,
         tile_height, tile_width, channels, paddingc, out_height, out_width, 
-        in_batch_stride, in_height_stride, in_width_stride, elems, (int8_t*)output, fuse_param);
+        in_batch_stride, in_height_stride, in_width_stride, elems, (int8_t*)output, fuse_param, pic_scale, flt_scale, out_scale);
     }
 }

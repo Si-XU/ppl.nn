@@ -20,6 +20,8 @@
 #include "ppl/nn/common/logger.h"
 #include "ppl/nn/engines/cuda/kernels/onnx/resize_kernel.h"
 #include "ppl/nn/oputils/onnx/reshape_resize.h"
+#include<iostream>
+#include<stdio.h>
 
 using namespace std;
 using namespace ppl::common;
@@ -82,6 +84,11 @@ RetCode ResizeOp::Init(const OptKernelOptions& options) {
             if (!info->GetInput<TensorImpl>(3)->GetShape().IsEmpty()) {
                 auto shape = info->GetInput<TensorImpl>(3)->GetShape();
                 sizes_data = (int64_t*)malloc(shape.GetBytesIncludingPadding());
+                std::cout << "size data: " << shape.GetBytesIncludingPadding() << std::endl;
+                auto desc = info->GetInput<TensorImpl>(3)->GetBufferPtr();
+                if(desc != nullptr) {
+                    std::cout << desc->size << std::endl;
+                }
                 if (info->GetInput<TensorImpl>(3)->GetBufferPtr<void>() == nullptr) {
                     return RC_INVALID_VALUE;
                 }

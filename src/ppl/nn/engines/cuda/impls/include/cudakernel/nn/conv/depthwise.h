@@ -30,7 +30,10 @@ int PPLCUDADepthwiseSelectKernel(
 	conv_param_t &conv_param, 
 	fuse_param_t &fuse_param,
     void* output,
-    ppl::common::datatype_t type);
+    ppl::common::datatype_t type,
+    float pic_scale,
+    float flt_scale,
+    float out_scale);
 
 void PPLCUDADepthwiseForwardCudaImp(
     cudaStream_t &stream, 
@@ -41,7 +44,10 @@ void PPLCUDADepthwiseForwardCudaImp(
     conv_param_t &conv_param, 
     fuse_param_t &fuse_param,
     void* output,
-    ppl::common::datatype_t type);
+    ppl::common::datatype_t type,
+    float pic_scale,
+    float flt_scale,
+    float out_scale);
 
 void PPLCUDADepthwiseConvertFilter(
     cudaStream_t &stream,

@@ -102,7 +102,7 @@ __forceinline__ __device__ void load_feature_inpic(const T* input, int base_offs
 }
 
 template<int TILE_H, int TILE_W, int SRC_TILE_H, int SRC_TILE_W, int KERNEL_H, int KERNEL_W, int STRIRDE_H, int STRIRDE_W>
-__forceinline__ __device__ void compute(half pic_val[SRC_TILE_H][(TILE_W - 1) * STRIRDE_W + KERNEL_W], half flt_val[KERNEL_H][KERNEL_W], half out_val[TILE_H][TILE_W]) {
+__forceinline__ __device__ void compute_half(half pic_val[SRC_TILE_H][(TILE_W - 1) * STRIRDE_W + KERNEL_W], half flt_val[KERNEL_H][KERNEL_W], half out_val[TILE_H][TILE_W]) {
 #if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
 #pragma unroll
     for (int i = 0; i < TILE_H ; i++) {
@@ -123,8 +123,52 @@ __forceinline__ __device__ void compute(half pic_val[SRC_TILE_H][(TILE_W - 1) * 
 #endif
 }
 
+template<int TILE_H, int TILE_W, int SRC_TILE_H, int SRC_TILE_W, int KERNEL_H, int KERNEL_W, int STRIRDE_H, int STRIRDE_W>
+__forceinline__ __device__ void compute_float(float pic_val[SRC_TILE_H][(TILE_W - 1) * STRIRDE_W + KERNEL_W], float flt_val[KERNEL_H][KERNEL_W], float out_val[TILE_H][TILE_W]) {
+#if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
+#pragma unroll
+    for (int i = 0; i < TILE_H ; i++) {
+#pragma unroll
+        for (int j = 0; j < TILE_H; j++) {
+#pragma unroll
+            for(int r = 0; r < KERNEL_H; r++) {
+#pragma unroll
+                for (int s = 0; s < KERNEL_W; s++) {
+                    if (r == 0 && s == 0) 
+                        out_val[i][j] = flt_val[0][0] * pic_val[i * STRIRDE_H][j * STRIRDE_W];
+                    else 
+                        out_val[i][j] = flt_val[r][s] * pic_val[i * STRIRDE_H + r][j * STRIRDE_W + s] + out_val[i][j];
+                }
+            }
+        }
+    }
+#endif
+}
+
+template<int TILE_H, int TILE_W, int SRC_TILE_H, int SRC_TILE_W, int KERNEL_H, int KERNEL_W, int STRIRDE_H, int STRIRDE_W>
+__forceinline__ __device__ void compute_int8(int8_t pic_val[SRC_TILE_H][(TILE_W - 1) * STRIRDE_W + KERNEL_W], int8_t flt_val[KERNEL_H][KERNEL_W], float out_val[TILE_H][TILE_W]) {
+#if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
+#pragma unroll
+    for (int i = 0; i < TILE_H ; i++) {
+#pragma unroll
+        for (int j = 0; j < TILE_H; j++) {
+#pragma unroll
+            for(int r = 0; r < KERNEL_H; r++) {
+#pragma unroll
+                for (int s = 0; s < KERNEL_W; s++) {
+                    if (r == 0 && s == 0) 
+                        out_val[i][j] = flt_val[0][0] * pic_val[i * STRIRDE_H][j * STRIRDE_W];
+                    else 
+                        out_val[i][j] = flt_val[r][s] * pic_val[i * STRIRDE_H + r][j * STRIRDE_W + s] + out_val[i][j];
+                }
+            }
+        }
+    }
+#endif
+}
+
 template<int TILE_H, int TILE_W>
-__forceinline__ __device__ void load_bias(
+__forceinline__ __device__ void load_bias_half(
     const half* bias,
     int c_idx,
     int channels,
@@ -144,7 +188,47 @@ __forceinline__ __device__ void load_bias(
 }
 
 template<int TILE_H, int TILE_W>
-__forceinline__ __device__ void fuse_process(
+__forceinline__ __device__ void load_bias_float(
+    const float* bias,
+    int c_idx,
+    int channels,
+    float out_val[TILE_H][TILE_W]) 
+{
+#if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
+
+    float bias_val = c_idx < channels ? bias[c_idx] : 0.0;
+#pragma unroll
+    for (int i = 0; i < TILE_H; i++) {
+#pragma unroll
+        for (int j = 0; j < TILE_W; j++) {
+            out_val[i][j] = out_val[i][j] + bias_val;
+        }
+    }
+#endif
+}
+
+template<int TILE_H, int TILE_W>
+__forceinline__ __device__ void load_bias_int8(
+    const int8_t* bias,
+    int c_idx,
+    int channels,
+    float out_val[TILE_H][TILE_W]) 
+{
+#if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
+
+    int8_t bias_val = c_idx < channels ? bias[c_idx] : 0;
+#pragma unroll
+    for (int i = 0; i < TILE_H; i++) {
+#pragma unroll
+        for (int j = 0; j < TILE_W; j++) {
+            out_val[i][j] = out_val[i][j] + bias_val;
+        }
+    }
+#endif
+}
+
+template<int TILE_H, int TILE_W>
+__forceinline__ __device__ void fuse_process_half(
     half out_val[TILE_H][TILE_W],
     int h_idx,
     int w_idx,
@@ -215,6 +299,78 @@ __forceinline__ __device__ void fuse_process(
 #endif  
 }
 
+template<int TILE_H, int TILE_W>
+__forceinline__ __device__ void fuse_process_float(
+    float out_val[TILE_H][TILE_W],
+    int h_idx,
+    int w_idx,
+    int c_idx,
+    int out_height, 
+    int out_width,
+    int channels,
+    int paddingc,
+    int base_offset,
+    fuse_param_t fuse_params
+)
+{
+#if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
+#pragma unroll
+    for (int i = 0; i < TILE_H; i++) {
+#pragma unroll
+        for (int j = 0; j < TILE_W; j++) {
+            if (fuse_params.has_activation){
+                if (fuse_params.has_activation == 1){
+                    out_val[i][j] = out_val[i][j] >= 0.0 ? out_val[i][j] : 0.0;
+		        }else{// if (fuse_params.has_activation == 2){
+                    float tmp = exp(out_val[i][j]);
+                    out_val[i][j] = tmp / (tmp + 1);
+		        }
+            } else if (fuse_params.has_clip) {
+                out_val[i][j] = out_val[i][j] >= fuse_params.clip_max ? 
+                        fuse_params.clip_max : out_val[i][j] <= fuse_params.clip_min ? 
+                        fuse_params.clip_min : out_val[i][j];
+            } else if (fuse_params.has_prelu && out_val[i][j] < 0 ) {
+                if(fuse_params.has_prelu == 1){
+                            out_val[i][j] = out_val[i][j] * fuse_params.leaky;
+                } else if(fuse_params.has_prelu == 2){
+                            out_val[i][j] = out_val[i][j] * ((float*)fuse_params.prelu)[c_idx];
+                } else if(fuse_params.has_prelu == 3){
+                            out_val[i][j] = out_val[i][j] * ((float*)fuse_params.elt_prelu)[base_offset + i * out_width * paddingc + j * paddingc];
+                }
+            }
+            if (fuse_params.has_elt) {
+                bool in_padding = h_idx * TILE_H + i < out_height && w_idx * TILE_W + j < out_width;
+
+                if (in_padding) out_val[i][j] = out_val[i][j] + ((float*)fuse_params.pre_data)[base_offset + i * out_width * paddingc + j * paddingc];
+                if (fuse_params.has_elt_activation){
+                    if (fuse_params.has_elt_activation == 1){
+                        out_val[i][j] = out_val[i][j] >= 0.0 ? out_val[i][j] : 0.0;
+                    }else{// if (fuse_params.has_activation == 2){
+                        float tmp = exp(out_val[i][j]);
+                        out_val[i][j] = tmp / (tmp + 1);
+                    }
+                } else if (fuse_params.has_elt_clip) {
+                    out_val[i][j] = out_val[i][j] >= fuse_params.elt_clip_max ? 
+                            fuse_params.elt_clip_max : out_val[i][j] <= fuse_params.elt_clip_min ? 
+                            fuse_params.elt_clip_min : out_val[i][j];
+                } else if (fuse_params.has_elt_prelu && out_val[i][j] < 0 ) {
+                    out_val[i][j] = out_val[i][j] * ((float*)fuse_params.elt_prelu)[c_idx];
+                    if(fuse_params.has_prelu == 1){
+                        out_val[i][j] = out_val[i][j] * fuse_params.elt_leaky;
+                    } else if(fuse_params.has_prelu == 2){
+                        out_val[i][j] = out_val[i][j] * ((float*)fuse_params.elt_prelu)[c_idx];
+                    } else if(fuse_params.has_prelu == 3){
+                        out_val[i][j] = out_val[i][j] * ((float*)fuse_params.elt_prelu)[base_offset + i * out_width * paddingc + j * paddingc];
+                    }
+                }                
+            }
+        }
+    }
+#endif  
+}
+
+
+
 template<int TILE_H, int TILE_W, typename T>
 __forceinline__ __device__ void write_global(
     T out_val[TILE_H][TILE_W],
@@ -235,7 +391,7 @@ __forceinline__ __device__ void write_global(
         for (int j = 0; j < TILE_W; j++) {
             bool in_padding = h_idx * TILE_H + i < out_height && w_idx * TILE_W + j < out_width;
             if (in_padding)
-	    {
+	        {
                 output[base_offset + i * out_width * paddingc + j * paddingc] = c_idx < channels ? out_val[i][j] : (T)0.0f;
             }
         }
@@ -243,6 +399,209 @@ __forceinline__ __device__ void write_global(
 #endif
 }
 
+template<int TILE_H, int TILE_W>
+__forceinline__ __device__ void write_global_int8(
+    float out_val[TILE_H][TILE_W],
+    int h_idx,
+    int w_idx,
+    int c_idx,
+    int out_height, 
+    int out_width,
+    int channels,
+    int paddingc,
+    int base_offset,
+    int8_t* output,
+    float pic_scale,
+    float flt_scale,
+    float out_scale)
+{
+#if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
+#pragma unroll
+    for (int i = 0; i < TILE_H; i++) {
+#pragma unroll
+        for (int j = 0; j < TILE_W; j++) {
+            bool in_padding = h_idx * TILE_H + i < out_height && w_idx * TILE_W + j < out_width;
+            if (in_padding) {
+                int32_t res = round(out_val[i][j] * pic_scale * flt_scale / out_scale);
+                if(res > 127) res = 127;
+                else if(res < -128) res = -128;
+                output[base_offset + i * out_width * paddingc + j * paddingc] = c_idx < channels ? res : 0;
+            }
+        }
+    }
+#endif
+}
+
+template<int TILE_H, int TILE_W, int SRC_TILE_H, int SRC_TILE_W, int KERNEL_H, int KERNEL_W, int STRIRDE_H, int STRIRDE_W>
+__global__ void ppl_cuda_depthwise_fmma(
+    const float* input,
+    const float* filter,
+    const float* bias,
+    DivModFast padc_fast,
+    DivModFast hw_fast,
+    DivModFast width_fast,
+
+    int in_height,
+    int in_width,
+    int kernel_h,
+    int kernel_w,
+    int pad_height,
+    int pad_width,
+    int stride_height,
+    int stride_width,
+    int hole_h, 
+    int hole_w,
+
+    int tile_height,
+    int tile_width,
+
+    int channels,
+    int paddingc,
+
+    int out_height,
+    int out_width,
+
+    int in_batch_stride,
+    int in_height_stride,
+    int in_width_stride,
+    int total_elements,
+    float* output,
+    fuse_param_t fuse_params) 
+{
+#if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
+
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid >= total_elements) return;
+
+    int tile_nhw_idx, c_idx;
+    padc_fast.divmod(tid, tile_nhw_idx, c_idx);
+    int tile_hw_idx = hw_fast.mod(tile_nhw_idx);
+    int h_idx, w_idx;
+    width_fast.divmod(tile_hw_idx, h_idx, w_idx);
+    int n_idx = tid / (paddingc * tile_height * tile_width);
+
+    float out_val[TILE_H][TILE_W];
+    float flt_val[KERNEL_H][KERNEL_W];
+    
+    float pic_val[SRC_TILE_H][SRC_TILE_W];
+    load_weight<TILE_H, TILE_W, KERNEL_H, KERNEL_W, STRIRDE_H, STRIRDE_W, float>(filter, c_idx, paddingc, flt_val); 
+
+    int in_w_idx = (w_idx * TILE_W) * STRIRDE_W - pad_width;
+    int in_h_idx = (h_idx * TILE_H) * STRIRDE_H - pad_height;
+
+    bool src_in_pic = (in_w_idx >= 0) && (in_w_idx + SRC_TILE_W < in_width) && (in_h_idx >= 0) && (in_h_idx + SRC_TILE_H < in_height);
+    int base_offset = n_idx * in_batch_stride + in_h_idx * in_height_stride + in_w_idx * in_width_stride + c_idx;
+
+    if (src_in_pic) {
+        load_feature_inpic<TILE_H, TILE_W, SRC_TILE_H, SRC_TILE_W, KERNEL_H, KERNEL_W, STRIRDE_H, STRIRDE_W, true, float>(
+                    input, base_offset, paddingc, in_h_idx, in_w_idx, in_height, in_width, pic_val);
+    } else {
+        load_feature<TILE_H, TILE_W, SRC_TILE_H, SRC_TILE_W, KERNEL_H, KERNEL_W, STRIRDE_H, STRIRDE_W, false, float>(
+                    input, base_offset, paddingc, in_h_idx, in_w_idx, in_height, in_width, pic_val);
+    }
+    compute_float<TILE_H, TILE_W, SRC_TILE_H, SRC_TILE_W, KERNEL_H, KERNEL_W, STRIRDE_H, STRIRDE_W>(pic_val, flt_val, out_val);
+    base_offset = n_idx * out_height * out_width * paddingc + h_idx  * TILE_H * out_width * paddingc + w_idx * TILE_W * paddingc + c_idx;
+
+    if (bias) {
+        load_bias_float<TILE_H, TILE_W>(bias, c_idx, channels, out_val);
+    }
+    
+    fuse_process_float<TILE_H, TILE_W>(out_val, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
+    if (fuse_params.has_concat) {
+        paddingc = fuse_params.concat_stride;
+        base_offset = fuse_params.concat_offset + n_idx * out_height * out_width * paddingc + h_idx  * TILE_H * out_width * paddingc + w_idx * TILE_W * paddingc + c_idx;
+        output = (float*)fuse_params.post_concat;
+    }
+    write_global<TILE_H, TILE_W, float>(out_val, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, output);
+#endif
+}
+
+template<int TILE_H, int TILE_W, int SRC_TILE_H, int SRC_TILE_W, int KERNEL_H, int KERNEL_W, int STRIRDE_H, int STRIRDE_W>
+__global__ void ppl_cuda_depthwise_int8mma(
+    const int8_t* input,
+    const int8_t* filter,
+    const int8_t* bias,
+    DivModFast padc_fast,
+    DivModFast hw_fast,
+    DivModFast width_fast,
+
+    int in_height,
+    int in_width,
+    int kernel_h,
+    int kernel_w,
+    int pad_height,
+    int pad_width,
+    int stride_height,
+    int stride_width,
+    int hole_h, 
+    int hole_w,
+
+    int tile_height,
+    int tile_width,
+
+    int channels,
+    int paddingc,
+
+    int out_height,
+    int out_width,
+
+    int in_batch_stride,
+    int in_height_stride,
+    int in_width_stride,
+    int total_elements,
+    int8_t* output,
+    fuse_param_t fuse_params,
+    float pic_scale,
+    float flt_scale,
+    float out_scale) 
+{
+#if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
+
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid >= total_elements) return;
+
+    int tile_nhw_idx, c_idx;
+    padc_fast.divmod(tid, tile_nhw_idx, c_idx);
+    int tile_hw_idx = hw_fast.mod(tile_nhw_idx);
+    int h_idx, w_idx;
+    width_fast.divmod(tile_hw_idx, h_idx, w_idx);
+    int n_idx = tid / (paddingc * tile_height * tile_width);
+
+    float out_val[TILE_H][TILE_W];
+    int8_t flt_val[KERNEL_H][KERNEL_W];
+    
+    int8_t pic_val[SRC_TILE_H][SRC_TILE_W];
+    load_weight<TILE_H, TILE_W, KERNEL_H, KERNEL_W, STRIRDE_H, STRIRDE_W, int8_t>(filter, c_idx, paddingc, flt_val); 
+
+    int in_w_idx = (w_idx * TILE_W) * STRIRDE_W - pad_width;
+    int in_h_idx = (h_idx * TILE_H) * STRIRDE_H - pad_height;
+
+    bool src_in_pic = (in_w_idx >= 0) && (in_w_idx + SRC_TILE_W < in_width) && (in_h_idx >= 0) && (in_h_idx + SRC_TILE_H < in_height);
+    int base_offset = n_idx * in_batch_stride + in_h_idx * in_height_stride + in_w_idx * in_width_stride + c_idx;
+
+    if (src_in_pic) {
+        load_feature_inpic<TILE_H, TILE_W, SRC_TILE_H, SRC_TILE_W, KERNEL_H, KERNEL_W, STRIRDE_H, STRIRDE_W, true, int8_t>(
+                    input, base_offset, paddingc, in_h_idx, in_w_idx, in_height, in_width, pic_val);
+    } else {
+        load_feature<TILE_H, TILE_W, SRC_TILE_H, SRC_TILE_W, KERNEL_H, KERNEL_W, STRIRDE_H, STRIRDE_W, false, int8_t>(
+                    input, base_offset, paddingc, in_h_idx, in_w_idx, in_height, in_width, pic_val);
+    }
+    compute_int8<TILE_H, TILE_W, SRC_TILE_H, SRC_TILE_W, KERNEL_H, KERNEL_W, STRIRDE_H, STRIRDE_W>(pic_val, flt_val, out_val);
+    base_offset = n_idx * out_height * out_width * paddingc + h_idx  * TILE_H * out_width * paddingc + w_idx * TILE_W * paddingc + c_idx;
+
+    if (bias) {
+        load_bias_int8<TILE_H, TILE_W>(bias, c_idx, channels, out_val);
+    }
+    
+    fuse_process_float<TILE_H, TILE_W>(out_val, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
+    if (fuse_params.has_concat) {
+        paddingc = fuse_params.concat_stride;
+        base_offset = fuse_params.concat_offset + n_idx * out_height * out_width * paddingc + h_idx  * TILE_H * out_width * paddingc + w_idx * TILE_W * paddingc + c_idx;
+        output = (int8_t*)fuse_params.post_concat;
+    }
+    write_global_int8<TILE_H, TILE_W>(out_val, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, output, pic_scale, flt_scale, out_scale);
+#endif
+}
 
 template<int TILE_H, int TILE_W, int SRC_TILE_H, int SRC_TILE_W, int KERNEL_H, int KERNEL_W, int STRIRDE_H, int STRIRDE_W>
 __global__ void ppl_cuda_depthwise_hmma(
@@ -311,22 +670,133 @@ __global__ void ppl_cuda_depthwise_hmma(
         load_feature<TILE_H, TILE_W, SRC_TILE_H, SRC_TILE_W, KERNEL_H, KERNEL_W, STRIRDE_H, STRIRDE_W, false>(
                     input, base_offset, paddingc, in_h_idx, in_w_idx, in_height, in_width, pic_val);
     }
-    compute<TILE_H, TILE_W, SRC_TILE_H, SRC_TILE_W, KERNEL_H, KERNEL_W, STRIRDE_H, STRIRDE_W>(pic_val, flt_val, out_val);
+    compute_half<TILE_H, TILE_W, SRC_TILE_H, SRC_TILE_W, KERNEL_H, KERNEL_W, STRIRDE_H, STRIRDE_W>(pic_val, flt_val, out_val);
     base_offset = n_idx * out_height * out_width * paddingc + h_idx  * TILE_H * out_width * paddingc + w_idx * TILE_W * paddingc + c_idx;
 
     if (bias) {
-        load_bias<TILE_H, TILE_W>(bias, c_idx, channels, out_val);
+        load_bias_half<TILE_H, TILE_W>(bias, c_idx, channels, out_val);
     }
-    if (c_idx >= channels) {
-        
-    }
-    fuse_process<TILE_H, TILE_W>(out_val, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
+
+    fuse_process_half<TILE_H, TILE_W>(out_val, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
     if (fuse_params.has_concat) {
         paddingc = fuse_params.concat_stride;
         base_offset = fuse_params.concat_offset + n_idx * out_height * out_width * paddingc + h_idx  * TILE_H * out_width * paddingc + w_idx * TILE_W * paddingc + c_idx;
         output = (half*)fuse_params.post_concat;
     }
     write_global<TILE_H, TILE_W, half>(out_val, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, output);
+#endif
+}
+
+template<>
+__global__ void ppl_cuda_depthwise_fmma<-1,-1,-1,-1,-1,-1,-1,-1>(
+    const float* input,
+    const float* filter,
+    const float* bias,
+    DivModFast padc_fast,
+    DivModFast hw_fast,
+    DivModFast width_fast,
+    int in_height,
+    int in_width,
+    int kernel_h,
+    int kernel_w,
+    int pad_height,
+    int pad_width,
+    int stride_height,
+    int stride_width,
+    int hole_h, 
+    int hole_w,
+
+    int tile_height,
+    int tile_width,
+
+    int channels,
+    int paddingc,
+
+    int out_height,
+    int out_width,
+
+    int in_batch_stride,
+    int in_height_stride,
+    int in_width_stride,
+    int total_elements,
+    float* output,
+    fuse_param_t fuse_params) 
+{
+#if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9    
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid >= total_elements) return;
+
+    int tile_nhw_idx, c_idx;
+    padc_fast.divmod(tid, tile_nhw_idx, c_idx);
+
+    int tile_hw_idx = hw_fast.mod(tile_nhw_idx);
+
+    int h_idx, w_idx;
+    width_fast.divmod(tile_hw_idx, h_idx, w_idx);
+
+    int n_idx = tid / (paddingc * tile_height * tile_width);
+    float out_val = 0.0;
+    float flt_val;
+    float pic_val;
+    
+    int in_w_idx = w_idx * stride_width - pad_width;
+    int in_h_idx = h_idx * stride_height - pad_height;
+
+    int base_offset = n_idx * in_batch_stride + in_h_idx * in_height_stride + in_w_idx * in_width_stride + c_idx;
+    int flt_offset = c_idx;
+    for (int i = 0; i < kernel_h; i++) {
+        for (int j = 0; j < kernel_w; j++) {
+            flt_val = filter[flt_offset];
+            flt_offset += paddingc;
+            bool pred = (in_h_idx + i * hole_h >= 0) && (in_h_idx + i * hole_h < in_height) && (in_w_idx + j * hole_w >= 0) && (in_w_idx + j * hole_w < in_width);
+            pic_val = pred ? input[base_offset + i * hole_h * in_height_stride + j * hole_w * in_width_stride] : 0; 
+            out_val = flt_val * pic_val + out_val;
+        }
+    }
+
+    base_offset = n_idx * out_height * out_width * paddingc + h_idx * out_width * paddingc + w_idx * paddingc + c_idx;
+
+    if (bias) {
+        float bias_val = c_idx < channels ? bias[c_idx] : 0.0; 
+        out_val = out_val + bias_val;
+    }
+    if (fuse_params.has_activation){
+        if (fuse_params.has_activation == 1 ){
+            out_val = out_val >= 0.0 ? out_val : 0.0;
+        } else{// if (fuse_params.has_activation == 2 ){
+            float tmp = exp(out_val);
+            out_val = tmp / (tmp + 1);
+        }
+    } else if (fuse_params.has_clip) {
+        out_val = out_val >= fuse_params.clip_max ? 
+                fuse_params.clip_max : out_val <= fuse_params.clip_min ? 
+                fuse_params.clip_min : out_val;
+    } else if (fuse_params.has_prelu) {
+        out_val = out_val * ((float*)fuse_params.prelu)[c_idx];
+    }
+    if (fuse_params.has_elt) {
+        out_val = out_val + ((float*)fuse_params.pre_data)[base_offset];
+        if (fuse_params.has_elt_activation){
+            if (fuse_params.has_elt_activation == 1){
+                out_val = out_val >= 0.0 ? out_val : 0.0;
+            } else{// if (fuse_params.has_activation == 2 ){
+                float tmp = exp(out_val);
+                out_val = tmp / (tmp + 1);
+            }
+        } else if (fuse_params.has_elt_clip) {
+            out_val = out_val >= fuse_params.elt_clip_max ? 
+                    fuse_params.elt_clip_max : out_val <= fuse_params.elt_clip_min ? 
+                    fuse_params.elt_clip_min : out_val;
+        } else if (fuse_params.has_elt_prelu) {
+            out_val = out_val * ((float*)fuse_params.elt_prelu)[c_idx];
+        }                
+    }
+    if (fuse_params.has_concat) {
+        output = (float*)fuse_params.post_concat;
+        paddingc = fuse_params.concat_stride;
+        base_offset = fuse_params.concat_offset + n_idx * out_height * out_width * paddingc + h_idx * out_width * paddingc + w_idx * paddingc + c_idx;
+    }
+    output[base_offset] = out_val;
 #endif
 }
 
@@ -442,6 +912,125 @@ __global__ void ppl_cuda_depthwise_hmma<-1,-1,-1,-1,-1,-1,-1,-1>(
         base_offset = fuse_params.concat_offset + n_idx * out_height * out_width * paddingc + h_idx * out_width * paddingc + w_idx * paddingc + c_idx;
     }
     output[base_offset] = out_val;
+#endif
+}
+
+template<>
+__global__ void ppl_cuda_depthwise_int8mma<-1,-1,-1,-1,-1,-1,-1,-1>(
+    const int8_t* input,
+    const int8_t* filter,
+    const int8_t* bias,
+    DivModFast padc_fast,
+    DivModFast hw_fast,
+    DivModFast width_fast,
+    int in_height,
+    int in_width,
+    int kernel_h,
+    int kernel_w,
+    int pad_height,
+    int pad_width,
+    int stride_height,
+    int stride_width,
+    int hole_h, 
+    int hole_w,
+
+    int tile_height,
+    int tile_width,
+
+    int channels,
+    int paddingc,
+
+    int out_height,
+    int out_width,
+
+    int in_batch_stride,
+    int in_height_stride,
+    int in_width_stride,
+    int total_elements,
+    int8_t* output,
+    fuse_param_t fuse_params,
+    float pic_scale,
+    float flt_scale,
+    float out_scale) 
+{
+#if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9    
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid >= total_elements) return;
+
+    int tile_nhw_idx, c_idx;
+    padc_fast.divmod(tid, tile_nhw_idx, c_idx);
+
+    int tile_hw_idx = hw_fast.mod(tile_nhw_idx);
+
+    int h_idx, w_idx;
+    width_fast.divmod(tile_hw_idx, h_idx, w_idx);
+
+    int n_idx = tid / (paddingc * tile_height * tile_width);
+    float out_val = 0.0;
+    int8_t flt_val;
+    int8_t pic_val;
+    
+    int in_w_idx = w_idx * stride_width - pad_width;
+    int in_h_idx = h_idx * stride_height - pad_height;
+
+    int base_offset = n_idx * in_batch_stride + in_h_idx * in_height_stride + in_w_idx * in_width_stride + c_idx;
+    int flt_offset = c_idx;
+    for (int i = 0; i < kernel_h; i++) {
+        for (int j = 0; j < kernel_w; j++) {
+            flt_val = filter[flt_offset];
+            flt_offset += paddingc;
+            bool pred = (in_h_idx + i * hole_h >= 0) && (in_h_idx + i * hole_h < in_height) && (in_w_idx + j * hole_w >= 0) && (in_w_idx + j * hole_w < in_width);
+            pic_val = pred ? input[base_offset + i * hole_h * in_height_stride + j * hole_w * in_width_stride] : 0; 
+            out_val = flt_val * pic_val + out_val;
+        }
+    }
+
+    base_offset = n_idx * out_height * out_width * paddingc + h_idx * out_width * paddingc + w_idx * paddingc + c_idx;
+
+    if (bias) {
+        int8_t bias_val = c_idx < channels ? bias[c_idx] : 0; 
+        out_val = out_val + bias_val;
+    }
+    if (fuse_params.has_activation){
+        if (fuse_params.has_activation == 1 ){
+            out_val = out_val >= 0.0 ? out_val : 0.0;
+        } else{// if (fuse_params.has_activation == 2 ){
+            float tmp = exp(out_val);
+            out_val = tmp / (tmp + 1);
+        }
+    } else if (fuse_params.has_clip) {
+        out_val = out_val >= fuse_params.clip_max ? 
+                fuse_params.clip_max : out_val <= fuse_params.clip_min ? 
+                fuse_params.clip_min : out_val;
+    } else if (fuse_params.has_prelu) {
+        out_val = out_val * ((float*)fuse_params.prelu)[c_idx];
+    }
+    if (fuse_params.has_elt) {
+        out_val = out_val + ((float*)fuse_params.pre_data)[base_offset];
+        if (fuse_params.has_elt_activation){
+            if (fuse_params.has_elt_activation == 1){
+                out_val = out_val >= 0.0 ? out_val : 0.0;
+            } else{// if (fuse_params.has_activation == 2 ){
+                float tmp = exp(out_val);
+                out_val = tmp / (tmp + 1);
+            }
+        } else if (fuse_params.has_elt_clip) {
+            out_val = out_val >= fuse_params.elt_clip_max ? 
+                    fuse_params.elt_clip_max : out_val <= fuse_params.elt_clip_min ? 
+                    fuse_params.elt_clip_min : out_val;
+        } else if (fuse_params.has_elt_prelu) {
+            out_val = out_val * ((float*)fuse_params.elt_prelu)[c_idx];
+        }                
+    }
+    if (fuse_params.has_concat) {
+        output = (int8_t*)fuse_params.post_concat;
+        paddingc = fuse_params.concat_stride;
+        base_offset = fuse_params.concat_offset + n_idx * out_height * out_width * paddingc + h_idx * out_width * paddingc + w_idx * paddingc + c_idx;
+    }
+    int32_t res = round(out_val * pic_scale * flt_scale / out_scale);
+    if(res > 127) res = 127;
+    else if(res < -128) res = -128;
+    output[base_offset] = res;
 #endif
 }
 

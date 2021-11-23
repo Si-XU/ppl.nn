@@ -31,6 +31,11 @@ ppl::common::RetCode ChannelShuffleKernel::DoExecute(KernelExecContext* ctx) {
     auto output_id0 = Y->GetEdge()->GetId();
     auto output_quant0 = GetCommonParam()->cuda_tensor_info->at(output_id0);
 
+    auto input_edge = ctx->GetInput<TensorImpl>(0)->GetEdge();
+    auto output_edge = ctx->GetOutput<TensorImpl>(0)->GetEdge();
+    LOG(ERROR) << "Edge: " << input_edge->GetName() << " has quant " << GetCommonParam()->cuda_tensor_info->at(input_edge->GetId()).scale[0];
+    LOG(ERROR) << "Edge: " << output_edge->GetName() << " has quant " << GetCommonParam()->cuda_tensor_info->at(output_edge->GetId()).scale[0];
+
     if (X->GetShape().GetDimCount() != 4 || Y->GetShape().GetDimCount() != 4) {
         LOG(ERROR) << "incorrect input dimcount: " << X->GetShape().GetDimCount();
         return ppl::common::RC_UNSUPPORTED;
@@ -44,6 +49,7 @@ ppl::common::RetCode ChannelShuffleKernel::DoExecute(KernelExecContext* ctx) {
         auto Y_shape = Y->GetShape();
         if(Y_shape.GetElementsExcludingPadding() < Y_shape.GetElementsIncludingPadding())
             cudaMemset(Y->GetBufferPtr(), 0, Y_shape.GetBytesIncludingPadding());
+        LOG(ERROR) << "fuse channel scale: " << input_quant0.scale[0]<<","<<output_quant0.scale[0];
         PPLCUDAChannelShuffleForwardImp(GetStream(), group_, &X->GetShape(), X->GetBufferPtr(),
                                                              &Y->GetShape(), Y->GetBufferPtr(), 
                                                              input_quant0.scale[0], output_quant0.scale[0]);
@@ -60,7 +66,8 @@ ppl::common::RetCode ChannelShuffleKernel::DoExecute(KernelExecContext* ctx) {
             cudaMemset(Y->GetBufferPtr(), 0, Y->GetShape().GetBytesIncludingPadding());
         if(Y2->GetShape().GetElementsExcludingPadding() < Y2->GetShape().GetElementsIncludingPadding())
             cudaMemset(Y2->GetBufferPtr(), 0, Y2->GetShape().GetBytesIncludingPadding());
-        
+        LOG(ERROR) << "fuse channel shuffle id: "<< X->GetEdge()->GetName()<<" "<<X2->GetEdge()->GetName()<<" "<<Y->GetEdge()->GetName()<<" "<<Y2->GetEdge()->GetName();
+        LOG(ERROR) << "fuse channel scale: " << input_quant0.scale[0] << ","<< input_quant1.scale[0]<<","<<output_quant0.scale[0]<<","<<output_quant1.scale[0];
         PPLCUDAFuseChannelShuffleForwardImp(GetStream(), group_, &X->GetShape(), X->GetBufferPtr(), X2->GetBufferPtr(),
                                                                  &Y->GetShape(), Y->GetBufferPtr(), Y2->GetBufferPtr(),
                                                                  input_quant0.scale[0], input_quant1.scale[0],
