@@ -62,7 +62,7 @@
             conv_param.hole_height,        conv_param.hole_width,                       \
             conv_param.has_bias,           bias,                                        \
             quant_param.in_scale,          quant_param.d_flt_scale,                     \
-            quant_param.out_scale,                                                      \
+            quant_param.out_scale,         quant_param.pre_scale,                       \
             fuse_param.has_activation,     clip_min,                                    \
             fuse_param.has_clip,           clip_max,                                    \
             fuse_param.has_prelu,          (const void *) fuse_param.prelu,             \
@@ -94,7 +94,7 @@
             conv_param.hole_height,        conv_param.hole_width,                       \
             conv_param.has_bias,           bias,                                        \
             quant_param.in_scale,          quant_param.d_flt_scale,                     \
-            quant_param.out_scale,                                                      \
+            quant_param.out_scale,         quant_param.pre_scale,                       \
             fuse_param.has_activation,     clip_min,                                    \
             fuse_param.has_clip,           clip_max,                                    \
             fuse_param.has_prelu,          (const void *) fuse_param.prelu,             \
@@ -645,7 +645,7 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
                     algo_param.tiles.cta_size_in_thd = (algo_param.tiles.m_cta / algo_param.tiles.m_warp) *
                                                     (algo_param.tiles.n_cta / algo_param.tiles.n_warp) *
                                                     WARP_SIZE;
-                    algo_param.algo_name = "nvIdxnConv_hmma1688_nhwc_b" + ToString(algo_param.tiles.m_cta) + "x" + ToString(algo_param.tiles.n_cta) +
+                    algo_param.algo_name = "nvIdxnConv_hmma8816_nhwc_b" + ToString(algo_param.tiles.m_cta) + "x" + ToString(algo_param.tiles.n_cta) +
                                         "_w" + ToString(algo_param.tiles.m_warp) + "x" + ToString(algo_param.tiles.n_warp) +
                                         "_k" + ToString(algo_param.tiles.k_cta) + "_s" + ToString(algo_param.tiles.k_per_step) + "_nosmem";
                 } else { // Use 2spk algo for large channel
@@ -669,7 +669,7 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
                         f_size                    = "f3";
                         algo_param.tiles.flt_size = 3;
                     }
-                    algo_param.algo_name = "nv2spkConv_hmma1688_nhwc_" + f_size + "_b" + ToString(algo_param.tiles.m_cta) + "x" + ToString(algo_param.tiles.n_cta) +
+                    algo_param.algo_name = "nv2spkConv_hmma8816_nhwc_" + f_size + "_b" + ToString(algo_param.tiles.m_cta) + "x" + ToString(algo_param.tiles.n_cta) +
                                         "_w" + ToString(algo_param.tiles.m_warp) + "x" + ToString(algo_param.tiles.n_warp) +
                                         "_k" + ToString(algo_param.tiles.k_cta) + "_s" + ToString(algo_param.tiles.k_per_set) + "_buf1";
                     if (splitk > 1) {
@@ -689,12 +689,14 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
                 if (!temp_kernel.CheckQuickSelectFeasible(algo_param, num_chl_per_grp, grid_size, flt_hw, splitk, splitf, device_id))
                     continue;
 
+                auto mgr = CodeGeneFactorManager::Instance();
+                auto gene_factor = mgr->FindKernel(type);
                 std::string source = "";
                 if (algo_param.algo_name.find("Idxn") != std::string::npos) {
-                    GeneIdxnKernel(source, algo_param.algo_name, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_step, declare_times);
+                    gene_factor->GeneIdxnKernel(source, algo_param.algo_name, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_step, declare_times);
                     declare_times++;
-                } else {
-                    Gene2spkKernel(source, algo_param.algo_name, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_set, algo_param.splitk, algo_param.splitf, algo_param.tiles.buf, declare_times);
+                } else if (algo_param.algo_name.find("2spk") != std::string::npos) {
+                    gene_factor->Gene2spkKernel(source, algo_param.algo_name, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_set, algo_param.splitk, algo_param.splitf, algo_param.tiles.buf, declare_times);
                     declare_times++;
                 }
 
@@ -826,15 +828,12 @@ void PPLCUDAConvolutionForwardJITImpInt8(
             void *args[] = {&pad_input, &d_flt, &conv_out, &kloop_num, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &in_hw, &out_hw, &flt_hw, &splitk, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias, &fuse_param.has_activation, &clip_min, &fuse_param.has_clip, &clip_max, &fuse_param.has_prelu, &prelu, &fuse_param.has_elt, &(pre_data), &fuse_param.has_elt_activation, &elt_clip_min, &fuse_param.has_elt_clip, &elt_clip_max, &fuse_param.has_elt_prelu, &(elt_prelu), &leaky, &elt_leaky, &fuse_param.has_concat, &concat_offset_v8, &concat_stride_v8};
             CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
         } else {
-            int chl_lut_size, kloop_lut_size;
-            struct chl_lut_t chl_lut;
-            struct kloop_lut_t kloop_lut;
+            // int num_chl_per_spk_head, num_chl_per_spk_tail;
 
-            InitializeChlLut(chl_lut_size, chl_lut.idx, conv_param.num_chl, conv_param.num_grp, pad_size, cta_k, splitk);
-            InitializeKloopLut(kloop_lut_size, kloop_lut.idx, conv_param.num_chl, conv_param.num_grp, pad_size, cta_k, splitk, splitf, flt_hw);
+            // InitializeNumChlPerSpk(num_chl_per_spk_head, num_chl_per_spk_tail, conv_param.num_chl, conv_param.num_grp, pad_size, cta_k, splitk);
 
-            void *args[] = {&pad_input, &d_flt, &conv_out, &kloop_num, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &chl_lut, &chl_lut_size, &kloop_lut, &kloop_lut_size, &in_hw, &out_hw, &flt_hw, &splitk, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias};
-            CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
+            // void *args[] = {&pad_input, &d_flt, &conv_out, &kloop_num, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &num_chl_per_spk_head, &num_chl_per_spk_tail, &in_hw, &out_hw, &flt_hw, &splitk, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias};
+            // CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
         }
     } else {
     }

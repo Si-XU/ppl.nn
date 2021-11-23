@@ -33,63 +33,70 @@
 static std::vector<kernel_info_t> g_kvec;
 static bool is_g_kvec_set = false;
 
-#define FAKE_CONV_PARAM \
-    const int in_hw = 1;           const int out_hw = 1;                    \
-    const int flt_hw = 1;          const int splitk = 1;                    \
-    const int in_height = 1;       const int in_width = 1;                  \
-    const int batch = M;           const int num_grp = 1;                   \
-    const int num_chl_per_grp = 0; const int num_chl_per_grp_pad = K_pad;   \
-    const int flt_height = 1;      const int flt_width = 1;                 \
-    const int num_flt_per_grp = 0; const int num_flt_per_grp_pad = N_pad;   \
-    const int out_height = 1;      const int out_width = 1;                 \
-    const int stride_height = 1;   const int stride_width = 1;              \
-    const int pad_height = 0;      const int pad_width = 0;                 \
-    const int hole_height = 1;     const int hole_width = 1; 
+#define FAKE_CONV_PARAM              \
+    int in_hw               = 1;     \
+    int out_hw              = 1;     \
+    int flt_hw              = 1;     \
+    int splitk              = 1;     \
+    int in_height           = 1;     \
+    int in_width            = 1;     \
+    int batch               = M;     \
+    int num_grp             = 1;     \
+    int num_chl_per_grp     = 0;     \
+    int num_chl_per_grp_pad = K_pad; \
+    int flt_height          = 1;     \
+    int flt_width           = 1;     \
+    int num_flt_per_grp     = N;     \
+    int num_flt_per_grp_pad = N_pad; \
+    int out_height          = 1;     \
+    int out_width           = 1;     \
+    int stride_height       = 1;     \
+    int stride_width        = 1;     \
+    int pad_height          = 0;     \
+    int pad_width           = 0;     \
+    int hole_height         = 1;     \
+    int hole_width          = 1;
 
-#define GEMM_FUNC_PARAM \
-    input0_tmp,                                                             \
-    (int4*)weight,                                                          \
-    final_out,                                                              \
-    kLoopNum,                                                               \
-    in_lut,                        0,                                       \
-    flt_lut,                       0,                                       \
-    in_hw,                         out_hw,                                  \
-    flt_hw,                        splitk,                                  \
-    in_height,                     in_width,                                \
-    batch,                         num_grp,                                 \
-    num_chl_per_grp,               num_chl_per_grp_pad,                     \
-    flt_height,                    flt_width,                               \
-    num_flt_per_grp,               num_flt_per_grp_pad,                     \
-    out_height,                    out_width,                               \
-    stride_height,                 stride_width,                            \
-    pad_height,                    pad_width,                               \
-    hole_height,                   hole_width,                              \
-    has_bias,                      (int4*)bias,                             \
-    fuse_param.has_activation,     clip_min,                                \
-    fuse_param.has_clip,           clip_max,                                \
-    fuse_param.has_prelu,          (const void *) fuse_param.prelu,       \
-    fuse_param.has_elt,            (const int4 *) fuse_param.pre_data,      \
-    fuse_param.has_elt_activation, elt_clip_min,                            \
-    fuse_param.has_elt_clip,       elt_clip_max,                            \
-    fuse_param.has_elt_prelu,      (const void *) fuse_param.elt_prelu,   \
-    (__half)fuse_param.leaky,      (__half)fuse_param.elt_leaky,            \
-    fuse_param.has_concat,         concat_offset_v8,                        \
-    concat_stride_v8
+#define GEMM_FUNC_PARAM                                               \
+    input0_tmp,                                                       \
+        (int4 *)weight,                                               \
+        final_out,                                                    \
+        kLoopNum,                                                     \
+        in_lut, 0,                                                    \
+        flt_lut, 0,                                                   \
+        in_hw, out_hw,                                                \
+        flt_hw, splitk,                                               \
+        in_height, in_width,                                          \
+        batch, num_grp,                                               \
+        num_chl_per_grp, num_chl_per_grp_pad,                         \
+        flt_height, flt_width,                                        \
+        num_flt_per_grp, num_flt_per_grp_pad,                         \
+        out_height, out_width,                                        \
+        stride_height, stride_width,                                  \
+        pad_height, pad_width,                                        \
+        hole_height, hole_width,                                      \
+        has_bias, (int4 *)bias,                                       \
+        fuse_param.has_activation, clip_min,                          \
+        fuse_param.has_clip, clip_max,                                \
+        fuse_param.has_prelu, (const void *)fuse_param.prelu,         \
+        fuse_param.has_elt, (const int4 *)fuse_param.pre_data,        \
+        fuse_param.has_elt_activation, elt_clip_min,                  \
+        fuse_param.has_elt_clip, elt_clip_max,                        \
+        fuse_param.has_elt_prelu, (const void *)fuse_param.elt_prelu, \
+        (__half)fuse_param.leaky, (__half)fuse_param.elt_leaky,       \
+        fuse_param.has_concat, concat_offset_v8,                      \
+        concat_stride_v8
 
 void init_f1_kvec(std::vector<kernel_info_t> &g_kvec, ppl::common::datatype_t type)
 {
-    if ( type == ppl::common::DATATYPE_FLOAT32 )
-    {
-        printf("fp32 unsupported in %s\n", __FUNCTION__);
-    }
-    else if ( type == ppl::common::DATATYPE_FLOAT16 )
-    {
+#ifndef PPLNN_ENABLE_CUDA_JIT
+    if (type == ppl::common::DATATYPE_FLOAT16) {
         Initialize2spkConvF1KernelContainer(g_kvec);
+    } else if (type == ppl::common::DATATYPE_INT8) {
+        InitializeInt82spkConvF1KernelContainer(g_kvec);
     }
-    else 
-    { printf("type unsupported\n"); }
-
     is_g_kvec_set = true;
+#endif
 }
 
 uint64_t PPLGemmCUDAGetBufSize(
@@ -99,7 +106,7 @@ uint64_t PPLGemmCUDAGetBufSize(
     auto type     = input_shape->GetDataType();
     int type_size = ppl::common::GetSizeOfDataType(type);
 
-    if(transA){
+    if (transA) {
         int pad_size = GetPadSize(type); // ldg 128 bytes
         int K        = input_shape->GetDim(0);
         int M        = input_shape->GetDim(1);
@@ -114,9 +121,10 @@ unsigned int PPLCUDAGemmGetBiasSize(
     const int N,
     const bool is_scalar)
 {
-    if(!is_scalar)    return 0;
-    int pad_size = GetPadSize(type); // ldg 128 bytes
-    int N_pad    = Align(N, pad_size);
+    if (!is_scalar)
+        return 0;
+    int pad_size  = GetPadSize(type); // ldg 128 bytes
+    int N_pad     = Align(N, pad_size);
     int type_size = ppl::common::GetSizeOfDataType(type);
     return N_pad * type_size;
 }
@@ -144,7 +152,8 @@ __global__ void matrix_transpose(
     __syncthreads();
     value          = smem[threadIdx.y][threadIdx.x];
     float fp_value = (float)value * scale;
-    if(out_range) output[out_y*in_row + out_x] = (__half)fp_value;
+    if (out_range)
+        output[out_y * in_row + out_x] = (__half)fp_value;
 }
 
 template <typename T>
@@ -195,11 +204,11 @@ ppl::common::RetCode PPLCUDAGemmModifyWeights(
                 return ppl::common::RC_UNSUPPORTED;
         }
 #undef TRANSWEIGHT
-    } else if (alpha != 1.f){
-        int grid_size = DivUp(dim0*dim1, 512);
-        switch(type){
-            case ppl::common::DATATYPE_FLOAT32 : {
-                scale<float><<<grid_size, 512, 0, stream>>>((float*)weight, alpha, dim0*dim1);
+    } else if (alpha != 1.f) {
+        int grid_size = DivUp(dim0 * dim1, 512);
+        switch (type) {
+            case ppl::common::DATATYPE_FLOAT32: {
+                scale<float><<<grid_size, 512, 0, stream>>>((float *)weight, alpha, dim0 * dim1);
                 break;
             }
             case ppl::common::DATATYPE_FLOAT16: {
@@ -225,14 +234,16 @@ ppl::common::RetCode PPLCUDAGemmModifyBias(
         int N        = bias_shape->GetDim(0);
         int N_pad    = Align(N, pad_size);
         if (type == ppl::common::DATATYPE_FLOAT32) {
-	        if (bias_shape->IsScalar())    return ppl::common::RC_UNSUPPORTED;
-	        if (beta != 0.f && beta != 1.f){
+            if (bias_shape->IsScalar())
+                return ppl::common::RC_UNSUPPORTED;
+            if (beta != 0.f && beta != 1.f) {
                 int grid_size = DivUp(N_pad, 512);
                 scale<float><<<grid_size, 512, 0, stream>>>((float *)bias, beta, N_pad);
             }
         } else if (type == ppl::common::DATATYPE_FLOAT16) {
-            if (bias_shape->IsScalar())    return ppl::common::RC_UNSUPPORTED;
-            if (beta != 0.f && beta != 1.f){
+            if (bias_shape->IsScalar())
+                return ppl::common::RC_UNSUPPORTED;
+            if (beta != 0.f && beta != 1.f) {
                 int grid_size = DivUp(N_pad, 512);
                 scale<__half><<<grid_size, 512, 0, stream>>>((__half *)bias, beta, N_pad);
             }
@@ -362,6 +373,8 @@ double PPLCUDAGemmSelectKernel(
     int transA   = param.transA;
     int transB   = param.transB;
 
+    // FIXME use non-paded N in conv1x1 for input
+    int N     = transB ? weight_shape->GetDim(0) : weight_shape->GetDim(1);
     int N_pad = transB ? weight_shape->GetDim(0) : weight_shape->GetDim(1);
     int K_pad = transB ? weight_shape->GetDim(1) : weight_shape->GetDim(0);
     int M     = transA ? input_shape->GetDim(1) : input_shape->GetDim(0);
@@ -423,9 +436,6 @@ double PPLCUDAGemmSelectKernel(
                 lut_t in_lut, flt_lut;
                 (g_kvec[kid].lut_kptr)<<<grid_size, block_size, 0, stream>>>(GEMM_FUNC_PARAM);
             }
-            else { 
-                printf("Error: kernel type error in %s\n", __FUNCTION__); 
-            }
         }
         cudaEventRecord(end, stream);
         cudaEventSynchronize(end);
@@ -458,7 +468,7 @@ ppl::common::RetCode PPLCUDAGemvForwardImp(
     void *temp_buffer,
     const fuse_param_t &fuse_param);
 
-    ppl::common::RetCode PPLCUDAGemmForwardImp(
+ppl::common::RetCode PPLCUDAGemmForwardImp(
     const cudaStream_t &stream,
     ppl::nn::cuda::CUDAModule *module,
     const ppl::nn::TensorShape *input_shape,
@@ -561,9 +571,9 @@ ppl::common::RetCode PPLCUDAGemvForwardImp(
     half leaky       = fuse_param.leaky;
     half elt_leaky   = fuse_param.elt_leaky;
 
-    // void *args[]        = {&input0_tmp, &weight, &final_out, &kLoopNum, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &in_hw, &out_hw, &flt_hw, &splitk, &in_height, &in_width, &batch, &num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &flt_height, &flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &out_height, &out_width, &stride_height, &stride_width, &pad_height, &pad_width, &hole_height, &hole_width, &has_bias, &bias, &fuse_param.has_activation, &clip_min, &fuse_param.has_clip, &clip_max, &fuse_param.has_prelu, &prelu, &fuse_param.has_elt, &(pre_data), &fuse_param.has_elt_activation, &elt_clip_min, &fuse_param.has_elt_clip, &elt_clip_max, &fuse_param.has_elt_prelu, &(elt_prelu), &leaky, &elt_leaky, &fuse_param.has_concat, &concat_offset_v8, &concat_stride_v8};
-    // CUfunction function = module->GetKernelFunc();
-    // CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
+    void *args[]        = {&input0_tmp, &weight, &final_out, &kLoopNum, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &in_hw, &out_hw, &flt_hw, &splitk, &in_height, &in_width, &batch, &num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &flt_height, &flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &out_height, &out_width, &stride_height, &stride_width, &pad_height, &pad_width, &hole_height, &hole_width, &has_bias, &bias, &fuse_param.has_activation, &clip_min, &fuse_param.has_clip, &clip_max, &fuse_param.has_prelu, &prelu, &fuse_param.has_elt, &(pre_data), &fuse_param.has_elt_activation, &elt_clip_min, &fuse_param.has_elt_clip, &elt_clip_max, &fuse_param.has_elt_prelu, &(elt_prelu), &leaky, &elt_leaky, &fuse_param.has_concat, &concat_offset_v8, &concat_stride_v8};
+    CUfunction function = module->GetKernelFunc();
+    CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
 #else
         (g_kvec[kid].lut_kptr)<<<grid_size, block_size, 0, stream>>>(GEMM_FUNC_PARAM);
 #endif
@@ -880,48 +890,51 @@ ppl::common::RetCode PPLCUDAGemvForwardImp(
     void *temp_buffer,
     const fuse_param_t &fuse_param)
 {
-    if(!param.transB)    return ppl::common::RC_UNSUPPORTED;
+    if (!param.transB)
+        return ppl::common::RC_UNSUPPORTED;
 
-    constexpr int ELEM_NUM_PR_LD = sizeof(int4)/sizeof(T);
-    constexpr int expect_blocks = 64;
-    //constexpr int MAX_BLK_SIZE = 256;
-    //constexpr int MAX_THD_TILE_N_V4 = 4;
-    int n_v4 = padN / ELEM_NUM_PR_LD;
-    int blk_tile_n_v4 = DivUp(n_v4, expect_blocks/M);
-#define LAUNCH_KERNEL(){ \
-    constexpr int BLK_TILE_N = BLK_SIZE_Y * THD_TILE_N_V4 * ELEM_NUM_PR_LD; \
-    constexpr int BLK_SIZE = BLK_SIZE_Y * BLK_SIZE_X; \
-    dim3 grid; \
-    grid.x = DivUp(padN, BLK_TILE_N); \
-    grid.y = 1;    grid.z = 1; \
-    dim3 threads = dim3(BLK_SIZE_X, BLK_SIZE_Y,1); \
-    gemv<T, BLK_TILE_N, THD_TILE_N_V4, BLK_SIZE><<<grid, threads, 0, stream>>>\
-    	(output, input, weight, bias, padK, padN, fuse_param); \
-}
-#define CONFIG_KERNEL(_blk_tile_n_v4){ \
-    if(BLK_SIZE_X <= 64 && blk_tile_n_v4 >= 16){ \
-        constexpr int THD_TILE_N_V4 = 4; \
-        constexpr int BLK_SIZE_Y = 4; \
-        LAUNCH_KERNEL(); \
-    } else if(blk_tile_n_v4 >= 8){ \
-        constexpr int THD_TILE_N_V4 = 4; \
-        constexpr int BLK_SIZE_Y = 2; \
-        LAUNCH_KERNEL(); \
-    } else if(blk_tile_n_v4 >= 4){ \
-        constexpr int THD_TILE_N_V4 = 2; \
-        constexpr int BLK_SIZE_Y = 2; \
-        LAUNCH_KERNEL(); \
-    } else if(blk_tile_n_v4 >= 2){ \
-        constexpr int THD_TILE_N_V4 = 2; \
-        constexpr int BLK_SIZE_Y = 1; \
-        LAUNCH_KERNEL(); \
-    } else{ \
-        constexpr int THD_TILE_N_V4 = 1; \
-        constexpr int BLK_SIZE_Y = 1; \
-        LAUNCH_KERNEL(); \
-    } \
-}
-    if (padK >= 512){
+    constexpr int ELEM_NUM_PR_LD = sizeof(int4) / sizeof(T);
+    constexpr int expect_blocks  = 64;
+    // constexpr int MAX_BLK_SIZE = 256;
+    // constexpr int MAX_THD_TILE_N_V4 = 4;
+    int n_v4                     = padN / ELEM_NUM_PR_LD;
+    int blk_tile_n_v4            = DivUp(n_v4, expect_blocks / M);
+#define LAUNCH_KERNEL()                                                                                                                  \
+    {                                                                                                                                    \
+        constexpr int BLK_TILE_N = BLK_SIZE_Y * THD_TILE_N_V4 * ELEM_NUM_PR_LD;                                                          \
+        constexpr int BLK_SIZE   = BLK_SIZE_Y * BLK_SIZE_X;                                                                              \
+        dim3 grid;                                                                                                                       \
+        grid.x       = DivUp(padN, BLK_TILE_N);                                                                                          \
+        grid.y       = 1;                                                                                                                \
+        grid.z       = 1;                                                                                                                \
+        dim3 threads = dim3(BLK_SIZE_X, BLK_SIZE_Y, 1);                                                                                  \
+        gemv<T, BLK_TILE_N, THD_TILE_N_V4, BLK_SIZE><<<grid, threads, 0, stream>>>(output, input, weight, bias, padK, padN, fuse_param); \
+    }
+#define CONFIG_KERNEL(_blk_tile_n_v4)                  \
+    {                                                  \
+        if (BLK_SIZE_X <= 64 && blk_tile_n_v4 >= 16) { \
+            constexpr int THD_TILE_N_V4 = 4;           \
+            constexpr int BLK_SIZE_Y    = 4;           \
+            LAUNCH_KERNEL();                           \
+        } else if (blk_tile_n_v4 >= 8) {               \
+            constexpr int THD_TILE_N_V4 = 4;           \
+            constexpr int BLK_SIZE_Y    = 2;           \
+            LAUNCH_KERNEL();                           \
+        } else if (blk_tile_n_v4 >= 4) {               \
+            constexpr int THD_TILE_N_V4 = 2;           \
+            constexpr int BLK_SIZE_Y    = 2;           \
+            LAUNCH_KERNEL();                           \
+        } else if (blk_tile_n_v4 >= 2) {               \
+            constexpr int THD_TILE_N_V4 = 2;           \
+            constexpr int BLK_SIZE_Y    = 1;           \
+            LAUNCH_KERNEL();                           \
+        } else {                                       \
+            constexpr int THD_TILE_N_V4 = 1;           \
+            constexpr int BLK_SIZE_Y    = 1;           \
+            LAUNCH_KERNEL();                           \
+        }                                              \
+    }
+    if (padK >= 512) {
         constexpr int BLK_SIZE_X = 64;
         CONFIG_KERNEL(blk_tile_n_v4);
     } else {
