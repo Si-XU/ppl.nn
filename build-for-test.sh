@@ -12,7 +12,7 @@ else
     processor_num=1
 fi
 
-options='-DCMAKE_BUILD_TYPE=Release -DPPLNN_ENABLE_PYTHON_API=ON'
+options='-DCMAKE_BUILD_TYPE=Debug -DPPLNN_ENABLE_PYTHON_API=ON'
 
 # --------------------------------------------------------------------------- #
 # preparing lua
