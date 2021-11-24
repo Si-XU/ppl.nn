@@ -21,7 +21,6 @@
 #include "ppl/nn/common/tensor_shape.h"
 #include "ppl/common/retcode.h"
 #include "cudakernel/common/common.h"
-#include<stdio.h>
 
 template <typename T>
 __global__ void ppl_cukernel_channel_shuffle(
@@ -171,8 +170,7 @@ ppl::common::RetCode PPLCUDAChannelShuffleForwardImp(
                 num_elems, group, channels_per_group, input_strides_fast, (const TYPE *)input, (TYPE *)output);     \
         }                                                                                                           \
         return ppl::common::RC_SUCCESS;                                                                             \
-    }                 
-    printf("%d, %d \n", input_shape->GetDataType(), output_shape->GetDataType());                                                                                                \
+    }                                                                                                               \
 
 
     switch (ppl::common::GetSizeOfDataType(input_shape->GetDataType())) {
@@ -437,9 +435,9 @@ ppl::common::RetCode PPLCUDAFuseChannelShuffleForwardImp(
         return ppl::common::RC_SUCCESS;                                                                             \
     }                                                                                                               \
 
-    printf("%d, %d \n", input_shape->GetDataType(), output_shape->GetDataType());  
+
     switch (ppl::common::GetSizeOfDataType(input_shape->GetDataType())) {
-        case sizeof(int8_t): {                                                                                    
+        case sizeof(int8_t): {                                                                                            
             if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8){                                         
                 ppl_cukernel_fuse_channel_shuffle_nhwc_int8<<<grid_size, block_size, 0, stream>>>(                                
                     num_elems, group, channels_per_group, pad_channels, channels_fast,                                  

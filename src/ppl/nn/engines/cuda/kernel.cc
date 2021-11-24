@@ -153,7 +153,8 @@ RetCode CudaKernel::Execute(KernelExecContext* ctx) {
         status = DoExecute(ctx);
     }
 
-    auto output = ctx->GetOutput<TensorImpl>(0);
+for (int i = 0; i < ctx->GetOutputCount(); i++) {
+    auto output = ctx->GetOutput<TensorImpl>(i);
     int save_bytes = output->GetShape().GetDataType() == ppl::common::DATATYPE_FLOAT16 ||
                         output->GetShape().GetDataType() == ppl::common::DATATYPE_INT8 ?
                     sizeof(float) * output->GetShape().GetElementsExcludingPadding() :
@@ -170,14 +171,11 @@ RetCode CudaKernel::Execute(KernelExecContext* ctx) {
     tmp_shape.SetDataFormat(ppl::common::DATAFORMAT_NDARRAY);
     auto output_quant = common_param_->cuda_tensor_info->at(output->GetEdge()->GetId());
     CudaTensorQuant convert_quant;
-//if(output->GetShape().GetDataFormat() == ppl::common::DATAFORMAT_NDARRAY && output->GetShape().GetDataType() == ppl::common::DATATYPE_FLOAT32){
-//    (CudaDataConverter*)GetDevice()->CopyToHost((void*)out_data.get(), output->GetBufferDesc(), output->GetShape());
-//}else{
     ((CudaDataConverter*)GetDevice()->GetDataConverter())->ConvertToHost((void*)out_data.get(), tmp_shape, convert_quant, output->GetBufferDesc(), output->GetShape(), output_quant);
-//}
     std::string outputname = output->GetName();
     std::ofstream out_fs(outputname + ".dat");
     out_fs.write((char*)out_data.get(), save_bytes);
+}
 
 #ifndef NDEBUG
     auto run_end_ts = std::chrono::system_clock::now();

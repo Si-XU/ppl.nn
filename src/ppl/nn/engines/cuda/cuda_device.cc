@@ -21,7 +21,6 @@
 #include <cuda_runtime.h>
 
 #include "ppl/nn/common/logger.h"
-#include<iostream>
 
 using namespace ppl::common;
 
@@ -57,7 +56,6 @@ RetCode CudaDevice::CopyFromHost(BufferDesc* dst, const void* src, const TensorS
 
 // Copy to host
 RetCode CudaDevice::CopyToHost(void* dst, const BufferDesc& src, uint64_t bytes) const {
-    std::cout << "real size bytes: " << bytes << std::endl;
     cudaError_t err = cudaMemcpyAsync(dst, src.addr, bytes, cudaMemcpyDeviceToHost, context_.stream);
     if (err != cudaSuccess) {
         LOG(ERROR) << "cudaMemcpyAsync " << err << ", " << cudaGetErrorString(err);
@@ -71,7 +69,6 @@ RetCode CudaDevice::CopyToHost(void* dst, const BufferDesc& src, uint64_t bytes)
     return RC_SUCCESS;
 }
 RetCode CudaDevice::CopyToHost(void* dst, const BufferDesc& src, const TensorShape& shape) const {
-    std::cout << "real size data: " << shape.GetBytesIncludingPadding() << std::endl;
     return CopyToHost(dst, src, shape.GetBytesIncludingPadding());
 }
 
