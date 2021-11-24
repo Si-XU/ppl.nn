@@ -18,7 +18,7 @@
 #include "cudakernel/nn/global_pooling_ave.h"
 #include "ppl/common/types.h"
 #include <cuda_fp16.h>
-#include<stdio.h>
+
 template<typename T>
 __global__ void ppl_cukernel_pooling_ave_global_shuffle(
       const T* input,

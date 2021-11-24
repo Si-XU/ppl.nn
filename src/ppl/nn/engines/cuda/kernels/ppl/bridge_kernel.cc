@@ -46,7 +46,6 @@ ppl::common::RetCode BridgeKernel::DoExecute(KernelExecContext* ctx) {
         output->GetShape().GetDataType() != ppl::common::DATATYPE_INT8) {
         status = converter->Convert(&output->GetBufferDesc(), output->GetShape(), input->GetBufferDesc(), input->GetShape());
     } else {
-
         auto input_id = input->GetEdge()->GetId();
         auto input_quant = GetCommonParam()->cuda_tensor_info->at(input_id);
         auto output_id = output->GetEdge()->GetId();

@@ -19,6 +19,7 @@
 
 #include "ppl/nn/common/logger.h"
 #include "ppl/nn/engines/cuda/kernels/ppl/channel_shuffle_kernel.h"
+#include<iostream>
 
 using namespace std;
 using namespace ppl::common;
@@ -29,6 +30,8 @@ namespace ppl { namespace nn { namespace cuda {
 RetCode ChannelShuffleOp::Init(const OptKernelOptions& options) {
     infer_type_func_ = [this](InputOutputInfo* info, std::vector<CudaTensorQuant>* quant, datatype_t type) -> RetCode {
         ppl::common::RetCode status;
+        //std::cout << "type: " << type <<" "<< info->GetInput<TensorImpl>(0)->GetShape().GetDataType()<<" "<<info->GetOutput<TensorImpl>(0)->GetShape().GetDataType()<< std::endl;
+        type = DATATYPE_INT8;
         if (type == DATATYPE_UNKNOWN) {
             status = InferInheritedType(info);
         } else if (type == DATATYPE_INT8) {
@@ -46,6 +49,7 @@ RetCode ChannelShuffleOp::Init(const OptKernelOptions& options) {
         }
         return RC_SUCCESS;
     };
+    
     return RC_SUCCESS;
 }
 

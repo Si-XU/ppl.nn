@@ -32,26 +32,8 @@ ppl::common::RetCode AvePoolingKernel::DoExecute(KernelExecContext* ctx) {
         auto input_quant = GetCommonParam()->cuda_tensor_info->at(input_id);
         auto output_id = output->GetEdge()->GetId();
         auto output_quant = GetCommonParam()->cuda_tensor_info->at(output_id);
-        // int8_t* a = new int8_t[512*7*7*8];
-        // input->CopyToHost(a);
-        // for(int i = 0; i < 512; i++) {
-        //     for(int j = 0; j < 49; j++)
-        //         printf("%d ,", a[i*49 + j]);
-        //     printf("\n");
-        // }
-        
-
         status = PPLCUDAGlobalAvePoolingForwardImp(GetStream(), &input->GetShape(), input->GetBufferPtr(),
                                                    &output->GetShape(), output->GetBufferPtr(), input_quant.scale[0], output_quant.scale[0]);
-        // int8_t* b = new int8_t[512*8];
-        //output->CopyToHost(b);
-        // for(int i = 0; i < 512; i++) {
-        //     int8_t res = 0;
-        //     for(int j = 0; j < 49; j++)
-        //         res += a[i*49 + j];
-        //     printf("%d, %d \n", res / 49, b[i]);
-        // }
-        // std::cout << input->GetType() << " " << output->GetType() << std::endl;
     } else {
         int32_t kernel_h = param_->kernel_shape[0];
         int32_t kernel_w = param_->kernel_shape[1];

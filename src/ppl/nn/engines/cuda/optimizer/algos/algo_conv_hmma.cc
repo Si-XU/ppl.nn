@@ -223,6 +223,7 @@ RetCode TuringHMMAImpgemm::ModifyParam(const ir::Node* node, OptKernelOptions& o
 
         options.info->constants.emplace(preedge_id, std::move(weight_constat_info));
         options.tensors->find(preedge_id)->second->GetShape() = postshape;
+        options.quants->at(preedge_id) = options.quants->at(postedge_id);
         options.quants->at(preedge_id).format = postshape.GetDataFormat();
         options.quants->at(preedge_id).type = postshape.GetDataType();
     }
@@ -269,6 +270,7 @@ RetCode TuringHMMAImpgemm::ModifyParam(const ir::Node* node, OptKernelOptions& o
                                   shape_in0.GetDataType(), temp_conv_param);
         options.info->constants.emplace(preedge_id, std::move(bias_constat_info));
         options.tensors->find(preedge_id)->second->GetShape() = postshape;
+        options.quants->at(preedge_id) = options.quants->at(postedge_id);
         options.quants->at(preedge_id).format = postshape.GetDataFormat();
         options.quants->at(preedge_id).type = postshape.GetDataType();
     }
