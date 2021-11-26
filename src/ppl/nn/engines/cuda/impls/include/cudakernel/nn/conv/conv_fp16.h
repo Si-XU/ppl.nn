@@ -208,7 +208,7 @@ void PPLCUDAConvolutionForwardImp(
     conv_param_t& conv_param,
     fuse_param_t& fuse_param);
 
-void PPLCUDAConvolutionForwardJITImp(
+void PPLCUDAConvolutionForwardJitImp(
     cudaStream_t& stream,
     CUfunction function,
     ppl::common::datatype_t type,
@@ -221,32 +221,80 @@ void PPLCUDAConvolutionForwardJITImp(
     conv_param_t& conv_param,
     fuse_param_t& fuse_param);
 
-ppl::common::RetCode PPLCUDAConvolutionSelectKernelInt8(
-        cudaStream_t &stream, 
-        ppl::common::datatype_t type,
-        int4* d_input,
-        int4* d_flt,
-        int4* d_output,
-	int4* bias,
-	int4* d_temp_buf, 
-        algo_param_t &algo_param,
-	conv_param_t &conv_param, 
-        quant_param_t &quant_param,
-	fuse_param_t &fuse_param,
-	uint64_t workspace = (uint64_t)8*1024*1024*1024);
+double PPLCUDAConvolutionSelectKernelInt8(
+    cudaStream_t &stream, 
+    ppl::common::datatype_t type,
+    int4* d_input,
+    int4* d_flt,
+    int4* d_output,
+    int4* bias,
+    int4* d_temp_buf, 
+    algo_param_t &algo_param,
+    conv_param_t &conv_param, 
+    quant_param_t &quant_param,
+    fuse_param_t &fuse_param,
+    uint64_t workspace = (uint64_t)8*1024*1024*1024);
 
 void PPLCUDAConvolutionForwardImpInt8(
-        cudaStream_t &stream, 
-        ppl::common::datatype_t type,
-        int4* d_input,
-        int4* d_flt,
-        int4* d_output,
-	int4* bias,
-	int4* d_temp_buf, 
-        algo_param_t &algo_param,
-	conv_param_t &conv_param, 
-        quant_param_t &quant_param,
-	fuse_param_t &fuse_param);
+    cudaStream_t &stream, 
+    ppl::common::datatype_t type,
+    int4* d_input,
+    int4* d_flt,
+    int4* d_output,
+    int4* bias,
+    int4* d_temp_buf, 
+    algo_param_t &algo_param,
+    conv_param_t &conv_param, 
+    quant_param_t &quant_param,
+    fuse_param_t &fuse_param);
 
+float AlgoForwardTimeInt8(
+    cudaStream_t& stream,
+    std::vector<std::string> name,
+    std::string code,
+    int& idx,
+    std::vector<const char*> compile_params,
+    int device,
+    bool include,
+    ppl::common::datatype_t type,
+    int4* d_input,
+    int4* d_flt,
+    int4* d_output,
+    int4* bias,
+    int4* d_temp_buf,
+    std::vector<algo_param_t>& algo_param,
+    conv_param_t& conv_param,
+    quant_param_t& quant_param,
+    fuse_param_t& fuse_param,
+    uint64_t workspace);
+    
+double PPLCUDAConvolutionJitSelectKernelInt8(
+    int device_id,
+    cudaStream_t &stream, 
+    ppl::common::datatype_t type,
+    int4* d_input,
+    int4* d_flt,
+    int4* d_output,
+    int4* bias,
+    int4* d_temp_buf, 
+    algo_param_t &algo_param,
+    conv_param_t &conv_param, 
+    quant_param_t &quant_param,
+    fuse_param_t &fuse_param,
+    uint64_t workspace = (uint64_t)8*1024*1024*1024);
+
+void PPLCUDAConvolutionForwardJitImpInt8(
+    cudaStream_t &stream,
+    CUfunction function,
+    ppl::common::datatype_t type,
+    int4* d_input,
+    int4* d_flt,
+    int4* d_output,
+    int4* bias,
+    int4* d_temp_buf, 
+    algo_param_t &algo_param,
+    conv_param_t &conv_param, 
+    quant_param_t &quant_param,
+    fuse_param_t &fuse_param);
 
 #endif// __PPLCUDA_IMPLICITGEMM_CONV_H_

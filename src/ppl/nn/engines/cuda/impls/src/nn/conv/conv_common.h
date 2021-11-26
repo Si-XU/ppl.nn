@@ -217,12 +217,15 @@ struct kernel_info_t {
         }
     }
 
-    bool CheckKernelTilesFeasible(int device_id)
-    {            
+    bool CheckKernelTilesFeasible(ppl::common::datatype_t kernel_type, int device_id)
+    {
         cudaDeviceProp device_prop;
         cudaGetDeviceProperties(&device_prop, device_id);
         if (ktype == CONV_IDXN_C2 || ktype == CONV_IDXN_C4 || ktype == CONV_IDXN_C32) {
-            return tile_m_per_warp >= 16 && tile_m_per_warp <= 64 &&
+            int max_m_cta_size = 64;
+            if (kernel_type == ppl::common::DATATYPE_INT8)
+                max_m_cta_size = 32;
+            return tile_m_per_warp >= 16 && tile_m_per_warp <= max_m_cta_size &&
                    tile_n_per_warp >= 8 && tile_n_per_warp <= 32 &&
                    tile_k_per_step >= 8 && tile_k_per_step <= 32 &&
                    tile_m_per_cta >= tile_m_per_warp && tile_m_per_cta / tile_m_per_warp <= 4 &&
@@ -237,6 +240,14 @@ struct kernel_info_t {
             int sm_a_v4 = tile_m_per_cta * tile_k_per_cta * BUF_SIZE / INT4_TO_4HALF2;
             int sm_b_v4 = tile_n_per_cta * tile_k_per_cta * BUF_SIZE / INT4_TO_4HALF2;
             int sm_c_v4 = tile_m_per_cta * tile_n_per_cta / INT4_TO_4HALF2;
+            
+            if (kernel_type == ppl::common::DATATYPE_INT8) {
+                int INT4_TO_16INT8      = 16;
+                int INT4_TO_4INT        = 4;
+                sm_a_v4 = tile_m_per_cta * tile_k_per_cta * BUF_SIZE / INT4_TO_16INT8;
+                sm_b_v4 = tile_n_per_cta * tile_k_per_cta * BUF_SIZE / INT4_TO_16INT8;
+                sm_c_v4 = tile_m_per_cta * tile_n_per_cta / INT4_TO_4INT;                
+            }
 
             return tile_m_per_warp >= 16 && tile_m_per_warp <= 128 && // tiles limit
                    tile_n_per_warp >= 8 && tile_n_per_warp <= 64 &&

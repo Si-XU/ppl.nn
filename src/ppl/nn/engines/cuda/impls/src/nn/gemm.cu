@@ -319,7 +319,7 @@ double PPLCUDAGemmJITSelectKernel(
                                "_k" + ToString(algo_param.tiles.k_cta) + "_s" + ToString(algo_param.tiles.k_per_set) + "_buf1";
 
         kernel_info_t temp_kernel(-1, ktype, algo_param.algo_name.c_str());
-        if (!temp_kernel.CheckKernelTilesFeasible(device_id))
+        if (!temp_kernel.CheckKernelTilesFeasible(type, device_id))
             continue;
         if (!temp_kernel.CheckKernelTypeFeasible(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk))
             continue;

@@ -911,7 +911,7 @@ float AlgoForwardTime(
         CUfunction function = cuda_module->GetKernelFunc(name[n]);
         cudaEventRecord(begin, stream);
         for (int i = 0; i < times; i++) {
-            PPLCUDAConvolutionForwardJITImp(
+            PPLCUDAConvolutionForwardJitImp(
                 stream, function, type, d_input, d_flt, d_output, bias, d_temp_buf, algo_param[n], conv_param, fuse_param);
         }
         cudaEventRecord(end, stream);
@@ -1058,7 +1058,7 @@ double PPLCUDAConvolutionJitSelectKernel(
                 }
 
                 kernel_info_t temp_kernel(-1, ktype, algo_param.algo_name.c_str());
-                if (!temp_kernel.CheckKernelTilesFeasible(device_id))
+                if (!temp_kernel.CheckKernelTilesFeasible(type, device_id))
                     continue;
                 if (!temp_kernel.CheckKernelTypeFeasible(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk))
                     continue;
@@ -1100,7 +1100,7 @@ double PPLCUDAConvolutionJitSelectKernel(
     return elapsed;
 }
 
-void PPLCUDAConvolutionForwardJITImp(
+void PPLCUDAConvolutionForwardJitImp(
     cudaStream_t &stream,
     CUfunction function,
     ppl::common::datatype_t type,

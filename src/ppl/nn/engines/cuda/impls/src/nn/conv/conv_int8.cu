@@ -146,7 +146,7 @@ __inline__ size_t GetConvShapeHashKey(conv_param_t &conv_param)
 
 /* -----------------  INT8 KERNEL ------------------ */
 
-ppl::common::RetCode PPLCUDAConvolutionSelectKernelInt8(
+double PPLCUDAConvolutionSelectKernelInt8(
         cudaStream_t &stream, 
         ppl::common::datatype_t type,
         int4* d_input,
@@ -172,7 +172,7 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernelInt8(
         algo_param.splitk = conv_shape_hash_iterator->second.splitk;
         algo_param.splitf = conv_shape_hash_iterator->second.splitf;
 
-        return ppl::common::RC_SUCCESS;
+        return 0.0f;
     }
 
     int pad_size = GetPadSize(type);
@@ -349,7 +349,7 @@ ppl::common::RetCode PPLCUDAConvolutionSelectKernelInt8(
 
     g_conv_shape_hash[conv_shape_hash] = algo_param;
 
-    return ppl::common::RC_SUCCESS;
+    return minTime;
 }
 
 void PPLCUDAConvolutionForwardImpInt8(
@@ -573,6 +573,63 @@ __inline__ std::string ToString(int v)
     return ss.str();
 }
 
+float AlgoForwardTimeInt8(
+    cudaStream_t &stream,
+    std::vector<string> name,
+    string code,
+    int &idx,
+    std::vector<const char *> compile_params,
+    int device,
+    bool include,
+    ppl::common::datatype_t type,
+    int4 *d_input,
+    int4 *d_flt,
+    int4 *d_output,
+    int4 *bias,
+    int4 *d_temp_buf,
+    std::vector<algo_param_t> &algo_param,
+    conv_param_t &conv_param,
+    quant_param_t &quant_param,
+    fuse_param_t &fuse_param,
+    uint64_t workspace)
+{
+    float elapsed = 0;
+
+#ifdef PPLNN_ENABLE_CUDA_JIT
+    std::string src_name                   = name[0];
+    string ptx                             = ppl::nn::cuda::CUDANVRTCCompile(pair<string, string>(src_name, code), compile_params, device, include);
+    ppl::nn::cuda::CUDAModule *cuda_module = new ppl::nn::cuda::CUDAModule();
+    cuda_module->SetSourceCode(src_name, ptx);
+    float min_time = FLT_MAX;
+    int times      = 1;
+
+    cudaEvent_t begin, end;
+    cudaEventCreate(&begin);
+    cudaEventCreate(&end);
+
+    for (size_t n = 0; n < name.size(); n++) {
+        CUfunction function = cuda_module->GetKernelFunc(name[n]);
+        cudaEventRecord(begin, stream);
+        for (int i = 0; i < times; i++) {
+            PPLCUDAConvolutionForwardJitImpInt8(
+                stream, function, type, d_input, d_flt, d_output, bias, d_temp_buf, algo_param[n], conv_param, quant_param, fuse_param);
+        }
+        cudaEventRecord(end, stream);
+        cudaEventSynchronize(begin);
+        cudaEventSynchronize(end);
+        cudaEventElapsedTime(&elapsed, begin, end);
+        if (elapsed < min_time) {
+            min_time = elapsed;
+            idx      = n;
+        }
+    }
+    cudaEventDestroy(begin);
+    cudaEventDestroy(end);
+    delete cuda_module;
+#endif
+    return elapsed;
+}
+
 double PPLCUDAConvolutionJitSelectKernelInt8(
     int device_id,
     cudaStream_t &stream,
@@ -584,6 +641,7 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
     int4 *d_temp_buf,
     algo_param_t &algo_param,
     conv_param_t &conv_param,
+    quant_param_t &quant_param,
     fuse_param_t &fuse_param,
     uint64_t workspace)
 {
@@ -610,8 +668,8 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
     float elapsed;
 
     const int SPLITK_OPTIONS[] = {1, 2, 4, 8};
-    for (unsigned int spf = 0; spf < 2; spf++) {
-        for (unsigned int spk = 0; spk < 4; spk++) {
+    for (unsigned int spf = 0; spf < 1; spf++) {
+        for (unsigned int spk = 0; spk < 1; spk++) {
             unsigned int splitk = SPLITK_OPTIONS[spk];
             unsigned int splitf = spf ? flt_hw : 1;
 
@@ -678,7 +736,7 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
                 }
 
                 kernel_info_t temp_kernel(-1, ktype, algo_param.algo_name.c_str());
-                if (!temp_kernel.CheckKernelTilesFeasible(device_id))
+                if (!temp_kernel.CheckKernelTilesFeasible(type, device_id))
                     continue;
                 if (!temp_kernel.CheckKernelTypeFeasible(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk))
                     continue;
@@ -710,14 +768,14 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
     }
     int index = 0;
     std::vector<const char *> compile_params;
-    elapsed = AlgoForwardTime(stream, knames, total_source, index, compile_params, device_id, true, type, d_input, d_flt, d_output, bias, d_temp_buf, params, conv_param, fuse_param, workspace);
+    elapsed = AlgoForwardTimeInt8(stream, knames, total_source, index, compile_params, device_id, true, type, d_input, d_flt, d_output, bias, d_temp_buf, params, conv_param, quant_param, fuse_param, workspace);
 
     algo_param                         = params[index];
     g_conv_shape_hash[conv_shape_hash] = algo_param;
     return elapsed;
 }
 
-void PPLCUDAConvolutionForwardJITImpInt8(
+void PPLCUDAConvolutionForwardJitImpInt8(
     cudaStream_t &stream,
     CUfunction function,
     ppl::common::datatype_t type,
@@ -728,6 +786,7 @@ void PPLCUDAConvolutionForwardJITImpInt8(
     int4 *d_temp_buf,
     algo_param_t &algo_param,
     conv_param_t &conv_param,
+    quant_param_t &quant_param,
     fuse_param_t &fuse_param)
 {
     unsigned int splitk = algo_param.splitk;
@@ -812,7 +871,7 @@ void PPLCUDAConvolutionForwardJITImpInt8(
         int kloop_num    = DivUp(flt_hw * flt_chl_per_grp_pad, cta_k);
         int koff_num_pad = Align(kloop_num * (cta_k / flt_pad_size), WARP_SIZE);
 
-        void *args[] = {&pad_input, &d_flt, &conv_out, &kloop_num, &koff_num_pad, &in_hw, &out_hw, &flt_hw, &out_nhw, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &conv_param.num_chl, &num_chl_per_grp, &in_chl_per_grp_pad, &flt_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias, &fuse_param.has_activation, &clip_min, &fuse_param.has_clip, &clip_max, &fuse_param.has_prelu, &prelu, &fuse_param.has_elt, &(pre_data), &fuse_param.has_elt_activation, &elt_clip_min, &fuse_param.has_elt_clip, &elt_clip_max, &fuse_param.has_elt_prelu, &(elt_prelu), &leaky, &elt_leaky, &fuse_param.has_concat, &concat_offset_v8, &concat_stride_v8};
+        void *args[] = {&pad_input, &d_flt, &conv_out, &kloop_num, &koff_num_pad, &in_hw, &out_hw, &flt_hw, &out_nhw, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &conv_param.num_chl, &num_chl_per_grp, &in_chl_per_grp_pad, &flt_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias, &quant_param.in_scale, &quant_param.d_flt_scale, &quant_param.out_scale, &quant_param.pre_scale, &fuse_param.has_activation, &clip_min, &fuse_param.has_clip, &clip_max, &fuse_param.has_prelu, &prelu, &fuse_param.has_elt, &(pre_data), &fuse_param.has_elt_activation, &elt_clip_min, &fuse_param.has_elt_clip, &elt_clip_max, &fuse_param.has_elt_prelu, &(elt_prelu), &leaky, &elt_leaky, &fuse_param.has_concat, &concat_offset_v8, &concat_stride_v8};
 
         CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
     } else if (algo_param.algo_name.find("2spk") != std::string::npos) {
@@ -825,7 +884,7 @@ void PPLCUDAConvolutionForwardJITImpInt8(
 
         InitializeFilterLut(flt_lut_size, flt_lut.idx, conv_param.flt_height, conv_param.flt_width, num_chl_per_grp_pad, cta_k, pad_size);
         if (splitk == 1) {
-            void *args[] = {&pad_input, &d_flt, &conv_out, &kloop_num, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &in_hw, &out_hw, &flt_hw, &splitk, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias, &fuse_param.has_activation, &clip_min, &fuse_param.has_clip, &clip_max, &fuse_param.has_prelu, &prelu, &fuse_param.has_elt, &(pre_data), &fuse_param.has_elt_activation, &elt_clip_min, &fuse_param.has_elt_clip, &elt_clip_max, &fuse_param.has_elt_prelu, &(elt_prelu), &leaky, &elt_leaky, &fuse_param.has_concat, &concat_offset_v8, &concat_stride_v8};
+            void *args[] = {&pad_input, &d_flt, &conv_out, &kloop_num, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &in_hw, &out_hw, &flt_hw, &splitk, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias, &quant_param.in_scale, &quant_param.d_flt_scale, &quant_param.out_scale, &quant_param.pre_scale, &fuse_param.has_activation, &clip_min, &fuse_param.has_clip, &clip_max, &fuse_param.has_prelu, &prelu, &fuse_param.has_elt, &(pre_data), &fuse_param.has_elt_activation, &elt_clip_min, &fuse_param.has_elt_clip, &elt_clip_max, &fuse_param.has_elt_prelu, &(elt_prelu), &leaky, &elt_leaky, &fuse_param.has_concat, &concat_offset_v8, &concat_stride_v8};
             CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
         } else {
             // int num_chl_per_spk_head, num_chl_per_spk_tail;

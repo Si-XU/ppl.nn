@@ -606,7 +606,7 @@ ppl::common::RetCode Int8CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
     int INT4_TO_16INT8 = 16;
     int MMA_Y          = 8;
     int MMA_X          = 8;
-    int MMA_Y_HALF     = MMA_Y / 2;
+    int MMA_Y_HALF     = 8;
 
     int cta_num  = cta_y * cta_x / warp_y / warp_x;
     int cta_size = cta_num * k_size / s_size * WARP_SIZE;
@@ -661,6 +661,8 @@ ppl::common::RetCode Int8CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
 
     file_str << "#define uint int\n\n";
     file_str << "#define uint32_t int\n\n";
+    file_str << "#define int16_t short\n\n";
+    file_str << "#define int8_t char\n\n";
 
     if (declare_times == 0) {
         file_str << "#define MAX_LUT_SIZE 128\n\n";
@@ -690,7 +692,7 @@ ppl::common::RetCode Int8CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
     }
 
     file_str << "#define READ_sBv1(_B, _sm_base_v1, _sBv1_read)          READ_sUv1_1x" << warp_x / MMA_X << "(_B, _sm_base_v1, _sBv1_read)\n\n";
-    file_str << "#define WRITE_sRv1(_sm_base_v1, _sRv1_write_base, _C)   WRITE_sRv2_" << warp_y / MMA_Y_HALF << "x" << warp_x / MMA_X << "(_sm_base_v1, _sRv1_write_base, _C)\n\n";
+    file_str << "#define WRITE_sRv2(_sm_base_v1, _sRv1_write_base, _C)   WRITE_sRv2_" << warp_y / MMA_Y_HALF << "x" << warp_x / MMA_X << "(_sm_base_v1, _sRv1_write_base, _C)\n\n";
 
     if (flt_size == "f1" || flt_size == "fs") {
         file_str << "#define LOAD_dAv4(_regA, _dA, _dAv4_off, _in_c_v16_id, _in_hw_valid)     LOAD_dAv4_SIZE" << GetSizeString(dAv4_size) << "(_regA, _dA, _dAv4_off, _in_c_v16_id, _in_hw_valid)\n";
@@ -764,6 +766,8 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
     file_str << "#define ENABLE_FUSE 1\n\n";
     file_str << "#define uint int\n\n";
     file_str << "#define uint32_t int\n\n";
+    file_str << "#define int16_t short\n\n";
+    file_str << "#define int8_t char\n\n";
 
     if (declare_times == 0) {
         file_str << "#define MAX_LUT_SIZE 128\n\n";
@@ -773,24 +777,24 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
     WriteIncludeFile(file_str, "/int8_idxn/common/const_macros.h");
 
     if (s_size == 16) {
-        file_str << "#include \"int8_idxn/common/dmem_i1_macros.h\"\n\n";
-        file_str << "#include \"int8_idxn/common/hmma_i1_macros.h\"\n\n";
+        WriteIncludeFile(file_str, "/int8_idxn/common/dmem_i1_macros.h");
+        WriteIncludeFile(file_str, "/int8_idxn/common/hmma_i1_macros.h");
 
         file_str << "#define LOAD_dAv1(_regA, _dAv1, _in_id, _in_off)    LOAD_dAv1_SIZE" << dAvn_size << "(_regA, _dAv1, _in_id, _in_off)\n";
         file_str << "#define LOAD_dBv1(_regB, _dBv1, _dBv1_off)          LOAD_dBv1_SIZE" << dBvn_size << "(_regB, _dBv1, _dBv1_off)\n\n";
 
         file_str << "#define MMA_INSTS(_C, _A, _B)                       MMA_INST_1INT_" << dAvn_size << "x" << dBvn_size << "(_C, _A, _B)\n\n";
     } else if (s_size == 32) {
-        file_str << "#include \"int8_idxn/common/dmem_i2_macros.h\"\n\n";
-        file_str << "#include \"int8_idxn/common/hmma_i2_macros.h\"\n\n";
+        WriteIncludeFile(file_str, "/int8_idxn/common/dmem_i2_macros.h");
+        WriteIncludeFile(file_str, "/int8_idxn/common/hmma_i2_macros.h");
 
         file_str << "#define LOAD_dAv2(_regA, _dAv2, _in_id, _in_off)    LOAD_dAv2_SIZE" << dAvn_size << "(_regA, _dAv2, _in_id, _in_off)\n";
         file_str << "#define LOAD_dBv2(_regB, _dBv2, _dBv2_off)          LOAD_dBv2_SIZE" << dBvn_size << "(_regB, _dBv2, _dBv2_off)\n\n";
 
         file_str << "#define MMA_INSTS(_C, _A, _B)                       MMA_INST_2INT_" << dAvn_size << "x" << dBvn_size << "(_C, _A, _B)\n\n";
     } else if (s_size == 64) {
-        file_str << "#include \"int8_idxn/common/dmem_i4_macros.h\"\n\n";
-        file_str << "#include \"int8_idxn/common/hmma_i4_macros.h\"\n\n";
+        WriteIncludeFile(file_str, "/int8_idxn/common/dmem_i4_macros.h");
+        WriteIncludeFile(file_str, "/int8_idxn/common/hmma_i4_macros.h");
 
         file_str << "#define LOAD_dAv4(_regA, _dAv4, _in_id, _in_off)    LOAD_dAv4_SIZE" << dAvn_size << "(_regA, _dAv4, _in_id, _in_off)\n";
         file_str << "#define LOAD_dBv4(_regB, _dBv4, _dBv4_off)          LOAD_dBv4_SIZE" << dBvn_size << "(_regB, _dBv4, _dBv4_off)\n\n";
@@ -825,21 +829,20 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionFor2spk(std::string& file_
 
     std::stringstream file_str;
     file_str << "uint concatV4_off = 0;\n";
-    file_str << "ADD_BIAS_V4(has_bias, bias);\n";
     file_str << "if(dCv4_x_valid  && dCv4_y_valid ) {\n";
 
     if (fuse_index < fuse_size && relu_set.find(fuse_info.types[fuse_index]) != relu_set.end()) {
         auto type = fuse_info.types[fuse_index];
         if (type == "Relu") {
-            file_str << "JIT_FUSE_RELU_V4()\n";
+            file_str << "JIT_FUSE_RELU_V4(fR)\n";
         } else if (type == "Clip") {
-            file_str << "JIT_FUSE_CLIP_V4(clip_max, clip_min)\n";
+            file_str << "JIT_FUSE_CLIP_V4(fR, clip_max, clip_min)\n";
         } else if (type == "PRelu") {
-            file_str << "JIT_FUSE_PRELU_V4(has_prelu, prelu)\n";
+            file_str << "JIT_FUSE_PRELU_V4(fR, has_prelu, prelu)\n";
         } else if (type == "LeakyRelu") {
-            file_str << "JIT_FUSE_LEAKY_V4(leaky)\n";
+            file_str << "JIT_FUSE_LEAKY_V4(fR, leaky)\n";
         } else if (type == "Sigmoid") {
-            file_str << "JIT_FUSE_SIGMOID_V4()\n";
+            file_str << "JIT_FUSE_SIGMOID_V4(fR)\n";
         } else {
             LOG(ERROR) << "Fuse conv with op[" << type << "] failed.";
             return ppl::common::RC_UNSUPPORTED;
@@ -848,22 +851,22 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionFor2spk(std::string& file_
     }
 
     if (fuse_index < fuse_size && fuse_info.types[fuse_index] == "Add") {
-        file_str << "JIT_FUSE_ELT_V4(pre_data)\n";
+        file_str << "JIT_FUSE_ELT_V4(fR, pre_data)\n";
         fuse_index++;
     }
 
     if (fuse_index < fuse_size && relu_set.find(fuse_info.types[fuse_index]) != relu_set.end()) {
         auto type = fuse_info.types[fuse_index];
         if (type == "Relu") {
-            file_str << "JIT_FUSE_RELU_V4()\n";
+            file_str << "JIT_FUSE_RELU_V4(fR)\n";
         } else if (type == "Clip") {
-            file_str << "JIT_FUSE_CLIP_V4(elt_clip_max, elt_clip_min)\n";
+            file_str << "JIT_FUSE_CLIP_V4(fR, elt_clip_max, elt_clip_min)\n";
         } else if (type == "PRelu") {
-            file_str << "JIT_FUSE_PRELU_V4(has_elt_prelu, elt_prelu)\n";
+            file_str << "JIT_FUSE_PRELU_V4(fR, has_elt_prelu, elt_prelu)\n";
         } else if (type == "LeakyRelu") {
-            file_str << "JIT_FUSE_LEAKY_V4(elt_leaky)\n";
+            file_str << "JIT_FUSE_LEAKY_V4(fR, elt_leaky)\n";
         } else if (type == "Sigmoid") {
-            file_str << "JIT_FUSE_SIGMOID_V4()\n";
+            file_str << "JIT_FUSE_SIGMOID_V4(fR)\n";
         } else {
             LOG(ERROR) << "Fuse conv with op[" << type << "] failed.";
             return ppl::common::RC_UNSUPPORTED;
@@ -872,7 +875,7 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionFor2spk(std::string& file_
     }
 
     if (fuse_info.channel_offset >= 0) {
-        file_str << "JIT_SET_CONCAT_OFF_V4(concatV4_off)\n";
+        file_str << "JIT_SET_CONCAT_OFF_V4(fR, concatV4_off)\n";
     }
 
     file_str << "}\n";
@@ -892,7 +895,8 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionForIdxn(std::string& file_
         auto end   = file_res.find("#endif", begin);
 
         std::stringstream file_str;
-        file_str << "_concat_v1_off0 = dCv1_idy[0] * num_flt_v2;\n";
+        file_str << "uint concat_v1_off0 = 0;";
+        file_str << "concat_v1_off0 = dCv1_idy[0] * num_flt_v2;\n";
 
         if (fuse_index < fuse_size && relu_set.find(fuse_info.types[fuse_index]) != relu_set.end()) {
             auto type = fuse_info.types[fuse_index];
