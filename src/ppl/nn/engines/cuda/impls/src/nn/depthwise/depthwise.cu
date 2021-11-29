@@ -162,5 +162,6 @@ void PPLCUDADepthwiseForwardCudaImp(
         in_height, in_width, kernel_h, kernel_w, pad_h, pad_w, stride_h, stride_w, hole_h, hole_w,
         tile_height, tile_width, channels, paddingc, out_height, out_width, 
         in_batch_stride, in_height_stride, in_width_stride, elems, (int8_t*)output, fuse_param, pic_scale, flt_scale, out_scale);
+
     }
 }

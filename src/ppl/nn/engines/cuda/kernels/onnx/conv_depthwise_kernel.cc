@@ -105,6 +105,7 @@ ppl::common::RetCode ConvDepthwiseKernel::DoExecute(KernelExecContext* ctx) {
         param_->param.bias_term ? ctx->GetInput<TensorImpl>(2)->GetBufferPtr() : nullptr, temp_conv_param,
         temp_fuse_param, ctx->GetOutput<TensorImpl>(0)->GetBufferPtr(), shape_out.GetDataType(), input_quant0.scale[0], input_quant1.scale[0], output_quant.scale[0]);
 
+
     LOG(DEBUG) << "Excute Depthwise conv with kernel id:" << param_->extra_param.algo_info.kernel_index;
     return ppl::common::RC_SUCCESS;
 }
