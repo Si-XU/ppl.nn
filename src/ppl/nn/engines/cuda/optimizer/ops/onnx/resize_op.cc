@@ -45,6 +45,8 @@ RetCode ResizeOp::Init(const OptKernelOptions& options) {
         } else {
             status = InferDefaultType(info, type);
         }
+        auto shape = &info->GetInput<TensorImpl>(2)->GetShape();
+        shape->SetDataType(ppl::common::DATATYPE_FLOAT32);
         if (info->GetInputCount() == 4) {
             auto shape = &info->GetInput<TensorImpl>(3)->GetShape();
             shape->SetDataType(ppl::common::DATATYPE_INT64);
