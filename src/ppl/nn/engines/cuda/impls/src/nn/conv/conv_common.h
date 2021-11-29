@@ -280,12 +280,12 @@ __inline__ bool isFuseSupport(conv_param_t &conv_param)
     return num_flt_per_grp == num_flt_per_grp_pad || conv_param.num_grp == 1;
 }
 
-__inline__ unsigned int GetCvtInputSize(
+__inline__ uint64_t GetCvtInputSize(
         ppl::common::datatype_t type,
         conv_param_t &conv_param,
         unsigned int num_chl_per_grp_pad)
 {
-    unsigned int cvt_input_size = conv_param.in_num   * conv_param.in_height * \
+    uint64_t cvt_input_size = (uint64_t)conv_param.in_num * conv_param.in_height * \
                                   conv_param.in_width * num_chl_per_grp_pad * \
                                   conv_param.num_grp;
     unsigned int bytes          = ppl::common::GetSizeOfDataType(type);
@@ -293,15 +293,15 @@ __inline__ unsigned int GetCvtInputSize(
     return Align(cvt_input_size * bytes, _BYTE128_);
 }
 
-__inline__ unsigned int getCvtOutputSize(
+__inline__ uint64_t getCvtOutputSize(
         ppl::common::datatype_t type,
         conv_param_t &conv_param,
         unsigned int num_flt_per_grp_pad)
 {
-    unsigned int cvt_output_size  = conv_param.in_num    * conv_param.out_height * \
+    uint64_t cvt_output_size  = (uint64_t)conv_param.in_num * conv_param.out_height * \
                                     conv_param.out_width * num_flt_per_grp_pad * \
                                     conv_param.num_grp;
-    unsigned int bytes            = ppl::common::GetSizeOfDataType(type);
+    uint64_t bytes            = ppl::common::GetSizeOfDataType(type);
 
     return Align(cvt_output_size * bytes, _BYTE128_);
 }

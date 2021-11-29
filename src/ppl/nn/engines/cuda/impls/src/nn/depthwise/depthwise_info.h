@@ -123,7 +123,10 @@ typedef void int8_depthwise_t(
     int in_width_stride,
     int total_elements,
     int8_t* output,
-    fuse_param_t fuse_paramse);
+    fuse_param_t fuse_paramse,
+    float pic_scale,
+    float flt_scale,
+    float out_scale);
 
 struct depthwise_kernel_info
 {
@@ -184,21 +187,21 @@ void InitKernelList(std::vector<depthwise_kernel_info> &vec, ppl::common::dataty
         vec.push_back(depthwise_kernel_info(nullptr, ppl_cuda_depthwise_hmma<2,2,5,5,3,3,2,2>, nullptr, "ppl_cuda_depthwise_hmma",i,2,2,5,5,3,3,2,2)); i++;
         vec.push_back(depthwise_kernel_info(nullptr, ppl_cuda_depthwise_hmma<2,2,6,6,5,5,1,1>, nullptr, "ppl_cuda_depthwise_hmma",i,2,2,6,6,5,5,1,1)); i++;
     } else if(type == ppl::common::DATATYPE_FLOAT32) {
-        vec.push_back(depthwise_kernel_info(nullptr, ppl_cuda_depthwise_hmma<-1,-1,-1,-1,-1,-1,-1,-1>, nullptr, "ppl_cuda_depthwise_hmma",i,1,1,-1,-1,-1,-1,-1,-1)); i++;
-        vec.push_back(depthwise_kernel_info(nullptr, ppl_cuda_depthwise_hmma<2,2,2,2,1,1,1,1>, nullptr, "ppl_cuda_depthwise_hmma",i,2,2,2,2,1,1,1,1)); i++;
-        vec.push_back(depthwise_kernel_info(nullptr, ppl_cuda_depthwise_hmma<4,4,4,4,1,1,1,1>, nullptr, "ppl_cuda_depthwise_hmma",i,4,4,4,4,1,1,1,1)); i++;
-        vec.push_back(depthwise_kernel_info(nullptr, ppl_cuda_depthwise_hmma<2,2,4,4,3,3,1,1>, nullptr, "ppl_cuda_depthwise_hmma",i,2,2,4,4,3,3,1,1)); i++;
-        vec.push_back(depthwise_kernel_info(nullptr, ppl_cuda_depthwise_hmma<4,4,6,6,3,3,1,1>, nullptr, "ppl_cuda_depthwise_hmma",i,4,4,6,6,3,3,1,1)); i++;
-        vec.push_back(depthwise_kernel_info(nullptr, ppl_cuda_depthwise_hmma<2,2,5,5,3,3,2,2>, nullptr, "ppl_cuda_depthwise_hmma",i,2,2,5,5,3,3,2,2)); i++;
-        vec.push_back(depthwise_kernel_info(nullptr, ppl_cuda_depthwise_hmma<2,2,6,6,5,5,1,1>, nullptr, "ppl_cuda_depthwise_hmma",i,2,2,6,6,5,5,1,1)); i++;
+        vec.push_back(depthwise_kernel_info(ppl_cuda_depthwise_fmma<-1,-1,-1,-1,-1,-1,-1,-1>, nullptr, nullptr,"ppl_cuda_depthwise_fmma",i,1,1,-1,-1,-1,-1,-1,-1)); i++;
+        vec.push_back(depthwise_kernel_info(ppl_cuda_depthwise_fmma<2,2,2,2,1,1,1,1>, nullptr, nullptr,"ppl_cuda_depthwise_fmma",i,2,2,2,2,1,1,1,1)); i++;
+        vec.push_back(depthwise_kernel_info(ppl_cuda_depthwise_fmma<4,4,4,4,1,1,1,1>, nullptr, nullptr,"ppl_cuda_depthwise_fmma",i,4,4,4,4,1,1,1,1)); i++;
+        vec.push_back(depthwise_kernel_info(ppl_cuda_depthwise_fmma<2,2,4,4,3,3,1,1>, nullptr, nullptr,"ppl_cuda_depthwise_fmma",i,2,2,4,4,3,3,1,1)); i++;
+        vec.push_back(depthwise_kernel_info(ppl_cuda_depthwise_fmma<4,4,6,6,3,3,1,1>, nullptr, nullptr,"ppl_cuda_depthwise_fmma",i,4,4,6,6,3,3,1,1)); i++;
+        vec.push_back(depthwise_kernel_info(ppl_cuda_depthwise_fmma<2,2,5,5,3,3,2,2>, nullptr, nullptr,"ppl_cuda_depthwise_fmma",i,2,2,5,5,3,3,2,2)); i++;
+        vec.push_back(depthwise_kernel_info(ppl_cuda_depthwise_fmma<2,2,6,6,5,5,1,1>, nullptr, nullptr,"ppl_cuda_depthwise_fmma",i,2,2,6,6,5,5,1,1)); i++;
     } else if(type == ppl::common::DATATYPE_INT8) {
-        vec.push_back(depthwise_kernel_info(nullptr, ppl_cuda_depthwise_hmma<-1,-1,-1,-1,-1,-1,-1,-1>, nullptr, "ppl_cuda_depthwise_hmma",i,1,1,-1,-1,-1,-1,-1,-1)); i++;
-        vec.push_back(depthwise_kernel_info(nullptr, ppl_cuda_depthwise_hmma<2,2,2,2,1,1,1,1>, nullptr, "ppl_cuda_depthwise_hmma",i,2,2,2,2,1,1,1,1)); i++;
-        vec.push_back(depthwise_kernel_info(nullptr, ppl_cuda_depthwise_hmma<4,4,4,4,1,1,1,1>, nullptr, "ppl_cuda_depthwise_hmma",i,4,4,4,4,1,1,1,1)); i++;
-        vec.push_back(depthwise_kernel_info(nullptr, ppl_cuda_depthwise_hmma<2,2,4,4,3,3,1,1>, nullptr, "ppl_cuda_depthwise_hmma",i,2,2,4,4,3,3,1,1)); i++;
-        vec.push_back(depthwise_kernel_info(nullptr, ppl_cuda_depthwise_hmma<4,4,6,6,3,3,1,1>, nullptr, "ppl_cuda_depthwise_hmma",i,4,4,6,6,3,3,1,1)); i++;
-        vec.push_back(depthwise_kernel_info(nullptr, ppl_cuda_depthwise_hmma<2,2,5,5,3,3,2,2>, nullptr, "ppl_cuda_depthwise_hmma",i,2,2,5,5,3,3,2,2)); i++;
-        vec.push_back(depthwise_kernel_info(nullptr, ppl_cuda_depthwise_hmma<2,2,6,6,5,5,1,1>, nullptr, "ppl_cuda_depthwise_hmma",i,2,2,6,6,5,5,1,1)); i++;
+        vec.push_back(depthwise_kernel_info(nullptr, nullptr, ppl_cuda_depthwise_int8mma<-1,-1,-1,-1,-1,-1,-1,-1>, "ppl_cuda_depthwise_int8mma",i,1,1,-1,-1,-1,-1,-1,-1)); i++;
+        vec.push_back(depthwise_kernel_info(nullptr, nullptr, ppl_cuda_depthwise_int8mma<2,2,2,2,1,1,1,1>, "ppl_cuda_depthwise_int8mma",i,2,2,2,2,1,1,1,1)); i++;
+        vec.push_back(depthwise_kernel_info(nullptr, nullptr, ppl_cuda_depthwise_int8mma<4,4,4,4,1,1,1,1>, "ppl_cuda_depthwise_int8mma",i,4,4,4,4,1,1,1,1)); i++;
+        vec.push_back(depthwise_kernel_info(nullptr, nullptr, ppl_cuda_depthwise_int8mma<2,2,4,4,3,3,1,1>, "ppl_cuda_depthwise_int8mma",i,2,2,4,4,3,3,1,1)); i++;
+        vec.push_back(depthwise_kernel_info(nullptr, nullptr, ppl_cuda_depthwise_int8mma<4,4,6,6,3,3,1,1>, "ppl_cuda_depthwise_int8mma",i,4,4,6,6,3,3,1,1)); i++;
+        vec.push_back(depthwise_kernel_info(nullptr, nullptr, ppl_cuda_depthwise_int8mma<2,2,5,5,3,3,2,2>, "ppl_cuda_depthwise_int8mma",i,2,2,5,5,3,3,2,2)); i++;
+        vec.push_back(depthwise_kernel_info(nullptr, nullptr, ppl_cuda_depthwise_int8mma<2,2,6,6,5,5,1,1>, "ppl_cuda_depthwise_int8mma",i,2,2,6,6,5,5,1,1)); i++;
     }
 }
 

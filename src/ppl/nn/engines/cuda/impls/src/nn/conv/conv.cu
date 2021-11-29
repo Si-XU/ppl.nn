@@ -263,8 +263,8 @@ uint64_t PPLCUDAConvolutionGetCompilationBufSize(ppl::common::datatype_t type, c
     bool  is_in_grp_pad = num_chl_per_grp_pad != num_chl_per_grp && conv_param.num_grp != 1;
     bool is_out_grp_pad = num_flt_per_grp_pad != num_chl_per_grp && conv_param.num_grp != 1;
 
-    uint32_t cvt_input_size = 0;
-    uint32_t cvt_output_size = 0;
+    uint64_t cvt_input_size = 0;
+    uint64_t cvt_output_size = 0;
 
     if(is_in_grp_pad)
         cvt_input_size = GetCvtInputSize( type, conv_param, num_chl_per_grp_pad);
@@ -296,15 +296,15 @@ uint64_t PPLCUDAConvolutionGetRuntimeBufSize(
     bool  is_in_grp_pad = num_chl_per_grp_pad != num_chl_per_grp && conv_param.num_grp != 1;
     bool is_out_grp_pad = num_flt_per_grp_pad != num_chl_per_grp && conv_param.num_grp != 1;
 
-    uint32_t cvt_input_size = 0;
-    uint32_t cvt_output_size = 0;
+    uint64_t cvt_input_size = 0;
+    uint64_t cvt_output_size = 0;
 
     if(is_in_grp_pad)
         cvt_input_size = GetCvtInputSize(type, conv_param, num_chl_per_grp_pad);
     if(is_out_grp_pad)
         cvt_output_size = getCvtOutputSize(type, conv_param, num_flt_per_grp_pad);
 
-    uint32_t split_size = 0;
+    uint64_t split_size = 0;
     
     if(splitk > 1 || splitf > 1)
         split_size = GetSplitKFSize(type, conv_param, num_flt_per_grp_pad, splitk, splitf);
