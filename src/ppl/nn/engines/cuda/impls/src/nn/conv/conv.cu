@@ -776,6 +776,7 @@ ppl::common::RetCode PPLCUDAConvolutionModifyAlgoParam(
 }
 
 ppl::common::RetCode PPLCUDAConvolutionPredictKernel(
+    ppl::common::datatype_t type,
     algo_param_t &algo_param,
     conv_param_t &conv_param)
 {
@@ -814,6 +815,10 @@ ppl::common::RetCode PPLCUDAConvolutionPredictKernel(
         } else {
             algo_param.tiles.k_cta      = 32;
             algo_param.tiles.k_per_step = 32;
+        }
+        if (type == ppl::common::DATATYPE_INT8) {
+            algo_param.tiles.k_cta      *= 2;
+            algo_param.tiles.k_per_step *= 2;            
         }
     } else { // Use 2spk or swizzle algo for large channel
         float min_pad          = 1.0;

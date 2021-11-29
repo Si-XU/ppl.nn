@@ -147,6 +147,7 @@ ppl::common::RetCode PPLCUDAConvolutionLoadAlgoParam(
     algo_param_t& algo_param);
 
 ppl::common::RetCode PPLCUDAConvolutionPredictKernel(
+    ppl::common::datatype_t type,
     algo_param_t& algo_param,
     conv_param_t& conv_param);
 

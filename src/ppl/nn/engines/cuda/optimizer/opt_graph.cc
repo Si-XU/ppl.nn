@@ -314,7 +314,7 @@ RetCode OptGraph::AddBridgeKernels() {
         }
     }
 
-    LOG(DEBUG) << "added " << count << " new bridge kernels";
+    LOG(INFO) << "added " << count << " new bridge kernels";
     return RC_SUCCESS;
 }
 
@@ -590,7 +590,7 @@ RetCode OptGraph::DeleteBridgeKernels() {
         }
     }
 
-    LOG(DEBUG) << "deleted " << count << " bridge kernels";
+    LOG(INFO) << "deleted " << count << " bridge kernels";
     return RC_SUCCESS;
 }
 

@@ -129,7 +129,7 @@ double GemmAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& option
     // Do select
     LOG(INFO) << "Compiling " << node->GetName();
     int device_id = options.device->GetDeviceId();
-    PPLCUDAConvolutionPredictKernel(attr_param_.extra_param.algo_info, temp_conv_param);
+    PPLCUDAConvolutionPredictKernel(shape_in0.GetDataType(), attr_param_.extra_param.algo_info, temp_conv_param);
     auto timer = PPLCUDAGemmJITSelectKernel(device_id, stream, shape_in0.GetDataType(), &shape_in0, input_buffer.addr, &shape_in1,
                                             weight_buffer.addr, bias_buffer.addr, &shape_out, output_buffer.addr,
                                             temp_buffer.addr, temp_conv_param, temp_fuse_param,

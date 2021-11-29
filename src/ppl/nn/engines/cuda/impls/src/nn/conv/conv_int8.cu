@@ -693,9 +693,9 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
 
                 if (num_chl_per_grp <= 32) { // Use non-shared memory algo for small channel
                     algo_param.tiles.flt_pad_size = algo_param.tiles.k_per_step / 4;
-                    if (algo_param.tiles.k_per_step <= 8) {
+                    if (num_chl_per_grp <= 2) {
                         ktype = CONV_IDXN_C2;
-                    } else if (algo_param.tiles.k_per_step <= 16) {
+                    } else if (num_chl_per_grp <= 4) {
                         ktype = CONV_IDXN_C4;
                     } else {
                         ktype = CONV_IDXN_C32;
@@ -767,6 +767,7 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
         }
     }
     int index = 0;
+    printf("%d \n", knames.size());
     std::vector<const char *> compile_params;
     elapsed = AlgoForwardTimeInt8(stream, knames, total_source, index, compile_params, device_id, true, type, d_input, d_flt, d_output, bias, d_temp_buf, params, conv_param, quant_param, fuse_param, workspace);
 
