@@ -328,16 +328,13 @@ RetCode OptGraph::InitQuantization() {
         auto pair = node_params.find(node->GetName());
         if (pair != node_params.end()) {
             auto str = pair->second.fields.find("data_type")->second;
-            uint32_t bit_width = 0;
             datatype_t type = DATATYPE_UNKNOWN;
             if (str.content == "INT8") {
                 args_->node_types.emplace(node->GetName(), DATATYPE_INT8);
                 type = DATATYPE_INT8;
-                bit_width = 8;
             } else if (str.content == "FLOAT32") {
                 args_->node_types.emplace(node->GetName(), DATATYPE_FLOAT32);
                 type = DATATYPE_FLOAT32;
-                bit_width = 32;
             } else {
                 LOG(ERROR) << "Not support set to such datatype: " << str.content;
             }
@@ -348,7 +345,6 @@ RetCode OptGraph::InitQuantization() {
                 }
                 auto& input_quant = graph_quants.at(edge_id);
                 input_quant.type = type;
-                input_quant.bit_width = bit_width;
             }
             for (uint32_t i = 0; i < node->GetOutputCount(); ++i) {
                 auto edge_id = node->GetOutput(i);
@@ -357,7 +353,6 @@ RetCode OptGraph::InitQuantization() {
                 }
                 auto& output_quant = graph_quants.at(edge_id);
                 output_quant.type = type;
-                output_quant.bit_width = bit_width;
             }
         }
     }
@@ -390,6 +385,8 @@ RetCode OptGraph::InitQuantization() {
         auto& temp_tensor_quant = graph_quants[edge->GetId()];
         auto str = pair->second.fields.find("per_channel")->second;
         temp_tensor_quant.per_chnnal = *(bool*)(str.content.data());
+        auto bit_width = pair->second.fields.find("bit_width")->second;
+        temp_tensor_quant.bit_width = *(bool*)(bit_width.content.data());
         if (temp_tensor_quant.per_chnnal) {
             auto max_str = pair->second.fields.find("tensor_max")->second;
             auto min_str = pair->second.fields.find("tensor_min")->second;
@@ -400,12 +397,12 @@ RetCode OptGraph::InitQuantization() {
             for (uint32_t i = 0; i < size; ++i) {
                 auto tensor_max = *((double*)(max_str.content.data()) + i);
                 auto tensor_min = *((double*)(min_str.content.data()) + i);
-                //temp_tensor_quant.scale[i] = (float)(tensor_max - tensor_min) / ((1 << temp_tensor_quant.bit_width) - 1);
-                temp_tensor_quant.scale[i] = (tensor_max - tensor_min) / 255;
-                auto scale = *((double*)(scale_str.content.data()) + i);
-                auto fp_scale = (float)*((double*)(scale_str.content.data()) + i);
-//LOG(ERROR) << tensor_max <<"  "<< temp_tensor_quant.scale[i]<<"  "<< tensor_min;
-//printf("vec: %.15f, %.15f, %.15f, %.15f, %.15f, %d\n", tensor_max, tensor_min, temp_tensor_quant.scale[i], scale, fp_scale, ((1 << temp_tensor_quant.bit_width) - 1));
+                temp_tensor_quant.scale[i] = (double)(tensor_max - tensor_min) / ((1 << temp_tensor_quant.bit_width) - 1);
+                // temp_tensor_quant.scale[i] = (tensor_max - tensor_min) / 255;
+                // auto scale = *((double*)(scale_str.content.data()) + i);
+                // auto fp_scale = (float)*((double*)(scale_str.content.data()) + i);
+                //LOG(ERROR) << tensor_max <<"  "<< temp_tensor_quant.scale[i]<<"  "<< tensor_min;
+                //printf("vec: %.15f, %.15f, %.15f, %.15f, %.15f, %d\n", tensor_max, tensor_min, temp_tensor_quant.scale[i], scale, fp_scale, ((1 << temp_tensor_quant.bit_width) - 1));
                 temp_tensor_quant.zero_point[i] = tensor_max + tensor_min;
                 //if (edge->GetName()=="211")    LOG(ERROR)<<temp_tensor_quant.scale[i] << " "<<tensor_max << " " << tensor_min << " " << temp_tensor_quant.bit_width;
             }
@@ -415,11 +412,11 @@ RetCode OptGraph::InitQuantization() {
             str = pair->second.fields.find("tensor_min")->second;
             auto tensor_min = *(double*)(str.content.data());
             auto scale_str = pair->second.fields.find("scale")->second;
-            //temp_tensor_quant.scale[0] = (float)(tensor_max - tensor_min) / ((1 << temp_tensor_quant.bit_width) - 1);
-            temp_tensor_quant.scale[0] = (tensor_max - tensor_min) / 255;
-                auto scale = *((double*)(scale_str.content.data()) + 0);
-                auto fp_scale = (float)*((double*)(scale_str.content.data()) + 0);
-//printf("vec: %.15f, %.15f, %.15f, %.15f, %.15f\n", tensor_max, tensor_min, temp_tensor_quant.scale[0], scale, fp_scale);
+            temp_tensor_quant.scale[0] = (double)(tensor_max - tensor_min) / ((1 << temp_tensor_quant.bit_width) - 1);
+            // temp_tensor_quant.scale[0] = (tensor_max - tensor_min) / 255;
+            // auto scale = *((double*)(scale_str.content.data()) + 0);
+            // auto fp_scale = (float)*((double*)(scale_str.content.data()) + 0);
+            //printf("vec: %.15f, %.15f, %.15f, %.15f, %.15f\n", tensor_max, tensor_min, temp_tensor_quant.scale[0], scale, fp_scale);
             temp_tensor_quant.zero_point[0] = tensor_max + tensor_min;
         }
     }

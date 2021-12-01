@@ -245,6 +245,8 @@ double PPLCUDAConvolutionSelectKernelInt8(
 
             if(!g_int8_kernel_container[kid].CheckSplitfFeasible(splitf, splitk)) continue;
 
+            printf("kernel name: %d %s\n", kid, g_int8_kernel_container[kid].kname.c_str());
+
             int4 *conv_out = (splitk > 1 || splitf > 1) ? splitk_buf : final_out;
 
             dim3 block_size, grid_size;

@@ -153,13 +153,14 @@ RetCode CudaKernel::Execute(KernelExecContext* ctx) {
         status = DoExecute(ctx);
     }
 
-for (int i = 0; i < ctx->GetOutputCount(); i++) {
+for (uint32_t i = 0; i < ctx->GetOutputCount(); i++) {
     auto output = ctx->GetOutput<TensorImpl>(i);
     int save_bytes = output->GetShape().GetDataType() == ppl::common::DATATYPE_FLOAT16 ||
                         output->GetShape().GetDataType() == ppl::common::DATATYPE_INT8 ?
                     sizeof(float) * output->GetShape().GetElementsExcludingPadding() :
                     output->GetShape().GetBytesExcludingPadding();
     std::unique_ptr<char[]> out_data(new char[save_bytes]);
+    // memset(out_data.get(), 0, save_bytes);
     TensorShape tmp_shape(output->GetShape());
     if(output->GetShape().GetDataType() == ppl::common::DATATYPE_FLOAT16) {
         tmp_shape.SetDataType(ppl::common::DATATYPE_FLOAT32);
