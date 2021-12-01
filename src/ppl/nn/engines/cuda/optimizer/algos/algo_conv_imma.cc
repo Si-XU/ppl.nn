@@ -61,7 +61,16 @@ double TuringIMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
     } else if (shape_in1.GetDim(2) == 3 && shape_in1.GetDim(1)!=1) {
         attr_param_.extra_param.algo_info.kernel_index = 4000;
     } else {
-        attr_param_.extra_param.algo_info.kernel_index = 6006;
+        auto group = attr_param_.param.group;
+        if(shape_in1.GetDim(1)/group <= 4) {
+            attr_param_.extra_param.algo_info.kernel_index = 6006;
+        }
+        else if(shape_in1.GetDim(1)/group <= 8){
+            attr_param_.extra_param.algo_info.kernel_index = 6006 + 96;
+        }
+        else if(shape_in1.GetDim(1)/group <= 64){
+            attr_param_.extra_param.algo_info.kernel_index = 6006 + 96 + 96;
+        }
     }
     double timer = 1e-4f; // TODO: add SelectAlgo
     return timer;

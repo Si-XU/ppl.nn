@@ -161,9 +161,10 @@ struct kernel_info_t
             sscanf(kname_substrs[5].c_str(), "k%d",    &tile_k_per_cta);
             sscanf(kname_substrs[6].c_str(), "s%d",    &tile_k_per_step);
     
-            if(tile_k_per_step == 16)  flt_pad_size = 4;
+            if(tile_k_per_step == 8)  flt_pad_size = 2;//fp16
+            else if(tile_k_per_step == 16)  flt_pad_size = 4;
             else if(tile_k_per_step == 32) flt_pad_size = 8;
-            else if(tile_k_per_step == 64) flt_pad_size = 16;
+            else if(tile_k_per_step == 64) flt_pad_size = 16;//int8
             else flt_pad_size = -1;
     
             cta_size_in_thd = (tile_m_per_cta / tile_m_per_warp) * \
