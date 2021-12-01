@@ -26,15 +26,15 @@ typedef uint64_t rnn_direction_t;
 
 class rnn_direction {
 public:
-    static const rnn_direction_t forward       = 0;
-    static const rnn_direction_t reverse       = 1;
-    static const rnn_direction_t bidirectional = 2;
+    static const rnn_direction_t FORWARD       = 0;
+    static const rnn_direction_t REVERSE       = 1;
+    static const rnn_direction_t BIDIRECTIONAL = 2;
 };
 
 class rnn_num_gate {
 public:
-    static const int64_t lstm = 4;
-    static const int64_t gru  = 3;
+    static const int64_t LSTM = 4;
+    static const int64_t GRU  = 3;
 };
 
 }}}; // namespace ppl::kernel::x86

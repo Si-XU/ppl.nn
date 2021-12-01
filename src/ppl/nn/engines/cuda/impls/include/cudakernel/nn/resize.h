@@ -36,4 +36,4 @@ ppl::common::RetCode PPLCUDAResizeForwardImp(
     float in_scale,
     float out_scale);
 
-#endif //PPLCUDA_KERNEL_INCLUDE_RESIZE_RESIZE_H_
+#endif // PPLCUDA_KERNEL_INCLUDE_RESIZE_RESIZE_H_

@@ -129,10 +129,7 @@ free(st);
     }
 
 
-    struct algo_param_t algo_param;
-    algo_param.kid = param_->extra_param.algo_info.kernel_index;
-    algo_param.splitk = param_->extra_param.algo_info.splitk;
-    algo_param.splitf = param_->extra_param.algo_info.splitf;
+    struct algo_param_t algo_param = param_->extra_param.algo_info;
 
     uint64_t size = PPLCUDAConvolutionGetRuntimeBufSize(shape_in0.GetDataType(), temp_conv_param, algo_param.splitk,
                                                         algo_param.splitf, ((uint64_t)8) * 1024 * 1024 * 1024);
@@ -151,15 +148,33 @@ free(st);
 
     auto stream = GetStream();
 
+#ifdef PPLNN_ENABLE_CUDA_JIT
+    CUDAModule* module = static_cast<CUDAModule*>(this->GetCommonParam()->module);
+    PPLCUDAConvolutionForwardJitImpInt8(
+        stream, module->GetKernelFunc(), shape_in0.GetDataType(), (int4*)input->GetBufferPtr(),
+        (int4*)weight->GetBufferPtr(), (int4*)output->GetBufferPtr(),
+        param_->param.bias_term ? (int4*)ctx->GetInput<TensorImpl>(2)->GetBufferPtr() : nullptr, (int4*)tmp_buffer,
+        algo_param, temp_conv_param, temp_quant_param, temp_fuse_param);    
+#else
     PPLCUDAConvolutionForwardImpInt8(
         stream, shape_in0.GetDataType(), (int4*)input->GetBufferPtr(),
         (int4*)weight->GetBufferPtr(), (int4*)output->GetBufferPtr(),
         param_->param.bias_term ? (int4*)ctx->GetInput<TensorImpl>(2)->GetBufferPtr() : nullptr, (int4*)tmp_buffer,
         algo_param, temp_conv_param, temp_quant_param, temp_fuse_param);
-
-    LOG(DEBUG) << "Excute IMMA conv with kernel id:" << param_->extra_param.algo_info.kernel_index
+#endif
+    LOG(DEBUG) << "Excute IMMA conv with kernel id:" << param_->extra_param.algo_info.kid
                << " and temp buffer size: " << size;
- 
+
+    // {
+    //     auto output = ctx->GetOutput<TensorImpl>(0);
+    //     int8_t* a = new int8_t[1*128*28*28];
+    //     output->CopyToHost(a);
+    //     for(int i = 0; i < 100; i++) {
+    //         printf("%d, %d %f \n", i, a[i * 128], a[i * 128] * output_scale);
+    //         // printf("%d, %d %f \n", i, a[i], a[i] * output_scale);
+    //     }
+    // }
+
     return ppl::common::RC_SUCCESS;
 }
 

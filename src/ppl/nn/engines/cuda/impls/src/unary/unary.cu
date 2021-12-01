@@ -139,7 +139,6 @@ __device__ __inline__ float ppl_scalar_unary<Unary_Floor, float>(const float& in
     return floor(in_val);
 }
 
-
 template <>
 __device__ __inline__ half ppl_scalar_unary<Unary_Floor, half>(const half& in_val)
 {
@@ -157,7 +156,6 @@ __device__ __inline__ float ppl_scalar_unary<Unary_Ceil, float>(const float& in_
 {
     return ceil(in_val);
 }
-
 
 template <>
 __device__ __inline__ half ppl_scalar_unary<Unary_Ceil, half>(const half& in_val)
@@ -191,17 +189,17 @@ __global__ void ppl_cukernel_unary_any(
 #define UNARY_INSTANT(TYPE)                                                                                                                    \
     ppl::common::RetCode PPLCUDAUnary##TYPE##ForwardImp(                                                                                       \
         cudaStream_t stream,                                                                                                                   \
-        const ppl::nn::TensorShape* input_shape,                                                                                           \
+        const ppl::nn::TensorShape* input_shape,                                                                                               \
         const void* input,                                                                                                                     \
-        const ppl::nn::TensorShape* output_shape,                                                                                          \
+        const ppl::nn::TensorShape* output_shape,                                                                                              \
         void* output)                                                                                                                          \
     {                                                                                                                                          \
-        uint64_t num_elems = output_shape->GetElementsIncludingPadding();                                                                        \
+        uint64_t num_elems = output_shape->GetElementsIncludingPadding();                                                                      \
         int block_size     = 256;                                                                                                              \
         uint64_t grid_size = (num_elems + block_size - 1) / block_size;                                                                        \
-        if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT32) {                                                                       \
+        if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT32) {                                                                    \
             ppl_cukernel_unary_any<Unary_##TYPE, float><<<grid_size, block_size, 0, stream>>>(num_elems, (const float*)input, (float*)output); \
-        } else if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT16) {                                                                \
+        } else if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT16) {                                                             \
             ppl_cukernel_unary_any<Unary_##TYPE, half><<<grid_size, block_size, 0, stream>>>(num_elems, (const half*)input, (half*)output);    \
         } else if (output_shape->GetDataType() == ppl::common::DATATYPE_INT8) {                                                                \
             ppl_cukernel_unary_any<Unary_##TYPE, int8_t><<<grid_size, block_size, 0, stream>>>(num_elems, (const int8_t*)input, (int8_t*)output);    \

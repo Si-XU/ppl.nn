@@ -26,8 +26,6 @@
         int kloop_num,                                            \
         struct lut_t in_lut,          int in_lut_size,            \
         struct lut_t flt_lut,         int flt_lut_size,           \
-        struct chl_lut_t chl_lut,     int chl_lut_size,           \
-        struct kloop_lut_t kloop_lut, int kloop_lut_size,         \
         int in_hw,                    int out_hw,                 \
         int flt_hw,                   int splitk,                 \
         int in_height,                int in_width,               \

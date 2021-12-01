@@ -30,4 +30,4 @@ ppl::common::RetCode PPLCUDAUnaryLeakyReluForwardImp(
     float in_scale,
     float out_scale);
 
-#endif //PPLCUDA_KERNEL_INCLUDE_LEAKYRELU_LEAKYRELU_H_
+#endif // PPLCUDA_KERNEL_INCLUDE_LEAKYRELU_LEAKYRELU_H_

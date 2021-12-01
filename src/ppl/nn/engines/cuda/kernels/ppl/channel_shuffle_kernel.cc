@@ -31,11 +31,6 @@ ppl::common::RetCode ChannelShuffleKernel::DoExecute(KernelExecContext* ctx) {
     auto output_id0 = Y->GetEdge()->GetId();
     auto output_quant0 = GetCommonParam()->cuda_tensor_info->at(output_id0);
 
-    auto input_edge = ctx->GetInput<TensorImpl>(0)->GetEdge();
-    auto output_edge = ctx->GetOutput<TensorImpl>(0)->GetEdge();
-    LOG(ERROR) << "Edge: " << input_edge->GetName() << " has quant " << GetCommonParam()->cuda_tensor_info->at(input_edge->GetId()).scale[0];
-    LOG(ERROR) << "Edge: " << output_edge->GetName() << " has quant " << GetCommonParam()->cuda_tensor_info->at(output_edge->GetId()).scale[0];
-
     if (X->GetShape().GetDimCount() != 4 || Y->GetShape().GetDimCount() != 4) {
         LOG(ERROR) << "incorrect input dimcount: " << X->GetShape().GetDimCount();
         return ppl::common::RC_UNSUPPORTED;

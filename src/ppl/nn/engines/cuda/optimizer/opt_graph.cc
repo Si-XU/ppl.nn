@@ -121,18 +121,22 @@ RetCode OptGraph::UpdateDims() {
                     LOG(ERROR) << "cannot find input shape in data map.";
                     return RC_INVALID_VALUE;
                 }
-                auto dims_pairs = args_->input_dims.find(edge->GetName());
-                if (dims_pairs == args_->input_dims.end()) { // use default dims
-                    dims_pairs = args_->input_dims.find("");
-                    if (dims_pairs == args_->input_dims.end()) {
-                        LOG(ERROR) << "Error input dims init for input edge[" << edge->GetName() << "]";
-                        return RC_INVALID_VALUE;
+
+                const vector<int64_t>* dims = nullptr;
+                if (j >= args_->input_dims.size()) {
+                    dims = &args_->default_dims;
+                } else {
+                    if (args_->input_dims[j].empty()) {
+                        dims = &args_->default_dims;
+                    } else {
+                        dims = &args_->input_dims[j];
                     }
                 }
-                if (ir_shape->second.dims.size() == dims_pairs->second.size()) {
+
+                if (ir_shape->second.dims.size() == dims->size()) {
                     for (uint32_t k = 0; k < ir_shape->second.dims.size(); ++k) {
-                        if (ir_shape->second.dims[k] == 1 && (dims_pairs->second)[k] != 0) {
-                            ir_shape->second.dims[k] = (dims_pairs->second)[k];
+                        if (ir_shape->second.dims[k] == 1 && dims->at(k) != 0) {
+                            ir_shape->second.dims[k] = dims->at(k);
                         }
                     }
                 }
@@ -297,12 +301,12 @@ RetCode OptGraph::AddBridgeKernels() {
                 impl_pair.first->second->GetShape().Reshape(post_shape->GetShape().GetDims(),
                                                             post_shape->GetShape().GetRealDimCount());
 
-                auto pair_format = args_->output_formats.find(edge->GetName());
-                if (pair_format != args_->output_formats.end()) {
-                    post_shape->GetShape().SetDataFormat(pair_format->second);
+                if (j < args_->output_formats.size()) {
+                    post_shape->GetShape().SetDataFormat(args_->output_formats[j]);
                 } else {
                     post_shape->GetShape().SetDataFormat(DATAFORMAT_NDARRAY);
                 }
+
                 bridge_kernel.get()->Init(options);
                 info_->kernels.emplace(new_node->GetId(), std::move(bridge_kernel));
                 count++;
@@ -462,9 +466,9 @@ RetCode OptGraph::UpdateType() {
                 auto out_shape = &IOinfo.GetOutput<TensorImpl>(j)->GetShape();
                 if (out_shape->GetDataType() == DATATYPE_FLOAT16 || out_shape->GetDataType() == DATATYPE_INT8)
                     out_shape->SetDataType(DATATYPE_FLOAT32);
-                auto pair_type = args_->output_types.find(edge->GetName());
-                if (pair_type != args_->output_types.end()) {
-                    out_shape->SetDataType(pair_type->second);
+
+                if (j < args_->output_types.size()) {
+                    out_shape->SetDataType(args_->output_types[j]);
                 }
             }
         }
@@ -478,7 +482,7 @@ RetCode OptGraph::SelectAlgos(CudaDevice* device) {
     auto& graph_quants = args_->tensor_quants.find(topo->GetName())->second;
     auto& graph_algos = args_->alog_selects;
 
-    OptKernelOptions options(graph_, info_, resource_, args_, device, &tensor_impls_, &graph_quants, &graph_algos);
+    OptKernelOptions options(graph_, info_, resource_, args_, compile_set_, device, &tensor_impls_, &graph_quants, &graph_algos);
     UpdateTopologicalSort();
 
     // if (!PPLCudaComputeCapabilityEqual(7, 5, device->GetDeviceId())) {

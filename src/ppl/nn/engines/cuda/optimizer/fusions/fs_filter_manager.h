@@ -15,7 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-
 #ifndef _ST_HPC_PPL_NN_ENGINES_CUDA_OPTIMIZER_ALGOS_FS_FILTER_MANAGER_H_
 #define _ST_HPC_PPL_NN_ENGINES_CUDA_OPTIMIZER_ALGOS_FS_FILTER_MANAGER_H_
 
@@ -26,6 +25,7 @@
 #include "ppl/nn/engines/cuda/optimizer/fusions/fs_concat.h"
 #include "ppl/nn/engines/cuda/optimizer/fusions/fs_conv.h"
 #include "ppl/nn/engines/cuda/optimizer/fusions/fs_gemm.h"
+#include "ppl/nn/engines/cuda/optimizer/fusions/fs_softmax.h"
 
 namespace ppl { namespace nn { namespace cuda {
 
@@ -45,9 +45,10 @@ private:
     std::map<std::string, Fusion*> type2fusion_;
     AveragePoolFusion averagepool_fs_;
     ConcatFusion concat_fs_;
+    ChannelShuffleFusion channel_shuffle_fs_;
     ConvFusion conv_fs_;
     GemmFusion gemm_fs_;
-    ChannelShuffleFusion channel_shuffle_fs_;
+    SoftmaxFusion softmax_fs_;
 };
 
 }}} // namespace ppl::nn::cuda
