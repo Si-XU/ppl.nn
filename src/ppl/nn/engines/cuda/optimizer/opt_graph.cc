@@ -386,7 +386,7 @@ RetCode OptGraph::InitQuantization() {
         auto str = pair->second.fields.find("per_channel")->second;
         temp_tensor_quant.per_chnnal = *(bool*)(str.content.data());
         auto bit_width = pair->second.fields.find("bit_width")->second;
-        temp_tensor_quant.bit_width = *(bool*)(bit_width.content.data());
+        temp_tensor_quant.bit_width = *(int*)(bit_width.content.data());
         if (temp_tensor_quant.per_chnnal) {
             auto max_str = pair->second.fields.find("tensor_max")->second;
             auto min_str = pair->second.fields.find("tensor_min")->second;
