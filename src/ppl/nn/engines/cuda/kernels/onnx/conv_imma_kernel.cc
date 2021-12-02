@@ -87,7 +87,7 @@ ppl::common::RetCode ConvImmaKernel::DoExecute(KernelExecContext* ctx) {
     BufferDesc weight_scale_desc;
     GetCudaDevice()->Realloc(qw_size*sizeof(float), &weight_scale_desc);
     BufferDescGuard __weight_scale_guard(&weight_scale_desc, [this](BufferDesc* buffer) -> void {
-        GetCudaDevice()->FreeTmpBuffer(buffer);
+        GetCudaDevice()->Free(buffer);
     });
     auto d_weight_scale = weight_scale_desc.addr;
 //FIXME

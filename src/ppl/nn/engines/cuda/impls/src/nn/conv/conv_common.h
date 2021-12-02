@@ -342,6 +342,50 @@ struct kernel_info_t {
         return false;
     }
 
+    bool CheckKernelTypeFeasibleInt8(int flt_height, int flt_width, int num_chl_per_grp, int splitk)
+    {
+        if (num_chl_per_grp > 0 && num_chl_per_grp <= 4) {
+            if (ktype == CONV_IDXN_C2 && splitk == 1) {
+                int num_chl_per_grp_pad = Align(num_chl_per_grp, 4);
+
+                int kloop_num  = DivUp(flt_height * flt_width * num_chl_per_grp_pad, tile_k_per_cta);
+                int kloop_time = DivUp(kloop_num * (tile_k_per_cta / flt_pad_size), cta_size_in_thd);
+
+                return (kloop_time == 1);
+            } else
+                return false;
+        }
+        else if (num_chl_per_grp > 4 && num_chl_per_grp <= 8) {
+            if (ktype == CONV_IDXN_C4 && splitk == 1) {
+                int num_chl_per_grp_pad = Align(num_chl_per_grp, 8);
+
+                int kloop_num  = DivUp(flt_height * flt_width * num_chl_per_grp_pad, tile_k_per_cta);
+                int kloop_time = DivUp(kloop_num * (tile_k_per_cta / flt_pad_size), cta_size_in_thd);
+
+                return (kloop_time == 1);
+            } else
+                return false;
+        } else if (num_chl_per_grp > 8 && num_chl_per_grp <= 64) {
+            if (ktype == CONV_IDXN_C32 && splitk == 1) {
+                int num_chl_per_grp_pad = Align(num_chl_per_grp, 16);
+
+                int kloop_num  = DivUp(flt_height * flt_width * num_chl_per_grp_pad, tile_k_per_cta);
+                int kloop_time = DivUp(kloop_num * (tile_k_per_cta / flt_pad_size), cta_size_in_thd);
+
+                return (kloop_time == 1);
+            } else
+                return false;
+        } else if (flt_height == 1 && flt_width == 1) {
+            return (ktype == CONV_2SPK_F1 || ktype == CONV_SWZL_F1) ? true : false;
+        } else if (flt_height == 3 && flt_width == 3) {
+            return (ktype == CONV_2SPK_F3 || ktype == CONV_SWZL_F3 || ktype == CONV_2SPK_FS) ? true : false;
+        } else if (flt_height * flt_width < 128) {
+            return (ktype == CONV_2SPK_FN || ktype == CONV_SWZL_FN || ktype == CONV_2SPK_FS) ? true : false;
+        }
+
+        return false;
+    }
+
     __inline__ bool CheckSplitkFeasible(int num_chl_per_grp, int splitk)
     {
         if (splitk > 1 && splitk * tile_k_per_cta >= Align(num_chl_per_grp, tile_k_per_cta))

@@ -237,15 +237,15 @@ double PPLCUDAConvolutionSelectKernelInt8(
         unsigned int splitk = SPLITK_OPTIONS[spk];
 
         for(unsigned int kid = 0; kid < g_int8_kernel_container.size(); kid++) {
+
             unsigned int splitf = (g_int8_kernel_container[kid].ktype == CONV_2SPK_FS) ? flt_hw : 1;
         
-            if(!g_int8_kernel_container[kid].CheckKernelTypeFeasible(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk)) continue;
+            if(!g_int8_kernel_container[kid].CheckKernelTypeFeasibleInt8(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk)) continue;
 
-            if(!g_int8_kernel_container[kid].CheckSplitkFeasible(num_chl_per_grp, splitk)) continue;
+            //if(!g_int8_kernel_container[kid].CheckSplitkFeasible(num_chl_per_grp, splitk)) continue;
 
-            if(!g_int8_kernel_container[kid].CheckSplitfFeasible(splitf, splitk)) continue;
+            //if(!g_int8_kernel_container[kid].CheckSplitfFeasible(splitf, splitk)) continue;
 
-            printf("kernel name: %d %s\n", kid, g_int8_kernel_container[kid].kname.c_str());
 
             int4 *conv_out = (splitk > 1 || splitf > 1) ? splitk_buf : final_out;
 
