@@ -16,11 +16,12 @@
 // under the License.
 
 #include "ppl/nn/optimizers/utils.h"
-#include "ppl/nn/optimizers/simple_graph_partitioner.h"
+#include "ppl/nn/optimizers/engine_graph_partitioner.h"
 #include "ppl/nn/optimizers/graph_optimizer_manager.h"
 #include "ppl/nn/engines/common/ppl/converter_op.h"
 #include "ppl/nn/engines/utils.h"
 #include "ppl/nn/ir/partial_graph_topo.h"
+#include "ppl/nn/ir/utils.h"
 #include "ppl/nn/runtime/runtime_partition_info.h"
 #include "ppl/nn/utils/utils.h"
 #include "ppl/nn/common/logger.h"
@@ -175,7 +176,7 @@ static RetCode InsertConverterNodesForPartitions(const vector<EngineImpl*>& node
     auto topo = graph->topo.get();
     const nodeid_t max_node_id = topo->GetMaxNodeId();
 
-    // new inserted converter nodes' ids start from max_node_id
+    // newly inserted converter nodes' ids start from max_node_id
     for (nodeid_t nid = 0; nid < max_node_id; ++nid) {
         auto parent = topo->GetNodeById(nid);
         if (!parent) {
@@ -183,7 +184,7 @@ static RetCode InsertConverterNodesForPartitions(const vector<EngineImpl*>& node
         }
 
         auto successor_ids = topo->FindSuccessors(nid);
-        if (successor_ids.size() <= 1) {
+        if (successor_ids.empty()) {
             continue;
         }
 
@@ -224,33 +225,47 @@ static RetCode InsertConverterNodesForPartitions(const vector<EngineImpl*>& node
     return RC_SUCCESS;
 }
 
-static void GenConverterKernelInfo(const vector<pair<nodeid_t, EngineImpl*>>& converter_nodes, ir::Graph* graph,
-                                   map<nodeid_t, RuntimeKernelInfo>* nodeid2info) {
-    for (auto x = converter_nodes.begin(); x != converter_nodes.end(); ++x) {
-        RuntimeKernelInfo kernel_info;
-        kernel_info.engine = x->second;
-        kernel_info.op.reset(new common::ConverterOp(graph->topo->GetNodeById(x->first)));
-        nodeid2info->emplace(x->first, std::move(kernel_info));
+static RetCode CollectSortedOps(const ir::GraphTopo* topo, RuntimePartitionInfo* sub_info,
+                                vector<unique_ptr<OptKernel>>* ops) {
+    vector<nodeid_t> sub_sorted_nodes;
+    topo->TopologicalSort([&sub_sorted_nodes](nodeid_t nid) -> void {
+        sub_sorted_nodes.push_back(nid);
+    });
+
+    vector<unique_ptr<OptKernel>> tmp_ops(sub_sorted_nodes.size());
+    for (uint32_t i = 0; i < sub_sorted_nodes.size(); ++i) {
+        auto ref = sub_info->kernels.find(sub_sorted_nodes[i]);
+        if (ref == sub_info->kernels.end()) {
+            auto node = topo->GetNodeById(sub_sorted_nodes[i]);
+            LOG(ERROR) << "cannot find node[" << node->GetName() << "] in opt kernels";
+            return RC_NOT_FOUND;
+        }
+        tmp_ops[i] = std::move(ref->second);
+        sub_info->kernels.erase(ref);
     }
+
+    *ops = std::move(tmp_ops);
+    return RC_SUCCESS;
 }
 
 static RetCode GenPartitionsInfo(const vector<pair<EngineImpl*, vector<nodeid_t>>>& partitions,
                                  utils::SharedResource* resource, ir::Graph* graph,
                                  vector<pair<edgeid_t, RuntimeConstantInfo>>* constants,
-                                 map<nodeid_t, RuntimeKernelInfo>* nodeid2info) {
-    for (auto it = partitions.begin(); it != partitions.end(); ++it) {
+                                 vector<RuntimeGraphInfo::Partition>* info_list) {
+    for (uint32_t p = 0; p < partitions.size(); ++p) {
+        auto& partition = partitions[p];
         ir::Graph sub_graph;
         if (partitions.size() == 1) {
             sub_graph.topo = graph->topo;
             sub_graph.data = graph->data;
         } else {
-            auto sub_topo = make_shared<ir::PartialGraphTopo>(graph->topo.get(), it->second);
-            sub_topo->SetName(graph->topo->GetName() + "." + it->first->GetName());
-            sub_graph.topo = sub_topo;
+            sub_graph.topo = make_shared<ir::PartialGraphTopo>(
+                graph->topo.get(), graph->topo->GetName() + "." + partition.first->GetName() + "." + std::to_string(p),
+                partition.second);
             sub_graph.data = graph->data;
         }
 
-        auto engine = it->first;
+        auto engine = partition.first;
         RuntimePartitionInfo subgraph_info;
         auto status = engine->ProcessGraph(resource, &sub_graph, &subgraph_info);
         if (status != RC_SUCCESS) {
@@ -263,12 +278,14 @@ static RetCode GenPartitionsInfo(const vector<pair<EngineImpl*, vector<nodeid_t>
             constants->emplace_back(x->first, std::move(x->second));
         }
 
-        for (auto x = subgraph_info.kernels.begin(); x != subgraph_info.kernels.end(); ++x) {
-            RuntimeKernelInfo kernel_info;
-            kernel_info.engine = engine;
-            kernel_info.op.reset(x->second.release());
-            nodeid2info->emplace(x->first, std::move(kernel_info));
+        RuntimeGraphInfo::Partition par_info;
+        par_info.engine = engine;
+        status = CollectSortedOps(sub_graph.topo.get(), &subgraph_info, &par_info.sorted_ops);
+        if (status != RC_SUCCESS) {
+            LOG(ERROR) << "collect optkernels failed: " << GetRetCodeStr(status);
+            return status;
         }
+        info_list->emplace_back(std::move(par_info));
     }
 
     return RC_SUCCESS;
@@ -325,7 +342,7 @@ static RetCode CopyConstantsForDevices(const vector<EngineImpl*>& node2engine, i
             graph_data->constants.insert(make_pair(new_edge_id, constant_data_iter->second));
             graph_data->shapes.insert(make_pair(new_edge_id, shape_iter->second));
 
-            // replace input and extra input of consumers
+            // replace inputs and extra inputs of consumers
             for (auto nid = it->second.begin(); nid != it->second.end(); ++nid) {
                 auto node = topo->GetNodeById(*nid);
                 new_edge->AddConsumer(*nid);
@@ -366,7 +383,7 @@ static RetCode InsertConverterNodesForInputs(ir::Graph* graph, const vector<Engi
         /*
           choose one of those engines as the producer engine of this input.
           this will be done when runtime is created.
-         */
+        */
         engine_node_groups.erase(engine_node_groups.begin());
 
         for (auto it = engine_node_groups.begin(); it != engine_node_groups.end(); ++it) {
@@ -375,7 +392,7 @@ static RetCode InsertConverterNodesForInputs(ir::Graph* graph, const vector<Engi
 
             auto ret_pair = engine_converter_nodes.insert(make_pair(it->first, INVALID_NODEID));
             if (ret_pair.second) {
-                const string name_prefix = "converter_of_" + string(engine->GetName()) + "_";
+                const string name_prefix = "converter_of_" + string(engine->GetName());
                 converter_node = CreateConverterNode(name_prefix, topo);
                 if (!converter_node) {
                     LOG(ERROR) << "create converter node [" << name_prefix << "] failed.";
@@ -424,17 +441,15 @@ RetCode ProcessGraph(utils::SharedResource* resource, ir::Graph* graph, RuntimeG
 
     vector<pair<EngineImpl*, vector<nodeid_t>>> partitions;
 
-    SimpleGraphPartitioner partitioner;
-    status = partitioner.Partition(resource, graph, &partitions);
+    EngineGraphPartitioner partitioner;
+    status = partitioner.Partition(resource, graph->topo.get(), &partitions);
     if (status != RC_SUCCESS) {
         LOG(ERROR) << "partitioning graph[" << graph->topo->GetName() << "] failed: " << GetRetCodeStr(status);
         return status;
     }
 
-    map<nodeid_t, RuntimeKernelInfo> nodeid2info;
-
+    vector<pair<nodeid_t, EngineImpl*>> converter_nodes;
     if (partitions.size() > 1) {
-        vector<pair<nodeid_t, EngineImpl*>> converter_nodes;
         auto node2engine = GenNode2Engine(partitions, graph->topo->GetMaxNodeId());
 
         status = InsertConverterNodesForPartitions(node2engine, graph, &converter_nodes);
@@ -454,27 +469,26 @@ RetCode ProcessGraph(utils::SharedResource* resource, ir::Graph* graph, RuntimeG
             LOG(ERROR) << "InsertConverterNodesForInputs failed: " << GetRetCodeStr(status);
             return status;
         }
-
-        GenConverterKernelInfo(converter_nodes, graph, &nodeid2info);
     }
 
     /*
       subgraphs MUST be created after inserting converter nodes. because subgraphs cannot visit
       edges that are directly inserted in the main graph.
     */
-    status = GenPartitionsInfo(partitions, resource, graph, &info->constants, &nodeid2info);
+    status = GenPartitionsInfo(partitions, resource, graph, &info->constants, &info->partitions);
     if (status != RC_SUCCESS) {
         LOG(ERROR) << "GenPartitionsInfo failed:" << GetRetCodeStr(status);
         return status;
     }
 
-    // sort nodes in topological order
-    info->kernels.reserve(nodeid2info.size());
-    graph->topo->TopologicalSort([info, &nodeid2info](nodeid_t nid) -> void {
-        auto ref = nodeid2info.find(nid);
-        info->kernels.emplace_back(std::move(ref->second));
-        nodeid2info.erase(ref);
-    });
+    // add converter optkernels
+    for (auto x = converter_nodes.begin(); x != converter_nodes.end(); ++x) {
+        RuntimeGraphInfo::Partition par_info;
+        par_info.engine = x->second;
+        par_info.sorted_ops.emplace_back(
+            unique_ptr<OptKernel>(new common::ConverterOp(graph->topo->GetNodeById(x->first))));
+        info->partitions.emplace_back(std::move(par_info)); // one converter is treated as a single partition
+    }
 
     // save input shapes for runtime
     auto graph_data = graph->data.get();

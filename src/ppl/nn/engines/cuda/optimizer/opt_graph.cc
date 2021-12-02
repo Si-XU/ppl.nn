@@ -121,18 +121,22 @@ RetCode OptGraph::UpdateDims() {
                     LOG(ERROR) << "cannot find input shape in data map.";
                     return RC_INVALID_VALUE;
                 }
-                auto dims_pairs = args_->input_dims.find(edge->GetName());
-                if (dims_pairs == args_->input_dims.end()) { // use default dims
-                    dims_pairs = args_->input_dims.find("");
-                    if (dims_pairs == args_->input_dims.end()) {
-                        LOG(ERROR) << "Error input dims init for input edge[" << edge->GetName() << "]";
-                        return RC_INVALID_VALUE;
+
+                const vector<int64_t>* dims = nullptr;
+                if (j >= args_->input_dims.size()) {
+                    dims = &args_->default_dims;
+                } else {
+                    if (args_->input_dims[j].empty()) {
+                        dims = &args_->default_dims;
+                    } else {
+                        dims = &args_->input_dims[j];
                     }
                 }
-                if (ir_shape->second.dims.size() == dims_pairs->second.size()) {
+
+                if (ir_shape->second.dims.size() == dims->size()) {
                     for (uint32_t k = 0; k < ir_shape->second.dims.size(); ++k) {
-                        if (ir_shape->second.dims[k] == 1 && (dims_pairs->second)[k] != 0) {
-                            ir_shape->second.dims[k] = (dims_pairs->second)[k];
+                        if (ir_shape->second.dims[k] == 1 && dims->at(k) != 0) {
+                            ir_shape->second.dims[k] = dims->at(k);
                         }
                     }
                 }
@@ -297,12 +301,12 @@ RetCode OptGraph::AddBridgeKernels() {
                 impl_pair.first->second->GetShape().Reshape(post_shape->GetShape().GetDims(),
                                                             post_shape->GetShape().GetRealDimCount());
 
-                auto pair_format = args_->output_formats.find(edge->GetName());
-                if (pair_format != args_->output_formats.end()) {
-                    post_shape->GetShape().SetDataFormat(pair_format->second);
+                if (j < args_->output_formats.size()) {
+                    post_shape->GetShape().SetDataFormat(args_->output_formats[j]);
                 } else {
                     post_shape->GetShape().SetDataFormat(DATAFORMAT_NDARRAY);
                 }
+
                 bridge_kernel.get()->Init(options);
                 info_->kernels.emplace(new_node->GetId(), std::move(bridge_kernel));
                 count++;
@@ -324,16 +328,13 @@ RetCode OptGraph::InitQuantization() {
         auto pair = node_params.find(node->GetName());
         if (pair != node_params.end()) {
             auto str = pair->second.fields.find("data_type")->second;
-            uint32_t bit_width = 0;
             datatype_t type = DATATYPE_UNKNOWN;
             if (str.content == "INT8") {
                 args_->node_types.emplace(node->GetName(), DATATYPE_INT8);
                 type = DATATYPE_INT8;
-                bit_width = 8;
             } else if (str.content == "FLOAT32") {
                 args_->node_types.emplace(node->GetName(), DATATYPE_FLOAT32);
                 type = DATATYPE_FLOAT32;
-                bit_width = 32;
             } else {
                 LOG(ERROR) << "Not support set to such datatype: " << str.content;
             }
@@ -344,7 +345,6 @@ RetCode OptGraph::InitQuantization() {
                 }
                 auto& input_quant = graph_quants.at(edge_id);
                 input_quant.type = type;
-                input_quant.bit_width = bit_width;
             }
             for (uint32_t i = 0; i < node->GetOutputCount(); ++i) {
                 auto edge_id = node->GetOutput(i);
@@ -353,7 +353,6 @@ RetCode OptGraph::InitQuantization() {
                 }
                 auto& output_quant = graph_quants.at(edge_id);
                 output_quant.type = type;
-                output_quant.bit_width = bit_width;
             }
         }
     }
@@ -386,6 +385,8 @@ RetCode OptGraph::InitQuantization() {
         auto& temp_tensor_quant = graph_quants[edge->GetId()];
         auto str = pair->second.fields.find("per_channel")->second;
         temp_tensor_quant.per_chnnal = *(bool*)(str.content.data());
+        auto bit_width = pair->second.fields.find("bit_width")->second;
+        temp_tensor_quant.bit_width = *(int*)(bit_width.content.data());
         if (temp_tensor_quant.per_chnnal) {
             auto max_str = pair->second.fields.find("tensor_max")->second;
             auto min_str = pair->second.fields.find("tensor_min")->second;
@@ -396,12 +397,12 @@ RetCode OptGraph::InitQuantization() {
             for (uint32_t i = 0; i < size; ++i) {
                 auto tensor_max = *((double*)(max_str.content.data()) + i);
                 auto tensor_min = *((double*)(min_str.content.data()) + i);
-                //temp_tensor_quant.scale[i] = (float)(tensor_max - tensor_min) / ((1 << temp_tensor_quant.bit_width) - 1);
-                temp_tensor_quant.scale[i] = (tensor_max - tensor_min) / 255;
-                auto scale = *((double*)(scale_str.content.data()) + i);
-                auto fp_scale = (float)*((double*)(scale_str.content.data()) + i);
-//LOG(ERROR) << tensor_max <<"  "<< temp_tensor_quant.scale[i]<<"  "<< tensor_min;
-//printf("vec: %.15f, %.15f, %.15f, %.15f, %.15f, %d\n", tensor_max, tensor_min, temp_tensor_quant.scale[i], scale, fp_scale, ((1 << temp_tensor_quant.bit_width) - 1));
+                temp_tensor_quant.scale[i] = (double)(tensor_max - tensor_min) / ((1 << temp_tensor_quant.bit_width) - 1);
+                // temp_tensor_quant.scale[i] = (tensor_max - tensor_min) / 255;
+                // auto scale = *((double*)(scale_str.content.data()) + i);
+                // auto fp_scale = (float)*((double*)(scale_str.content.data()) + i);
+                //LOG(ERROR) << tensor_max <<"  "<< temp_tensor_quant.scale[i]<<"  "<< tensor_min;
+                //printf("vec: %.15f, %.15f, %.15f, %.15f, %.15f, %d\n", tensor_max, tensor_min, temp_tensor_quant.scale[i], scale, fp_scale, ((1 << temp_tensor_quant.bit_width) - 1));
                 temp_tensor_quant.zero_point[i] = tensor_max + tensor_min;
                 //if (edge->GetName()=="211")    LOG(ERROR)<<temp_tensor_quant.scale[i] << " "<<tensor_max << " " << tensor_min << " " << temp_tensor_quant.bit_width;
             }
@@ -411,11 +412,11 @@ RetCode OptGraph::InitQuantization() {
             str = pair->second.fields.find("tensor_min")->second;
             auto tensor_min = *(double*)(str.content.data());
             auto scale_str = pair->second.fields.find("scale")->second;
-            //temp_tensor_quant.scale[0] = (float)(tensor_max - tensor_min) / ((1 << temp_tensor_quant.bit_width) - 1);
-            temp_tensor_quant.scale[0] = (tensor_max - tensor_min) / 255;
-                auto scale = *((double*)(scale_str.content.data()) + 0);
-                auto fp_scale = (float)*((double*)(scale_str.content.data()) + 0);
-//printf("vec: %.15f, %.15f, %.15f, %.15f, %.15f\n", tensor_max, tensor_min, temp_tensor_quant.scale[0], scale, fp_scale);
+            temp_tensor_quant.scale[0] = (double)(tensor_max - tensor_min) / ((1 << temp_tensor_quant.bit_width) - 1);
+            // temp_tensor_quant.scale[0] = (tensor_max - tensor_min) / 255;
+            // auto scale = *((double*)(scale_str.content.data()) + 0);
+            // auto fp_scale = (float)*((double*)(scale_str.content.data()) + 0);
+            //printf("vec: %.15f, %.15f, %.15f, %.15f, %.15f\n", tensor_max, tensor_min, temp_tensor_quant.scale[0], scale, fp_scale);
             temp_tensor_quant.zero_point[0] = tensor_max + tensor_min;
         }
     }
@@ -462,9 +463,9 @@ RetCode OptGraph::UpdateType() {
                 auto out_shape = &IOinfo.GetOutput<TensorImpl>(j)->GetShape();
                 if (out_shape->GetDataType() == DATATYPE_FLOAT16 || out_shape->GetDataType() == DATATYPE_INT8)
                     out_shape->SetDataType(DATATYPE_FLOAT32);
-                auto pair_type = args_->output_types.find(edge->GetName());
-                if (pair_type != args_->output_types.end()) {
-                    out_shape->SetDataType(pair_type->second);
+
+                if (j < args_->output_types.size()) {
+                    out_shape->SetDataType(args_->output_types[j]);
                 }
             }
         }
@@ -478,7 +479,7 @@ RetCode OptGraph::SelectAlgos(CudaDevice* device) {
     auto& graph_quants = args_->tensor_quants.find(topo->GetName())->second;
     auto& graph_algos = args_->alog_selects;
 
-    OptKernelOptions options(graph_, info_, resource_, args_, device, &tensor_impls_, &graph_quants, &graph_algos);
+    OptKernelOptions options(graph_, info_, resource_, args_, compile_set_, device, &tensor_impls_, &graph_quants, &graph_algos);
     UpdateTopologicalSort();
 
     // if (!PPLCudaComputeCapabilityEqual(7, 5, device->GetDeviceId())) {

@@ -40,7 +40,8 @@ void TuringIMMAImpgemm::GetAttrParam(void*& param) const {
     return;
 }
 
-bool TuringIMMAImpgemm::IsSupported(const ir::Node* node, const OptKernelOptions& options, dataformat_t input_format) const {
+bool TuringIMMAImpgemm::IsSupported(const ir::Node* node, const OptKernelOptions& options,
+                                    dataformat_t input_format) const {
     // check if conv quant to INT8
     auto quant0 = options.quants->at(node->GetInput(0));
     if (quant0.type != DATATYPE_INT8) {
@@ -55,24 +56,112 @@ bool TuringIMMAImpgemm::IsSupported(const ir::Node* node, const OptKernelOptions
 double TuringIMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& options) {
     this->attr_param_ = *(reinterpret_cast<CudaConvParam*>(options.param));
     attr_param_.extra_param.algo_info.algo_type = "TuringIMMAImpgemm";
+    options.compile_set->emplace(node->GetId());
+
+    auto shape_in0 = options.tensors->find(node->GetInput(0))->second->GetShape();
     auto shape_in1 = options.tensors->find(node->GetInput(1))->second->GetShape();
-    if (shape_in1.GetDim(2) == 1) {
-        attr_param_.extra_param.algo_info.kernel_index = 1000;
-    } else if (shape_in1.GetDim(2) == 3 && shape_in1.GetDim(1)!=1) {
-        attr_param_.extra_param.algo_info.kernel_index = 4000;
-    } else {
-        auto group = attr_param_.param.group;
-        if(shape_in1.GetDim(1)/group <= 4) {
-            attr_param_.extra_param.algo_info.kernel_index = 6006;
-        }
-        else if(shape_in1.GetDim(1)/group <= 8){
-            attr_param_.extra_param.algo_info.kernel_index = 6006 + 96;
-        }
-        else if(shape_in1.GetDim(1)/group <= 64){
-            attr_param_.extra_param.algo_info.kernel_index = 6006 + 96 + 96;
-        }
+    //if (shape_in1.GetDim(2) == 1) {
+    //    attr_param_.extra_param.algo_info.kid = 1000;
+    //} else if (shape_in1.GetDim(2) == 3 && shape_in1.GetDim(1)!=1) {
+    //    attr_param_.extra_param.algo_info.kid = 4000;
+    //} else {
+    //    auto group = attr_param_.param.group;
+    //    if(shape_in1.GetDim(1)/group <= 4) {
+    //        attr_param_.extra_param.algo_info.kid = 6006;
+    //    }
+    //    else if(shape_in1.GetDim(1)/group <= 8){
+    //        attr_param_.extra_param.algo_info.kid = 6006 + 96;
+    //    }
+    //    else if(shape_in1.GetDim(1)/group <= 64){
+    //        attr_param_.extra_param.algo_info.kid = 6006 + 96 + 96;
+    //    }
+    //}
+    auto shape_in2 = TensorShape();
+    auto shape_out = options.tensors->find(node->GetOutput(0))->second->GetShape();
+    auto align_size = ppl::common::cuda::GetDataFormatChannelAlignment(shape_in0.GetDataFormat());
+    conv_param_t temp_conv_param;
+    fuse_param_t temp_fuse_param;
+    ConvertToForwardConvParam(shape_in0, shape_in1, shape_out, attr_param_.param, temp_conv_param);
+
+    // input H or W is too small
+    if (shape_in0.GetDim(2) + 2 * temp_conv_param.pad_height < shape_in1.GetDim(2) ||
+        shape_in0.GetDim(3) + 2 * temp_conv_param.pad_width < shape_in1.GetDim(3)) {
+        shape_in0.SetDim(2, shape_in1.GetDim(2));
+        shape_in0.SetDim(3, shape_in1.GetDim(3));
     }
-    double timer = 1e-4f; // TODO: add SelectAlgo
+    std::string key_str = node->GetName();
+    auto algo_info = options.algos->find(key_str);
+    if (algo_info != options.algos->end()) {
+        attr_param_.extra_param.algo_info.algo_name = algo_info->second.kname;
+        attr_param_.extra_param.algo_info.kid = algo_info->second.kid;
+        attr_param_.extra_param.algo_info.splitk = algo_info->second.splitk;
+        attr_param_.extra_param.algo_info.splitf = algo_info->second.splitf;
+        PPLCUDAConvolutionLoadAlgoParam(attr_param_.extra_param.algo_info);
+        return 0.0f;
+    } else { // Give the default kernel
+        attr_param_.extra_param.algo_info.algo_name = "nv2spkConv_hmma8816_nhwc_fn_b128x64_w64x32_k16_s16_buf1";
+        attr_param_.extra_param.algo_info.kid = 4000;
+        attr_param_.extra_param.algo_info.splitk = 1;
+        attr_param_.extra_param.algo_info.splitf = 1;
+        PPLCUDAConvolutionLoadAlgoParam(attr_param_.extra_param.algo_info);
+    }
+
+    if (options.args->quick_select) {
+        return 0.0f;
+    }
+
+    // Padding
+    shape_in0.SetDim(1, shape_in1.GetDim(1) * attr_param_.param.group);
+    uint32_t k_per_grp = shape_in1.GetDim(0) / attr_param_.param.group;
+    uint32_t k_per_grp_pad = (k_per_grp + align_size - 1) / align_size * align_size;
+    shape_in1.SetDim(0, k_per_grp_pad * attr_param_.param.group);
+    if (temp_conv_param.has_bias) {
+        shape_in2 = options.tensors->find(node->GetInput(2))->second->GetShape();
+        shape_in2.SetDim(0, k_per_grp_pad * temp_conv_param.num_grp);
+    }
+
+    RetCode status;
+    ALLOC_BUFFERF_FOR_ALGO_SELECT(input_buffer, shape_in0.GetBytesIncludingPadding(), ALGO_MAX_TIME)
+    ALLOC_BUFFERF_FOR_ALGO_SELECT(weight_buffer, shape_in1.GetBytesIncludingPadding(), ALGO_MAX_TIME)
+    ALLOC_BUFFERF_FOR_ALGO_SELECT(bias_buffer, shape_in2.GetBytesIncludingPadding(), ALGO_MAX_TIME)
+    ALLOC_BUFFERF_FOR_ALGO_SELECT(output_buffer, shape_out.GetBytesIncludingPadding(), ALGO_MAX_TIME)
+
+    uint64_t size = PPLCUDAConvolutionGetCompilationBufSize(shape_in0.GetDataType(), temp_conv_param);
+    ALLOC_BUFFERF_FOR_ALGO_SELECT(temp_buffer, size, ALGO_MAX_TIME)
+
+    // Set quant TODO : Decide if use float to save quant info
+    ALLOC_BUFFERF_FOR_ALGO_SELECT(wegiht_quant, shape_in1.GetDim(1) * sizeof(float), ALGO_MAX_TIME)
+    quant_param_t temp_quant_param;
+    temp_quant_param.in_scale = options.quants->at(node->GetId()).scale[0];
+    temp_quant_param.out_scale = 1.0f / options.quants->at(node->GetId()).scale[0];
+    temp_quant_param.d_flt_scale = wegiht_quant.addr;
+    temp_quant_param.pre_scale = 0.0f;
+
+    auto stream = options.device->GetStream();    
+
+#ifdef PPLNN_ENABLE_CUDA_JIT
+    // Do select
+    LOG(INFO) << "Compiling " << node->GetName();
+    int device_id = options.device->GetDeviceId();
+    PPLCUDAConvolutionPredictKernel(shape_in0.GetDataType(), attr_param_.extra_param.algo_info, temp_conv_param);
+    auto timer = PPLCUDAConvolutionJitSelectKernelInt8(device_id, stream, shape_in0.GetDataType(), (int4*)input_buffer.addr,
+                                                      (int4*)weight_buffer.addr, (int4*)output_buffer.addr,
+                                                      (int4*)bias_buffer.addr, (int4*)temp_buffer.addr,
+                                                      attr_param_.extra_param.algo_info, temp_conv_param, temp_quant_param, temp_fuse_param);
+#else
+    // Do select
+    auto timer = PPLCUDAConvolutionSelectKernelInt8(stream, shape_in0.GetDataType(), (int4*)input_buffer.addr,
+                                                   (int4*)weight_buffer.addr, (int4*)output_buffer.addr,
+                                                   (int4*)bias_buffer.addr, (int4*)temp_buffer.addr,
+                                                   attr_param_.extra_param.algo_info, temp_conv_param, temp_quant_param, temp_fuse_param);
+#endif
+    CudaArgs::AlgoSelects algo_select;
+    algo_select.kname  = attr_param_.extra_param.algo_info.algo_name;
+    algo_select.kid    = attr_param_.extra_param.algo_info.kid;
+    algo_select.splitk = attr_param_.extra_param.algo_info.splitk;
+    algo_select.splitf = attr_param_.extra_param.algo_info.splitf;
+    options.algos->emplace(key_str, std::move(algo_select));
+    LoadAlgoInfo(options.args->save_algo_path, attr_param_.extra_param.algo_info, key_str);
     return timer;
 }
 

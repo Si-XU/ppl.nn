@@ -72,6 +72,12 @@ If you want to use specified CUDA toolkit version, please specify `CUDA_TOOLKIT_
 ./build.sh -DHPCC_USE_CUDA=ON -DCUDA_TOOLKIT_ROOT_DIR=/path/to/cuda-toolkit-root-dir
 ```
 
+We use runtime-compiling version by default. If you want to use static version (build all kernels in advance), please specify `PPLNN_ENABLE_CUDA_JIT` as following:
+
+```bash
+./build.sh -DHPCC_USE_CUDA=ON -DPPLNN_ENABLE_CUDA_JIT=OFF
+```
+
 #### Windows
 
 Using vs2015 for example:
@@ -99,14 +105,14 @@ If you want to use a specified version of python, you can pass `PYTHON3_INCLUDE_
 Run the python demo with the following command:
 
 ```bash
-PYTHONPATH=./pplnn-build/install python3 ./tools/pplnn.py [--use-x86 | --use-cuda] --onnx-model tests/testdata/conv.onnx
+PYTHONPATH=./pplnn-build/install/lib python3 ./tools/pplnn.py [--use-x86 | --use-cuda] --onnx-model tests/testdata/conv.onnx
 ```
 
 or use both engines:
 
 ```bash
 cd ppl.nn
-PYTHONPATH=./pplnn-build/install python3 ./tools/pplnn.py --use-x86 --use-cuda --onnx-model tests/testdata/conv.onnx
+PYTHONPATH=./pplnn-build/install/lib python3 ./tools/pplnn.py --use-x86 --use-cuda --onnx-model tests/testdata/conv.onnx
 ```
 
 There is a python packaging configuration in [python/package](../../python/package). You can install pyppl using `pip`:
@@ -115,7 +121,7 @@ There is a python packaging configuration in [python/package](../../python/packa
 cd ppl.nn
 rm -rf /tmp/pyppl-package # remove old packages
 cp -r python/package /tmp/pyppl-package
-cp -r pplnn-build/install/pyppl/* /tmp/pyppl-package/pyppl # Copy .so files. See WARNING below.
+cp -r pplnn-build/install/lib/pyppl/* /tmp/pyppl-package/pyppl # Copy .so files. See WARNING below.
 cd /tmp/pyppl-package
 pip3 install .
 ```
@@ -142,7 +148,7 @@ Run the lua demo with the following commands:
 
 ```bash
 cd ppl.nn
-LUAPATH=./pplnn-build/install /path/to/your/lua-interpreter ./tools/pplnn.lua
+LUAPATH=./pplnn-build/install/lib /path/to/your/lua-interpreter ./tools/pplnn.lua
 ```
 
 Note that your lua interpreter should be compiled with options `MYCFLAGS="-DLUA_USE_DLOPEN -fPIC" MYLIBS=-ldl` to enable loading .so plugins.

@@ -47,9 +47,10 @@ __global__ void ppl_cukernel_pooling_max_global_shuffle(
   int pad_channels,
   int HW)
 {
-    int c = (blockIdx.y * blockDim.y + threadIdx.y);
+    int c  = (blockIdx.y * blockDim.y + threadIdx.y);
     int bc = blockIdx.z * pad_channels + c;
-    if (c >= pad_channels) return;
+    if (c >= pad_channels)
+        return;
 
     T res = numerical_min(T(0));
     for (int i = threadIdx.x * 2; i < HW; i += 64) {
@@ -68,15 +69,20 @@ __global__ void ppl_cukernel_pooling_max_global_shuffle(
         T sval = __shfl_down(res, offset);
 #endif
         res = (res > sval) ? res : sval;
-      }
-  
+    }
+
     // store output
     if (threadIdx.x == 0)
         output[bc] = res;
 }
 
 __global__ void ppl_cukernel_pooling_max_global_shuffle_half(
-  const half* input, half* output, int batch, int pad_channels, int HW) {
+    const half* input,
+    half* output,
+    int batch,
+    int pad_channels,
+    int HW)
+{
 #if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
     int c  = (blockIdx.y * blockDim.y + threadIdx.y);
     int bc = blockIdx.z * pad_channels + c;
@@ -225,12 +231,15 @@ ppl::common::RetCode PPLCUDAGlobalMaxPoolingForwardImpFp16(
 
 ppl::common::RetCode PPLCUDAGlobalMaxPoolingForwardImpFp32(
     cudaStream_t stream,
-    ppl::nn::TensorShape* input_shape, const float* input,
-    ppl::nn::TensorShape* output_shape, float* output) {
-    
-    int batch = output_shape->GetDim(0);
+    ppl::nn::TensorShape* input_shape,
+    const float* input,
+    ppl::nn::TensorShape* output_shape,
+    float* output)
+{
+    int batch        = output_shape->GetDim(0);
     int pad_channels = output_shape->GetDim(1) + output_shape->GetPadding1(1);
-    int in_height = input_shape->GetDim(2); int in_width = input_shape->GetDim(3);
+    int in_height    = input_shape->GetDim(2);
+    int in_width     = input_shape->GetDim(3);
 
     dim3 dim_block(32, 4, 1);
     dim3 dim_grid(1, 1, batch);

@@ -24,7 +24,7 @@
 #include <random>
 
 #include "ppl/nn/engines/cuda/data_converter.h"
-#include "ppl/nn/engines/cuda/cuda_common.h"
+#include "ppl/nn/engines/cuda/cuda_device_context.h"
 #include "ppl/nn/engines/cuda/cuda_engine_options.h"
 
 namespace ppl { namespace nn { namespace cuda {
@@ -35,7 +35,7 @@ public:
 
     void Init(uint32_t device_id);
 
-    virtual ppl::common::RetCode Realloc(uint64_t bytes, BufferDesc* buffer) = 0;
+    virtual ppl::common::RetCode Realloc(uint64_t bytes, BufferDesc* buffer) override = 0;
 
     ppl::common::RetCode Realloc(const TensorShape& shape, BufferDesc* buffer) override final {
         return Realloc(shape.GetBytesIncludingPadding(), buffer);
@@ -69,6 +69,10 @@ public:
         return &data_converter_;
     }
 
+    DeviceContext* GetContext() const override {
+        return &context_;
+    }
+
     virtual ppl::common::RetCode AllocTmpBuffer(uint64_t bytes, BufferDesc* buffer) {
         return Realloc(bytes, buffer);
     }
@@ -88,7 +92,7 @@ public:
     }
 
 private:
-    CudaCtxParam context_;
+    mutable CudaDeviceContext context_;
     CudaDataConverter data_converter_;
     std::map<edgeid_t, BufferDesc> edge2buffer_;
 };

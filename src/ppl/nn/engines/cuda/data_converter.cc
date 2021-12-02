@@ -268,11 +268,9 @@ RetCode CudaDataConverter::Convert(BufferDesc* dst, const TensorShape& dst_desc,
         }
     }
 
-    if (param.in_format == param.out_format && param.in_type == param.out_type && src_quant.scale == dst_quant.scale) {
+    if (!param.mix_format && !param.mix_type) {
         device_->Copy(dst, src, dst_desc);
-    } else if ( param.in_format == param.out_format ||
-               (param.in_type == param.out_type && src_quant.scale == dst_quant.scale)
-              ) {
+    } else if ( !param.mix_format || !param.mix_type) {
         PPLCUDADataConvert(device_->GetStream(), src.addr, dst->addr, nullptr, param);
     } else {
         auto shape_size = src_desc.GetElementsIncludingPadding() * GetSizeOfDataType(dst_desc.GetDataType());

@@ -19,7 +19,6 @@
 #define _ST_HPC_PPL_NN_RUNTIME_RUNTIME_IMPL_H_
 
 #include "ppl/nn/ir/graph.h"
-#include "ppl/nn/engines/engine_context.h"
 #include "ppl/nn/runtime/runtime.h"
 #include "ppl/nn/runtime/runtime_graph.h"
 #include "ppl/nn/runtime/runtime_graph_info.h"
@@ -76,6 +75,13 @@ public:
     ppl::common::RetCode Run() override;
     ppl::common::RetCode Sync() override;
 
+    uint32_t GetDeviceContextCount() const override {
+        return devices_.size();
+    }
+    DeviceContext* GetDeviceContext(uint32_t idx) const override {
+        return devices_[idx]->GetContext();
+    }
+
     ppl::common::RetCode GetProfilingStatistics(ProfilingStatistics* stat) const override;
 
 private:
@@ -85,6 +91,7 @@ private:
     RuntimeGraph graph_;
     std::unique_ptr<Scheduler> sched_;
     std::vector<std::unique_ptr<EngineContext>> engctx_;
+    std::vector<std::unique_ptr<Device>> devices_;
     utils::GenericCpuDevice cpu_device_; // default cpu device
     RuntimeInternalConf conf_;
     Profiler profiler_;

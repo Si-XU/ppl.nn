@@ -31,9 +31,12 @@ namespace ppl { namespace nn {
 struct RuntimeAuxInfo final {
     /** node ids in topological order */
     std::vector<nodeid_t> sorted_nodes;
+
+    /** a tensor can be released right after the last consumer finish executing */
+    std::vector<nodeid_t> tensor_last_consumer;
 };
 
-ppl::common::RetCode GenerateRuntimeAuxInfo(const RuntimeGraphInfo&, RuntimeAuxInfo*);
+ppl::common::RetCode GenerateRuntimeAuxInfo(const ir::GraphTopo*, RuntimeAuxInfo*);
 
 }} // namespace ppl::nn
 

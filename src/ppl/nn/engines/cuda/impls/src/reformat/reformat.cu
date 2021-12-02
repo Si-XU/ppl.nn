@@ -734,7 +734,7 @@ ppl::common::RetCode SetReLayoutParam(
     }
     param->i_zero_point = input_quant.zero_point[0];
     param->o_zero_point = output_quant.zero_point[0];
-    if (param->in_type == param->out_type) {
+    if (param->in_type == param->out_type && param->in_type == DATATYPE_INT8) {
         param->mix_type = !EqualQuant(input_quant, output_quant);
     }
     return RC_SUCCESS;

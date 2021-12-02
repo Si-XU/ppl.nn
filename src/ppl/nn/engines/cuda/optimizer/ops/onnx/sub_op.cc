@@ -35,7 +35,8 @@ RetCode SubOp::Init(const OptKernelOptions& options) {
             mask_ |= 1 << i;
     }
 
-    infer_type_func_ = [this](InputOutputInfo* info, std::vector<CudaTensorQuant>* quant, datatype_t type) -> RetCode {        ppl::common::RetCode status;
+    infer_type_func_ = [this](InputOutputInfo* info, std::vector<CudaTensorQuant>* quant, datatype_t type) -> RetCode {
+        ppl::common::RetCode status;
         if (type == DATATYPE_UNKNOWN) {
             status = InferHighestType(info, mask_);
         } else if (type == DATATYPE_INT8) {
@@ -46,7 +47,7 @@ RetCode SubOp::Init(const OptKernelOptions& options) {
         return status;
     };
 
-    infer_dims_func_ = [this](InputOutputInfo* info) -> RetCode {
+    infer_dims_func_ = [](InputOutputInfo* info) -> RetCode {
         return oputils::ReshapeAdd(info, nullptr);
     };
 

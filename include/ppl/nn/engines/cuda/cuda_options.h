@@ -26,7 +26,9 @@ enum {
 
        @note example:
        @code{.cpp}
-       cuda_engine->Configure(CUDA_CONF_SET_OUTPUT_FORMAT, DATAFORMAT_NDARRAY);
+       vector<dataformat_t> output_formats;
+       // fill output_formats
+       cuda_engine->Configure(CUDA_CONF_SET_OUTPUT_FORMAT, output_formats.data(), output_formats.size());
        @endcode
     */
     CUDA_CONF_SET_OUTPUT_FORMAT = 0,
@@ -36,21 +38,24 @@ enum {
 
        @note example:
        @code{.cpp}
-       cuda_engine->Configure(CUDA_CONF_SET_OUTPUT_TYPE, DATATYPE_FLOAT32);
+       vector<datatype_t> output_types;
+       // fill output_types;
+       cuda_engine->Configure(CUDA_CONF_SET_OUTPUT_TYPE, output_types.data(), output_types.size());
        @endcode
     */
     CUDA_CONF_SET_OUTPUT_TYPE,
 
     /**
-       @brief set init input dims for compiler
+       @brief set init input dims as a hint for graph optimization
 
        @note example:
        @code{.cpp}
-       std::string dims = "1_3_224_224";
-       engine->Configure(CUDA_CONF_SET_COMPILER_INPUT_SHAPE, dims.c_str());
+       vector<utils::Array<int64_t>> dims;
+       // fill dims of each input
+       engine->Configure(CUDA_CONF_SET_INPUT_DIMS, dims.data(), dims.size());
        @endcode
     */
-    CUDA_CONF_SET_COMPILER_INPUT_SHAPE,
+    CUDA_CONF_SET_INPUT_DIMS,
 
     /**
        @brief use default algorithms for conv and gemm
@@ -63,25 +68,35 @@ enum {
     CUDA_CONF_USE_DEFAULT_ALGORITHMS,
 
     /**
-       @brief the name of json file that saves quantization information
+       @param json_file a json file containing quantization information
 
        @note example:
        @code{.cpp}
-       cuda_engine->Configure(CUDA_CONF_SET_QUANTIZATION, "quantization.json");
+       cuda_engine->Configure(CUDA_CONF_SET_QUANTIZATION, json_file);
        @endcode
     */
     CUDA_CONF_SET_QUANTIZATION,
-   
+
     /**
-       @brief the name of json file that saves selected algos' index information
+       @param json_file a json file used to store selected algos' index information
 
        @note example:
        @code{.cpp}
-       cuda_engine->Configure(CUDA_CONF_SET_ALGORITHM, "algo_info.json");
+       cuda_engine->Configure(CUDA_CONF_EXPORT_ALGORITHMS, json_file);
        @endcode
     */
-    CUDA_CONF_SET_ALGORITHM,
-    
+    CUDA_CONF_EXPORT_ALGORITHMS,
+
+    /**
+       @param json_file a json file containing selected algos' index information
+
+       @note example:
+       @code{.cpp}
+       cuda_engine->Configure(CUDA_CONF_IMPORT_ALGORITHMS, json_file);
+       @endcode
+    */
+    CUDA_CONF_IMPORT_ALGORITHMS,
+
     /** max value */
     CUDA_CONF_MAX,
 };

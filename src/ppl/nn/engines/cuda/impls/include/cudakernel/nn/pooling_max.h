@@ -52,4 +52,4 @@ ppl::common::RetCode PPLCUDAMaxPoolingForwardImp(
     float in_scale,
     float out_scale);
 
-#endif //PPLCUDA_KERNEL_INCLUDE_POOLING_POOLING_MAX_H_
+#endif // PPLCUDA_KERNEL_INCLUDE_POOLING_POOLING_MAX_H_
