@@ -165,7 +165,7 @@ double TuringIMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
     return timer;
 }
 
-RetCode TuringIMMAImpgemm::ModifyParam(const ir::Node* node, OptKernelOptions& options) {
+RetCode TuringIMMAImpgemm::ModifyParam(ir::Node* node, OptKernelOptions& options) {
     this->attr_param_ = *(reinterpret_cast<CudaConvParam*>(options.param));
     auto topo = options.graph->topo.get();
     auto data = options.graph->data.get();
@@ -269,9 +269,63 @@ e = cudaDeviceSynchronize();
         options.quants->at(preedge_id).format = postshape.GetDataFormat();
     }
 
-
     reinterpret_cast<CudaConvParam*>(options.param)->extra_param.algo_info.is_initializer_weight =
         weight_iter != data->constants.end();
+
+    // Add quant to conv inputs
+    auto group = ((CudaConvParam*)options.param)->param.group;
+    auto channel_per_grp = shape_in1.GetDim(0) / group;
+    auto channel_per_grp_pad = (channel_per_grp + align_size - 1) / align_size * align_size;
+    auto total_size = channel_per_grp_pad * group;
+    auto& weight_quant = options.quants->at(node->GetInput(1));
+
+    if (!weight_quant.per_chnnal) {
+        weight_quant.scale.insert(weight_quant.scale.begin(), total_size, weight_quant.scale[0]);
+    }
+
+
+    float scales[total_size];
+    for (int i = 0; i < channel_per_grp_pad * group; i++) {
+        if (i % channel_per_grp_pad >= channel_per_grp) {
+            scales[i] = 0.0f;
+        } else {
+            scales[i] = weight_quant.scale[i / channel_per_grp_pad * channel_per_grp + i % channel_per_grp_pad];
+        }
+    }
+
+    auto quant_shape = TensorShape();
+    quant_shape.SetDimCount(1);
+    quant_shape.SetDim(0, total_size);
+    quant_shape.SetDataFormat(DATAFORMAT_NDARRAY);
+    quant_shape.SetDataType(DATATYPE_FLOAT32);
+
+    RuntimeConstantInfo quant_constat_info;
+    {
+        BufferDesc buffer;
+        status = options.device->Realloc(quant_shape, &buffer);
+        if (status != RC_SUCCESS) {
+            LOG(ERROR) << "alloc buffer for constant failed: " << GetRetCodeStr(status);
+            return status;
+        }
+
+        quant_constat_info.Reshape(quant_shape);
+        quant_constat_info.SetBuffer(buffer, options.device, true);
+    }
+
+    auto ret_pair = topo->AddEdge("Quant_" + node->GetName());
+    auto quant_edge = ret_pair.first;
+    auto quant_edge_id = quant_edge->GetId();
+    node->AddInput(quant_edge_id);
+    quant_edge->AddConsumer(node->GetId());
+
+    options.tensors->insert(make_pair(quant_edge_id, unique_ptr<TensorImpl>(new TensorImpl(quant_edge, TENSORTYPE_NORMAL))));
+    options.tensors->find(quant_edge_id)->second->GetShape() = quant_shape;
+    options.quants->resize(topo->GetMaxEdgeId());
+    options.quants->at(quant_edge_id).format = quant_shape.GetDataFormat();
+    options.quants->at(quant_edge_id).type = quant_shape.GetDataType();
+
+    options.device->CopyFromHost(&quant_constat_info.GetBufferDesc(), scales, quant_shape);
+    options.info->constants.emplace(quant_edge_id, std::move(quant_constat_info));
 
     if (attr_param_.param.bias_term == 0) {
         return RC_SUCCESS;

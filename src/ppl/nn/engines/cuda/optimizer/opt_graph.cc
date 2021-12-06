@@ -391,7 +391,7 @@ RetCode OptGraph::InitQuantization() {
             auto max_str = pair->second.fields.find("tensor_max")->second;
             auto min_str = pair->second.fields.find("tensor_min")->second;
             auto scale_str = pair->second.fields.find("scale")->second;
-            uint32_t size = max_str.content.length() / 4;
+            uint32_t size = max_str.content.length() / 8;
             temp_tensor_quant.scale.resize(size);
             temp_tensor_quant.zero_point.resize(size);
             for (uint32_t i = 0; i < size; ++i) {

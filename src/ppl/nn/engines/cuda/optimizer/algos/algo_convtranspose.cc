@@ -142,7 +142,7 @@ double ConvTransposeAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOption
     return timer;
 }
 
-RetCode ConvTransposeAlgorithm::ModifyParam(const ir::Node* node, OptKernelOptions& options) {
+RetCode ConvTransposeAlgorithm::ModifyParam(ir::Node* node, OptKernelOptions& options) {
     this->attr_param_ = *(reinterpret_cast<CudaConvTransposeParam*>(options.param));
     auto topo = options.graph->topo.get();
     auto data = options.graph->data.get();

@@ -58,7 +58,7 @@ public:
     }
 
     double ExcuteTimer(const ir::Node* node, OptKernelOptions& options) override;
-    RetCode ModifyParam(const ir::Node*, OptKernelOptions& options) override {
+    RetCode ModifyParam(ir::Node* node, OptKernelOptions& options) override {
         return RC_SUCCESS;
     }
     void ReshapeOnEdges(const ir::Node* node, std::map<edgeid_t, std::unique_ptr<TensorImpl>>* tensors,

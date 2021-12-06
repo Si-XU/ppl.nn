@@ -136,7 +136,7 @@ double DepthwiseDirect::ExcuteTimer(const ir::Node* node, OptKernelOptions& opti
     return timer;
 }
 
-RetCode DepthwiseDirect::ModifyParam(const ir::Node* node, OptKernelOptions& options) {
+RetCode DepthwiseDirect::ModifyParam(ir::Node* node, OptKernelOptions& options) {
     this->attr_param_ = *(reinterpret_cast<CudaConvParam*>(options.param));
 
     auto shape_in0 = options.tensors->find(node->GetInput(0))->second->GetShape();

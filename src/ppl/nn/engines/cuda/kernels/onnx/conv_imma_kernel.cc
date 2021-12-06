@@ -77,37 +77,24 @@ ppl::common::RetCode ConvImmaKernel::DoExecute(KernelExecContext* ctx) {
     auto output_quant = GetCommonParam()->cuda_tensor_info->at(output->GetEdge()->GetId());
     
     auto input_scale = input_quant.scale[0];
-    int qw_size = ((shape_in1.GetDim(0) / param_->param.group + 15) / 16*16) * param_->param.group;
-    if (!weight_quant.per_chnnal) {
-        weight_quant.scale.insert(weight_quant.scale.begin(), qw_size, weight_quant.scale[0]);
-    }
-    auto h_weight_scale = weight_quant.scale.data();
     auto output_scale = output_quant.scale[0];
-
-    BufferDesc weight_scale_desc;
-    GetCudaDevice()->Realloc(qw_size*sizeof(float), &weight_scale_desc);
-    BufferDescGuard __weight_scale_guard(&weight_scale_desc, [this](BufferDesc* buffer) -> void {
-        GetCudaDevice()->Free(buffer);
-    });
-    auto d_weight_scale = weight_scale_desc.addr;
-//FIXME
-{
-float *st = (float*)malloc(qw_size*sizeof(float));
-auto sz_per_grp = shape_in1.GetDim(0) / param_->param.group;
-auto sz_per_grp_pad = (shape_in1.GetDim(0) / param_->param.group + 15) / 16 * 16;
-for(int i = 0; i < qw_size; i++){
-    auto g_id = i / sz_per_grp_pad;
-    auto id = g_id*sz_per_grp + (i % sz_per_grp_pad);
-    st[i] = (i % sz_per_grp_pad) < sz_per_grp? h_weight_scale[id] : 0.f;
-}
-    cudaMemcpy(d_weight_scale, st, qw_size*sizeof(float), cudaMemcpyHostToDevice);
-free(st);
-}
+    auto d_weight_scale = ctx->GetInput<TensorImpl>(ctx->GetInputCount() - 1)->GetBufferPtr();
+    // {
+    //     auto intput = ctx->GetInput<TensorImpl>(ctx->GetInputCount() - 1);
+    //     int qw_size = ((shape_in1.GetDim(0) / param_->param.group + 15) / 16*16) * param_->param.group;
+    //     float* a = new float[qw_size];
+    //     // cudaMemcpy(a, intput->GetBufferPtr(), qw_size*sizeof(float), cudaMemcpyDeviceToHost);
+    //     intput->CopyToHost(a);
+    //     LOG(ERROR) << GetName() << " begin print " << input->GetShape().GetBytesIncludingPadding();
+    //     for(int i = 0; i < 5; i++) {
+    //         printf("%d, %f\n", i, a[i]);
+    //     }
+    //     free(a);
+    // }
 
     temp_quant_param.in_scale     = input_scale;
     temp_quant_param.out_scale    = 1 / output_scale;
     temp_quant_param.d_flt_scale  = d_weight_scale;
-
 
     ConvertToForwardConvParam(shape_in0, shape_in1, shape_out, param_->param, temp_conv_param);
     ConvertToForwardFuseParam(ctx, GetCudaDevice(), param_->extra_param.fuse_info, temp_fuse_param);
