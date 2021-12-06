@@ -29,13 +29,16 @@ public:
     NormalAlgorithm() {
         std::set<dataformat_t> ndarray{DATAFORMAT_NDARRAY};
         std::set<dataformat_t> nhwc8{DATAFORMAT_NHWC8};
+        std::set<dataformat_t> nhwc16{DATAFORMAT_NHWC16};
 
         ndarray_formats_.emplace(DATAFORMAT_NDARRAY, ndarray);
         nhwc8_formats_.emplace(DATAFORMAT_NHWC8, nhwc8);
         inherited_formats_.emplace(DATAFORMAT_NDARRAY, ndarray);
         inherited_formats_.emplace(DATAFORMAT_NHWC8, nhwc8);
+        inherited_formats_.emplace(DATAFORMAT_NHWC16, nhwc16);
         arbitrary_formats_.emplace(DATAFORMAT_NDARRAY, ndarray);
         arbitrary_formats_.emplace(DATAFORMAT_NHWC8, ndarray);
+        arbitrary_formats_.emplace(DATAFORMAT_NHWC16, ndarray);
     }
 
     void GetAttrParam(void*& param) const override {

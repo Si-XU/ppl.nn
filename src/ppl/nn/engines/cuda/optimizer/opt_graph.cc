@@ -445,7 +445,7 @@ RetCode OptGraph::UpdateType() {
         IOinfo.SetNode(node);
         CudaOptKernel* kernel = (CudaOptKernel*)(info_->kernels.find(node->GetId())->second.get());
 
-        datatype_t kernel_type = args_->kernel_default_type;
+        datatype_t kernel_type = args_->default_kernel_type;
         auto conf_pair = args_->node_types.find(node->GetName());
         if (conf_pair != args_->node_types.end()) {
             kernel_type = conf_pair->second;
