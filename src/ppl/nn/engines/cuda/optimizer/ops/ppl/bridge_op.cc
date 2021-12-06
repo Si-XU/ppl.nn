@@ -129,12 +129,10 @@ RetCode BridgeOp::DeleteBridgeNode(ir::Node* node, ir::Graph* graph,
     auto nextnode = topo->GetNodeById(nextnode_id);
     if (prequant.format == postquant.format && // two edge has the same format
         prequant.type == postquant.type && // two edge has the same type
-        EqualQuant(prequant, postquant) && // two edge has the same quant
+        (prequant.type != DATATYPE_INT8 || EqualQuant(prequant, postquant)) && // two edge has the same quant
         topo->GetInput(topo->GetEdgeById(preedge_id)->GetName()) == INVALID_EDGEID && // and preedge is not graph input
-        topo->GetExtraInput(topo->GetEdgeById(preedge_id)->GetName()) ==
-            INVALID_EDGEID && // and preedge is not graph extrainput
-        topo->GetOutput(topo->GetEdgeById(postedge_id)->GetName()) ==
-            INVALID_EDGEID) { // and postedge is not graph output
+        topo->GetExtraInput(topo->GetEdgeById(preedge_id)->GetName()) == INVALID_EDGEID && // and preedge is not graph extrainput
+        topo->GetOutput(topo->GetEdgeById(postedge_id)->GetName()) == INVALID_EDGEID) { // and postedge is not graph output
 
         preedge->DelConsumer(node->GetId());
         preedge->AddConsumer(nextnode_id);
@@ -144,6 +142,11 @@ RetCode BridgeOp::DeleteBridgeNode(ir::Node* node, ir::Graph* graph,
         topo->DelNodeById(node->GetId());
 
         return RC_SUCCESS;
+    } else {
+        LOG(ERROR) << "node name " << node->GetName();
+        LOG(ERROR) << "format " << prequant.format << " " << postquant.format;
+        LOG(ERROR) << "type " << prequant.type << " " << postquant.type;
+        LOG(ERROR) << "quant " << EqualQuant(prequant, postquant);
     }
     return RC_UNSUPPORTED;
 }

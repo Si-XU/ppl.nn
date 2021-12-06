@@ -76,7 +76,6 @@ RetCode ConvOp::Init(const OptKernelOptions& options) {
                     in_shape->SetDataType(ppl::common::DATATYPE_FLOAT32);
                     continue;
                 }
-                in_quant = out_quant;
                 in_shape->SetDataType(out_quant.type);
             }
             return ppl::common::RC_SUCCESS;

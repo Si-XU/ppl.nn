@@ -533,21 +533,9 @@ void PPLCUDACVTFormat(
 {
     if (param.channel < LEASTCHANNEL) {
         if (param.out_type == DATATYPE_INT8) {
-            auto host_in = new int8_t[param.in_elems];
-            auto host_out = new int8_t[param.out_elems];
-            cudaMemcpy(host_in, input, param.in_elems, cudaMemcpyDefault);
             PPLCUDASmallChannelCVTFormat(stream, input, output, param);
-            cudaMemcpy(host_out, output, param.out_elems, cudaMemcpyDefault);
-            delete[] host_in;
-            delete[] host_out;
         } else if (param.out_type == DATATYPE_FLOAT32) {
-            auto host_in = new float[param.in_elems];
-            auto host_out = new float[param.out_elems];
-            cudaMemcpy(host_in, input, 4 * param.in_elems, cudaMemcpyDefault);
             PPLCUDASmallChannelCVTFormat(stream, input, output, param);
-            cudaMemcpy(host_out, output, 4 * param.out_elems, cudaMemcpyDefault);
-            delete[] host_in;
-            delete[] host_out;
         } else {
             PPLCUDASmallChannelCVTFormat(stream, input, output, param);
         }
