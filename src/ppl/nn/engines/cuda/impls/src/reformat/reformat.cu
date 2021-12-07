@@ -663,7 +663,7 @@ bool IsFloatEqual(const std::vector<float>& a, const std::vector<float>& b) {
         return false;
     }
     for (uint32_t i = 0; i < a.size(); i++) {
-        if (fabs(a[0] - b[0]) > FLT_EPSILON) {
+        if (fabs(a[i] - b[i]) > FLT_EPSILON) {
             return false;
         }
     }

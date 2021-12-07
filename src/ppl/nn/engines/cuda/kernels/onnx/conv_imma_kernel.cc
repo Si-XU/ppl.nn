@@ -108,7 +108,6 @@ ppl::common::RetCode ConvImmaKernel::DoExecute(KernelExecContext* ctx) {
         auto elt = ctx->GetInput<TensorImpl>(elt_index);
         auto elt_quant = GetCommonParam()->cuda_tensor_info->at(elt->GetEdge()->GetId());
         temp_quant_param.pre_scale = elt_quant.scale[0];
-        LOG(INFO) << output_scale << " " << temp_quant_param.pre_scale;
     }
     if (param_->extra_param.fuse_info.channel_offset >= 0) {
          temp_quant_param.out_scale = 1 / GetCommonParam()->cuda_tensor_info->at(param_->extra_param.fuse_info.concat_edge_id).scale[0];
