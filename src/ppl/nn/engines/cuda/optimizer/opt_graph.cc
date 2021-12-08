@@ -314,7 +314,7 @@ RetCode OptGraph::AddBridgeKernels() {
         }
     }
 
-    LOG(DEBUG) << "added " << count << " new bridge kernels";
+    LOG(INFO) << "added " << count << " new bridge kernels";
     return RC_SUCCESS;
 }
 
@@ -391,7 +391,7 @@ RetCode OptGraph::InitQuantization() {
             auto max_str = pair->second.fields.find("tensor_max")->second;
             auto min_str = pair->second.fields.find("tensor_min")->second;
             auto scale_str = pair->second.fields.find("scale")->second;
-            uint32_t size = max_str.content.length() / 4;
+            uint32_t size = max_str.content.length() / 8;
             temp_tensor_quant.scale.resize(size);
             temp_tensor_quant.zero_point.resize(size);
             for (uint32_t i = 0; i < size; ++i) {
@@ -445,11 +445,30 @@ RetCode OptGraph::UpdateType() {
         IOinfo.SetNode(node);
         CudaOptKernel* kernel = (CudaOptKernel*)(info_->kernels.find(node->GetId())->second.get());
 
-        datatype_t kernel_type = args_->kernel_default_type;
+        datatype_t kernel_type = args_->default_kernel_type;
         auto conf_pair = args_->node_types.find(node->GetName());
         if (conf_pair != args_->node_types.end()) {
             kernel_type = conf_pair->second;
         }
+        if (kernel_type == DATATYPE_INT8) {
+            for (uint32_t i = 0; i < node->GetInputCount(); ++i) {
+                auto edge_id = node->GetInput(i);
+                if (edge_id == INVALID_EDGEID) {
+                    continue;
+                }
+                auto& input_quant = graph_quants.at(edge_id);
+                input_quant.type = kernel_type;
+            }
+            for (uint32_t i = 0; i < node->GetOutputCount(); ++i) {
+                auto edge_id = node->GetOutput(i);
+                if (edge_id == INVALID_EDGEID) {
+                    continue;
+                }
+                auto& output_quant = graph_quants.at(edge_id);
+                output_quant.type = kernel_type;
+            }
+        }
+
         auto status = kernel->InferType(&IOinfo, &graph_quants, kernel_type);
         if (status != RC_SUCCESS) {
             LOG(ERROR) << "Set type for node[" << node->GetName() << "] failed: " << GetRetCodeStr(status);
@@ -598,7 +617,7 @@ RetCode OptGraph::DeleteBridgeKernels() {
         }
     }
 
-    LOG(DEBUG) << "deleted " << count << " bridge kernels";
+    LOG(INFO) << "deleted " << count << " bridge kernels";
     return RC_SUCCESS;
 }
 
@@ -615,11 +634,11 @@ RetCode OptGraph::DoOptimize(CudaDevice* device) {
         return status;
     }
 
-    // status = FuseOperator();
-    // if (status != RC_SUCCESS) {
-    //     LOG(ERROR) << "Fuse operators failed: " << GetRetCodeStr(status);
-    //     return status;
-    // }
+    status = FuseOperator();
+    if (status != RC_SUCCESS) {
+        LOG(ERROR) << "Fuse operators failed: " << GetRetCodeStr(status);
+        return status;
+    }
 
     status = AddBridgeKernels();
     if (status != RC_SUCCESS) {
@@ -657,11 +676,11 @@ RetCode OptGraph::DoOptimize(CudaDevice* device) {
         return status;
     }
 
-    // status = FuseOperator();
-    // if (status != RC_SUCCESS) {
-    //     LOG(ERROR) << "Fuse operators failed: " << GetRetCodeStr(status);
-    //     return status;
-    // }
+    status = FuseOperator();
+    if (status != RC_SUCCESS) {
+        LOG(ERROR) << "Fuse operators failed: " << GetRetCodeStr(status);
+        return status;
+    }
 
     return RC_SUCCESS;
 }

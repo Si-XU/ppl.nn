@@ -18,6 +18,7 @@
 #include "ppl/nn/engines/cuda/kernels/onnx/conv_depthwise_kernel.h"
 
 #include <cuda_fp16.h>
+#include "cuda_runtime.h" 
 
 namespace ppl { namespace nn { namespace cuda {
 
@@ -82,7 +83,7 @@ ppl::common::RetCode ConvDepthwiseKernel::DoExecute(KernelExecContext* ctx) {
     BufferDesc weight_buffer;
     if (!param_->extra_param.algo_info.is_initializer_weight) {
         auto newshape = shape_in1;
-        newshape.SetDim(0, (newshape.GetDim(0) + 7) / 8 * 8);
+        newshape.SetDim(0, (newshape.GetDim(0) + 15) / 16 * 16);
 
         auto status = GetCudaDevice()->Realloc(newshape, &weight_buffer);
         if (status != ppl::common::RC_SUCCESS) {
@@ -97,13 +98,14 @@ ppl::common::RetCode ConvDepthwiseKernel::DoExecute(KernelExecContext* ctx) {
         GetDevice()->Free(buffer);
     });
 
+
     auto stream = GetStream();
     PPLCUDADepthwiseForwardCudaImp(
         stream, param_->extra_param.algo_info.kid, ctx->GetInput<TensorImpl>(0)->GetBufferPtr(),
         param_->extra_param.algo_info.is_initializer_weight ? ctx->GetInput<TensorImpl>(1)->GetBufferPtr()
                                                             : weight_buffer.addr,
         param_->param.bias_term ? ctx->GetInput<TensorImpl>(2)->GetBufferPtr() : nullptr, temp_conv_param,
-        temp_fuse_param, ctx->GetOutput<TensorImpl>(0)->GetBufferPtr(), shape_out.GetDataType(), input_quant0.scale[0], input_quant1.scale[0], output_quant.scale[0]);
+        temp_fuse_param, ctx->GetOutput<TensorImpl>(0)->GetBufferPtr(), shape_out.GetDataType(), input_quant0.scale[0], input_quant1.scale, output_quant.scale[0]);
 
 
     LOG(DEBUG) << "Excute Depthwise conv with kernel id:" << param_->extra_param.algo_info.kid;

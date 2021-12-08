@@ -31,7 +31,7 @@ int PPLCUDADepthwiseSelectKernel(
     void* output,
     ppl::common::datatype_t type,
     float pic_scale,
-    float flt_scale,
+    std::vector<float> flt_scale,
     float out_scale);
 
 void PPLCUDADepthwiseForwardCudaImp(
@@ -45,7 +45,7 @@ void PPLCUDADepthwiseForwardCudaImp(
     void* output,
     ppl::common::datatype_t type,
     float pic_scale,
-    float flt_scale,
+    std::vector<float> flt_scale,
     float out_scale);
 
 void PPLCUDADepthwiseConvertFilter(

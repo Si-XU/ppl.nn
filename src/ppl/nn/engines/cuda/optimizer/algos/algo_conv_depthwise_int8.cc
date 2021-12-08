@@ -27,12 +27,12 @@ using namespace ppl::common;
 
 namespace ppl { namespace nn { namespace cuda {
 
-void DepthwiseDirect::DeleteAttrParam(void*& param) {
+void DepthwiseDirectInt8::DeleteAttrParam(void*& param) {
     delete (CudaConvParam*)param;
     return;
 }
 
-void DepthwiseDirect::GetAttrParam(void*& param) const {
+void DepthwiseDirectInt8::GetAttrParam(void*& param) const {
     if (param == nullptr) {
         param = new CudaConvParam();
     }
@@ -40,28 +40,28 @@ void DepthwiseDirect::GetAttrParam(void*& param) const {
     return;
 }
 
-bool DepthwiseDirect::IsSupported(const ir::Node* node, const OptKernelOptions& options,
-                                  dataformat_t input_format) const {
+bool DepthwiseDirectInt8::IsSupported(const ir::Node* node, const OptKernelOptions& options, dataformat_t input_format) const {
     uint32_t group = (reinterpret_cast<CudaConvParam*>(options.param))->param.group;
     // check if conv is depthwise
+    //return false;
     auto tensor1 = options.tensors->find(node->GetInput(1))->second->GetShape();
     if (group != tensor1.GetDim(0) || tensor1.GetDim(1) != 1 || group == 1) {
         return false;
     }
     // check if conv is quantization
     auto quant0 = options.quants->at(node->GetInput(0));
-    if (quant0.type == DATATYPE_INT8) {
+    if (quant0.type != DATATYPE_INT8) {
         return false;
     }
-    if (input_format != DATAFORMAT_NHWC8) {
+    if (input_format != DATAFORMAT_NHWC16) {
         return false;
     }
     return true;
 }
 
-double DepthwiseDirect::ExcuteTimer(const ir::Node* node, OptKernelOptions& options) {
+double DepthwiseDirectInt8::ExcuteTimer(const ir::Node* node, OptKernelOptions& options) {
     this->attr_param_ = *(reinterpret_cast<CudaConvParam*>(options.param));
-    attr_param_.extra_param.algo_info.algo_type = "DepthwiseDirect";
+    attr_param_.extra_param.algo_info.algo_type = "DepthwiseDirectInt8";
     attr_param_.extra_param.algo_info.kid = 0;
 
     // If the node has selcted, return answer directly
@@ -128,18 +128,21 @@ double DepthwiseDirect::ExcuteTimer(const ir::Node* node, OptKernelOptions& opti
     auto diff = std::chrono::duration_cast<std::chrono::microseconds>(run_end_ts - run_begin_ts);
     double timer = (double)diff.count() / 1000;
 
-    LOG(DEBUG) << "Select DepthwiseDirect algorithm with kernel index " << attr_param_.extra_param.algo_info.kid
-               << " and excute timer " << timer << " for node[" << node->GetName() << "]";
+    LOG(DEBUG) << "Select DepthwiseDirectInt8 algorithm with kernel index "
+               << attr_param_.extra_param.algo_info.kid << " and excute timer " << timer << " for node["
+               << node->GetName() << "]";
 
     SelectionInfo temp_res(kernel_id, 1, 1, timer);
     selection_res_.emplace(node->GetId(), std::move(temp_res));
     return timer;
 }
 
-RetCode DepthwiseDirect::ModifyParam(ir::Node* node, OptKernelOptions& options) {
+RetCode DepthwiseDirectInt8::ModifyParam(ir::Node* node, OptKernelOptions& options) {
     this->attr_param_ = *(reinterpret_cast<CudaConvParam*>(options.param));
 
     auto shape_in0 = options.tensors->find(node->GetInput(0))->second->GetShape();
+    auto shape_in1 = options.tensors->find(node->GetInput(1))->second->GetShape();
+    auto shape_out = options.tensors->find(node->GetOutput(0))->second->GetShape();
     auto align_size = ppl::common::cuda::GetDataFormatChannelAlignment(shape_in0.GetDataFormat());
 
     auto topo = options.graph->topo.get();
@@ -148,6 +151,9 @@ RetCode DepthwiseDirect::ModifyParam(ir::Node* node, OptKernelOptions& options) 
     auto weight_node = topo->GetNodeById(weight_edge->GetProducer());
     auto preedge_id = weight_node->GetInput(0);
     auto postedge_id = node->GetInput(1);
+
+    conv_param_t temp_conv_param;
+    ConvertToForwardConvParam(shape_in0, shape_in1, shape_out, attr_param_.param, temp_conv_param);
 
     auto weight_iter = data->constants.find(preedge_id);
     if (weight_iter != data->constants.end() && // is a constant tensor and has not be loaded
@@ -179,36 +185,30 @@ RetCode DepthwiseDirect::ModifyParam(ir::Node* node, OptKernelOptions& options) 
             constant_info.Reshape(postshape); // give the init shape, but the actual shape is padded
             constant_info.SetBuffer(buffer, options.device, true);
         }
-
-        status = options.device->GetDataConverter()->ConvertFromHost(&temp_buffer, postshape,
-                                                                     weight_iter->second.data.data(), preshape);
+        status = ((CudaDataConverter*)options.device->GetDataConverter())->ConvertFromHost(&temp_buffer, postshape, options.quants->at(postedge_id), 
+                                                                     weight_iter->second.data.data(), preshape, options.quants->at(preedge_id));
         if (status != RC_SUCCESS) {
             LOG(ERROR) << "copy constant failed: " << GetRetCodeStr(status);
             return status;
         }
 
-        conv_param_t temp_conv_param;
-        auto shape_in0 = options.tensors->find(node->GetInput(0))->second->GetShape();
-        auto shape_in1 = options.tensors->find(node->GetInput(1))->second->GetShape();
-        auto shape_out = options.tensors->find(node->GetOutput(0))->second->GetShape();
-
-
-        ConvertToForwardConvParam(shape_in0, shape_in1, shape_out, attr_param_.param, temp_conv_param);
         auto stream = options.device->GetStream();
         PPLCUDADepthwiseConvertFilter(stream, temp_buffer.addr, constant_info.GetBufferDesc().addr, temp_conv_param, shape_out.GetDataType());
 
         options.info->constants.emplace(preedge_id, std::move(constant_info));
         options.tensors->find(preedge_id)->second->GetShape() = postshape;
+        options.quants->at(preedge_id) = options.quants->at(postedge_id);
         options.quants->at(preedge_id).format = postshape.GetDataFormat();
         options.quants->at(preedge_id).type = postshape.GetDataType();
     }
 
     reinterpret_cast<CudaConvParam*>(options.param)->extra_param.algo_info.is_initializer_weight =
         weight_iter != data->constants.end();
+
     return RC_SUCCESS;
 }
 
-void DepthwiseDirect::ReshapeOnEdges(const ir::Node* node, std::map<edgeid_t, std::unique_ptr<TensorImpl>>* tensors,
+void DepthwiseDirectInt8::ReshapeOnEdges(const ir::Node* node, std::map<edgeid_t, std::unique_ptr<TensorImpl>>* tensors,
                                      dataformat_t input_format, dataformat_t output_format) {
     for (uint32_t i = 0; i < node->GetInputCount(); ++i) { // only reset formats of input0 and fused nodes
         auto edge_id = node->GetInput(i);

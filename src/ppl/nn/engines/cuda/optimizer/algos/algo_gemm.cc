@@ -150,7 +150,7 @@ double GemmAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& option
     return timer;
 }
 
-RetCode GemmAlgorithm::ModifyParam(const ir::Node* node, OptKernelOptions& options) {
+RetCode GemmAlgorithm::ModifyParam(ir::Node* node, OptKernelOptions& options) {
     this->attr_param_ = *(reinterpret_cast<CudaGemmParam*>(options.param));
     auto topo = options.graph->topo.get();
     auto data = options.graph->data.get();

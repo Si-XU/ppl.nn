@@ -25,6 +25,8 @@
 #include "cudakernel/common/cuda_arch.h"
 
 #include <cuda_fp16.h>
+#include <vector>
+
 
 
 #define PARAMLIST      const half* input, \
@@ -209,19 +211,21 @@ __forceinline__ __device__ void load_bias_float(
 
 template<int TILE_H, int TILE_W>
 __forceinline__ __device__ void load_bias_int8(
-    const int8_t* bias,
+    const float* bias,
     int c_idx,
     int channels,
-    float out_val[TILE_H][TILE_W]) 
+    float out_val[TILE_H][TILE_W],
+    const float pic_scale,
+    const float* flt_scale) 
 {
 #if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
 
-    int8_t bias_val = c_idx < channels ? bias[c_idx] : 0;
+    float bias_val = c_idx < channels ? bias[c_idx] : 0;
 #pragma unroll
     for (int i = 0; i < TILE_H; i++) {
 #pragma unroll
         for (int j = 0; j < TILE_W; j++) {
-            out_val[i][j] = out_val[i][j] + bias_val;
+            out_val[i][j] = out_val[i][j] * pic_scale * (c_idx < channels ? flt_scale[c_idx] : 0) + bias_val;
         }
     }
 #endif
@@ -413,8 +417,6 @@ __forceinline__ __device__ void write_global_int8(
     int paddingc,
     int base_offset,
     int8_t* output,
-    float pic_scale,
-    float flt_scale,
     float out_scale)
 {
 #if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
@@ -424,7 +426,7 @@ __forceinline__ __device__ void write_global_int8(
         for (int j = 0; j < TILE_W; j++) {
             bool in_padding = h_idx * TILE_H + i < out_height && w_idx * TILE_W + j < out_width;
             if (in_padding) {
-                int32_t res = round(out_val[i][j] * pic_scale * flt_scale / out_scale);
+                int32_t res = round(out_val[i][j] / out_scale);
                 if(res > 127) res = 127;
                 else if(res < -128) res = -128;
                 output[base_offset + i * out_width * paddingc + j * paddingc] = c_idx < channels ? res : 0;
@@ -522,7 +524,7 @@ template<int TILE_H, int TILE_W, int SRC_TILE_H, int SRC_TILE_W, int KERNEL_H, i
 __global__ void ppl_cuda_depthwise_int8mma(
     const int8_t* input,
     const int8_t* filter,
-    const int8_t* bias,
+    const float* bias,
     DivModFast padc_fast,
     DivModFast hw_fast,
     DivModFast width_fast,
@@ -553,9 +555,9 @@ __global__ void ppl_cuda_depthwise_int8mma(
     int total_elements,
     int8_t* output,
     fuse_param_t fuse_params,
-    float pic_scale,
-    float flt_scale,
-    float out_scale) 
+    const float pic_scale,
+    const float* flt_scale,
+    const float out_scale) 
 {
 #if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
 
@@ -592,7 +594,7 @@ __global__ void ppl_cuda_depthwise_int8mma(
     base_offset = n_idx * out_height * out_width * paddingc + h_idx  * TILE_H * out_width * paddingc + w_idx * TILE_W * paddingc + c_idx;
 
     if (bias) {
-        load_bias_int8<TILE_H, TILE_W>(bias, c_idx, channels, out_val);
+        load_bias_int8<TILE_H, TILE_W>(bias, c_idx, channels, out_val, pic_scale, flt_scale);
     }
     
     fuse_process_float<TILE_H, TILE_W>(out_val, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
@@ -601,7 +603,8 @@ __global__ void ppl_cuda_depthwise_int8mma(
         base_offset = fuse_params.concat_offset + n_idx * out_height * out_width * paddingc + h_idx  * TILE_H * out_width * paddingc + w_idx * TILE_W * paddingc + c_idx;
         output = (int8_t*)fuse_params.post_concat;
     }
-    write_global_int8<TILE_H, TILE_W>(out_val, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, output, pic_scale, flt_scale, out_scale);
+    
+    write_global_int8<TILE_H, TILE_W>(out_val, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, output, out_scale);
 #endif
 }
 
@@ -921,7 +924,7 @@ template<>
 __global__ void ppl_cuda_depthwise_int8mma<-1,-1,-1,-1,-1,-1,-1,-1>(
     const int8_t* input,
     const int8_t* filter,
-    const int8_t* bias,
+    const float* bias,
     DivModFast padc_fast,
     DivModFast hw_fast,
     DivModFast width_fast,
@@ -951,9 +954,9 @@ __global__ void ppl_cuda_depthwise_int8mma<-1,-1,-1,-1,-1,-1,-1,-1>(
     int total_elements,
     int8_t* output,
     fuse_param_t fuse_params,
-    float pic_scale,
-    float flt_scale,
-    float out_scale) 
+    const float pic_scale,
+    const float* flt_scale,
+    const float out_scale) 
 {
 #if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9    
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -968,7 +971,7 @@ __global__ void ppl_cuda_depthwise_int8mma<-1,-1,-1,-1,-1,-1,-1,-1>(
     width_fast.divmod(tile_hw_idx, h_idx, w_idx);
 
     int n_idx = tid / (paddingc * tile_height * tile_width);
-    float out_val = 0.0;
+    int32_t out_val0 = 0;
     int8_t flt_val;
     int8_t pic_val;
     
@@ -983,14 +986,14 @@ __global__ void ppl_cuda_depthwise_int8mma<-1,-1,-1,-1,-1,-1,-1,-1>(
             flt_offset += paddingc;
             bool pred = (in_h_idx + i * hole_h >= 0) && (in_h_idx + i * hole_h < in_height) && (in_w_idx + j * hole_w >= 0) && (in_w_idx + j * hole_w < in_width);
             pic_val = pred ? input[base_offset + i * hole_h * in_height_stride + j * hole_w * in_width_stride] : 0; 
-            out_val = flt_val * pic_val + out_val;
+            out_val0 = flt_val * pic_val + out_val0;
         }
     }
 
     base_offset = n_idx * out_height * out_width * paddingc + h_idx * out_width * paddingc + w_idx * paddingc + c_idx;
-
+    float out_val = out_val0 * pic_scale * (c_idx < channels ? flt_scale[c_idx] : 0.0);
     if (bias) {
-        int8_t bias_val = c_idx < channels ? bias[c_idx] : 0; 
+        float bias_val = c_idx < channels ? bias[c_idx] : 0.0; 
         out_val = out_val + bias_val;
     }
     if (fuse_params.has_activation){
@@ -1029,7 +1032,7 @@ __global__ void ppl_cuda_depthwise_int8mma<-1,-1,-1,-1,-1,-1,-1,-1>(
         paddingc = fuse_params.concat_stride;
         base_offset = fuse_params.concat_offset + n_idx * out_height * out_width * paddingc + h_idx * out_width * paddingc + w_idx * paddingc + c_idx;
     }
-    int32_t res = round(out_val * pic_scale * flt_scale / out_scale);
+    int32_t res = round(out_val / out_scale);
     if(res > 127) res = 127;
     else if(res < -128) res = -128;
     output[base_offset] = res;
@@ -1074,6 +1077,51 @@ __global__ void __launch_bounds__(32) ppl_cukernel_matrix_transpose(
         for (int i = 0; i < 32; i++) {
             if (out_h + i < out_height) {
                 cvt_filter[out_idx + i * out_width] = (out_w < in_height && (out_h + i) < in_width) ? shared[tid][i] : regz;
+            }
+        }
+    }
+#endif
+}
+
+__global__ void __launch_bounds__(32) ppl_cukernel_matrix_transpose_int8(
+    const int8_t *filter,
+    int8_t *cvt_filter,
+    int in_height,
+    int in_width,
+    int out_height,
+    int out_width)
+{
+#if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9    
+
+    __shared__ int8_t shared[32][33];
+    int tid         = threadIdx.x;
+    int bx          = blockIdx.x;
+    int by          = blockIdx.y;
+    int bz          = blockIdx.z;
+    int in_h         = by * 32;
+    int in_w         = bx * 32 + tid;
+    int out_h        = bx * 32;
+    int out_w        = by * 32 + tid;
+    uint64_t in_idx  = ((uint64_t)bz * in_height * in_width) + ((uint64_t)by * in_width * 32) + (bx * 32) + tid;
+    uint64_t out_idx = ((uint64_t)bz * out_height * out_width) +
+                      ((uint64_t)bx * out_width * 32) + (by * 32) + tid;
+
+    if (in_w < in_width) {
+        for (int i = 0; i < 32; i++) {
+            if (in_h + i < in_height) {
+                shared[i][tid] = filter[in_idx + i * in_width];
+            }
+        }
+    }
+    __syncthreads();
+
+    int8_t regz = 0;
+    if (out_w < out_width) {
+        for (int i = 0; i < 32; i++) {
+            if (out_h + i < out_height) {
+                if(out_w < in_height && (out_h + i) < in_width) {
+                    cvt_filter[out_idx + i * out_width] = (out_w < in_height && (out_h + i) < in_width) ? shared[tid][i] : regz;
+                }
             }
         }
     }

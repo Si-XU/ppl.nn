@@ -147,7 +147,7 @@ double TuringHMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
     return timer;
 }
 
-RetCode TuringHMMAImpgemm::ModifyParam(const ir::Node* node, OptKernelOptions& options) {
+RetCode TuringHMMAImpgemm::ModifyParam(ir::Node* node, OptKernelOptions& options) {
     this->attr_param_ = *(reinterpret_cast<CudaConvParam*>(options.param));
     auto topo = options.graph->topo.get();
     auto data = options.graph->data.get();

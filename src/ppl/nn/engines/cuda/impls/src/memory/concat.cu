@@ -175,7 +175,7 @@ bool IsConcatNoPadding(
     ppl::nn::TensorShape* output_shape,
     int mask)
 {
-    if (output_shape->GetDataFormat() != ppl::common::DATAFORMAT_NHWC8 || axis != 1)
+    if ((output_shape->GetDataFormat() != ppl::common::DATAFORMAT_NHWC8 && output_shape->GetDataFormat() != ppl::common::DATAFORMAT_NHWC16) || axis != 1)
         return false;
     for (int i = 0; i < num_inputs; i++) {
         if (input_padded_dims[i][axis] - input_dims[i][axis] != 0)
@@ -318,7 +318,8 @@ ppl::common::RetCode PPLCUDAConcatForwardImp(
             }
 #undef SWITCH_CASE
         }
-    } else if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8) {
+    } else if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8 ||
+               output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC16) {
         // nhwc, axis == 1 means last dim
         if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT16 && num_inputs == 2 &&
             axis == 1) {
