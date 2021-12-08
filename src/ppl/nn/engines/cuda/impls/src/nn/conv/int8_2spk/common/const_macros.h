@@ -24,8 +24,10 @@
         int4* dB,                                                 \
         int4* dC,                                                 \
         int kloop_num,                                            \
-        struct lut_t in_lut,          int in_lut_size,            \
-        struct lut_t flt_lut,         int flt_lut_size,           \
+        struct lut_t in_lut, int in_lut_size,                     \
+        struct lut_t flt_lut, int flt_lut_size,                   \
+        int num_chl_per_spk_head,                                 \
+        int num_chl_per_spk_tail,                                 \
         int in_hw,                    int out_hw,                 \
         int flt_hw,                   int splitk,                 \
         int in_height,                int in_width,               \
@@ -37,9 +39,8 @@
         int stride_height,            int stride_width,           \
         int pad_height,               int pad_width,              \
         int hole_height,              int hole_width,             \
-        int has_bias,                 int* bias                   \
-	float in_scale,               void *d_flt_scale,          \
-        float out_scale
+        int has_bias,                 int* bias,                  \
+	    float in_scale,               void *d_flt_scale
 
 #define TOTAL_KPARAM_LIST \
         int4* dA,                                                 \
