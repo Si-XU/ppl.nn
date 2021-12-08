@@ -71,7 +71,7 @@ int PPLCUDADepthwiseSelectKernel(
     void* output,
     ppl::common::datatype_t type,
     float pic_scale,
-    std::vector<float> flt_scale,
+    float* flt_scale,
     float out_scale)
 {
     GETPARAM
@@ -90,9 +90,6 @@ int PPLCUDADepthwiseSelectKernel(
             int tile_height, tile_width, elems;
             GenConfigure(func_vec[id], conv_param, &tile_height, &tile_width, &elems);
             dim3 dim_block(BLOCK_SIZE,1,1), dim_grid(DivUp(elems,BLOCK_SIZE), 1, 1);
-            float* f = nullptr;
-            cudaMalloc((void**)&f, paddingc*sizeof(float));
-            cudaMemcpy(f, flt_scale.data(), paddingc*sizeof(float), cudaMemcpyHostToDevice);
             DivModFast padc_fast(paddingc);
             DivModFast hw_fast(tile_height * tile_width);
             DivModFast width_fast(tile_width);
@@ -113,7 +110,7 @@ int PPLCUDADepthwiseSelectKernel(
                 padc_fast, hw_fast, width_fast,
                 in_height, in_width, kernel_h, kernel_w, pad_h, pad_w, stride_h, stride_w, hole_h, hole_w,
                 tile_height, tile_width, channels, paddingc, out_height, out_width, 
-                in_batch_stride, in_height_stride, in_width_stride, elems, (int8_t*)output, fuse_param, pic_scale, f, out_scale);
+                in_batch_stride, in_height_stride, in_width_stride, elems, (int8_t*)output, fuse_param, pic_scale, flt_scale, out_scale);
             }
         }
         cudaEventRecord(end, stream);
@@ -137,7 +134,7 @@ void PPLCUDADepthwiseForwardCudaImp(
     void* output,
     ppl::common::datatype_t type,
     float pic_scale,
-    std::vector<float> flt_scale,
+    float* flt_scale,
     float out_scale)
 {
     GETPARAM
@@ -148,9 +145,6 @@ void PPLCUDADepthwiseForwardCudaImp(
     DivModFast hw_fast(tile_height * tile_width);
     DivModFast width_fast(tile_width);
     dim3 dim_block(BLOCK_SIZE,1,1), dim_grid(DivUp(elems, BLOCK_SIZE), 1, 1);
-    float* f = nullptr;
-    cudaMalloc((void**)&f, paddingc*sizeof(float));
-    cudaMemcpy(f, flt_scale.data(), paddingc*sizeof(float), cudaMemcpyHostToDevice);
     if(type == ppl::common::DATATYPE_FLOAT16) {
         func_vec[kernel_id].kernel_ptr_half<<<dim_grid, dim_block, 0, stream>>>((const half*)input, (const half*)filter, (const half*)bias, 
         padc_fast, hw_fast, width_fast,
@@ -168,6 +162,6 @@ void PPLCUDADepthwiseForwardCudaImp(
         padc_fast, hw_fast, width_fast,
         in_height, in_width, kernel_h, kernel_w, pad_h, pad_w, stride_h, stride_w, hole_h, hole_w,
         tile_height, tile_width, channels, paddingc, out_height, out_width, 
-        in_batch_stride, in_height_stride, in_width_stride, elems, (int8_t*)output, fuse_param, pic_scale, f, out_scale);
+        in_batch_stride, in_height_stride, in_width_stride, elems, (int8_t*)output, fuse_param, pic_scale, flt_scale, out_scale);
     }
 }

@@ -113,16 +113,17 @@ double DepthwiseDirectInt8::ExcuteTimer(const ir::Node* node, OptKernelOptions& 
     ALLOC_BUFFERF_FOR_ALGO_SELECT(weight_buffer, shape_in1.GetBytesIncludingPadding(), ALGO_MAX_TIME)
     ALLOC_BUFFERF_FOR_ALGO_SELECT(bias_buffer, shape_in2.GetBytesIncludingPadding(), ALGO_MAX_TIME)
     ALLOC_BUFFERF_FOR_ALGO_SELECT(output_buffer, shape_out.GetBytesIncludingPadding(), ALGO_MAX_TIME)
+    ALLOC_BUFFERF_FOR_ALGO_SELECT(quant_buffer, shape_in1.GetDim(0) * sizeof(float), ALGO_MAX_TIME)
 
     // Do select
     auto stream = options.device->GetStream();
     auto kernel_id = PPLCUDADepthwiseSelectKernel(stream, input_buffer.addr, weight_buffer.addr, bias_buffer.addr, 1,
-                                                  temp_conv_param, temp_fuse_param, output_buffer.addr, shape_out.GetDataType(), input_quant0.scale[0], input_quant1.scale, output_quant.scale[0]);
+                                                  temp_conv_param, temp_fuse_param, output_buffer.addr, shape_out.GetDataType(), input_quant0.scale[0], (float*)quant_buffer.addr, output_quant.scale[0]);
     attr_param_.extra_param.algo_info.kid = kernel_id;
 
     auto run_begin_ts = std::chrono::system_clock::now();
     PPLCUDADepthwiseForwardCudaImp(stream, kernel_id, input_buffer.addr, weight_buffer.addr, bias_buffer.addr,
-                                   temp_conv_param, temp_fuse_param, output_buffer.addr, shape_out.GetDataType(), input_quant0.scale[0], input_quant1.scale, output_quant.scale[0]);
+                                   temp_conv_param, temp_fuse_param, output_buffer.addr, shape_out.GetDataType(), input_quant0.scale[0], (float*)quant_buffer.addr, output_quant.scale[0]);
     auto run_end_ts = std::chrono::system_clock::now();
     auto diff = std::chrono::duration_cast<std::chrono::microseconds>(run_end_ts - run_begin_ts);
     double timer = (double)diff.count() / 1000;
@@ -151,8 +152,60 @@ RetCode DepthwiseDirectInt8::ModifyParam(ir::Node* node, OptKernelOptions& optio
     auto preedge_id = weight_node->GetInput(0);
     auto postedge_id = node->GetInput(1);
 
+    RetCode status;
     conv_param_t temp_conv_param;
     ConvertToForwardConvParam(shape_in0, shape_in1, shape_out, attr_param_.param, temp_conv_param);
+
+    // Add quant to conv inputs
+    auto channel_pad = (shape_in1.GetDim(0) + align_size - 1) / align_size * align_size;
+    auto& weight_quant = options.quants->at(node->GetInput(1));
+
+    if (!weight_quant.per_chnnal) {
+        weight_quant.scale.insert(weight_quant.scale.begin(), channel_pad, weight_quant.scale[0]);
+    }
+
+    float scales[channel_pad];
+    for (int i = 0; i < channel_pad; i++) {
+        if (i >= channel_pad) {
+            scales[i] = 0.0f;
+        } else {
+            scales[i] = weight_quant.scale[i];
+        }
+    }
+
+    auto quant_shape = TensorShape();
+    quant_shape.SetDimCount(1);
+    quant_shape.SetDim(0, channel_pad);
+    quant_shape.SetDataFormat(DATAFORMAT_NDARRAY);
+    quant_shape.SetDataType(DATATYPE_FLOAT32);
+
+    RuntimeConstantInfo quant_constat_info;
+    {
+        BufferDesc buffer;
+        status = options.device->Realloc(quant_shape, &buffer);
+        if (status != RC_SUCCESS) {
+            LOG(ERROR) << "alloc buffer for constant failed: " << GetRetCodeStr(status);
+            return status;
+        }
+
+        quant_constat_info.Reshape(quant_shape);
+        quant_constat_info.SetBuffer(buffer, options.device, true);
+    }
+
+    auto ret_pair = topo->AddEdge("Quant_" + node->GetName());
+    auto quant_edge = ret_pair.first;
+    auto quant_edge_id = quant_edge->GetId();
+    node->AddInput(quant_edge_id);
+    quant_edge->AddConsumer(node->GetId());
+
+    options.tensors->insert(make_pair(quant_edge_id, unique_ptr<TensorImpl>(new TensorImpl(quant_edge, TENSORTYPE_NORMAL))));
+    options.tensors->find(quant_edge_id)->second->GetShape() = quant_shape;
+    options.quants->resize(topo->GetMaxEdgeId());
+    options.quants->at(quant_edge_id).format = quant_shape.GetDataFormat();
+    options.quants->at(quant_edge_id).type = quant_shape.GetDataType();
+
+    options.device->CopyFromHost(&quant_constat_info.GetBufferDesc(), scales, quant_shape);
+    options.info->constants.emplace(quant_edge_id, std::move(quant_constat_info));
 
     auto weight_iter = data->constants.find(preedge_id);
     if (weight_iter != data->constants.end() && // is a constant tensor and has not be loaded
@@ -163,7 +216,7 @@ RetCode DepthwiseDirectInt8::ModifyParam(ir::Node* node, OptKernelOptions& optio
         newshape.SetDim(0, (postshape.GetDim(0) + align_size - 1) / align_size * align_size);
 
         BufferDesc temp_buffer;
-        auto status = options.device->Realloc(postshape, &temp_buffer);
+        status = options.device->Realloc(postshape, &temp_buffer);
         if (status != RC_SUCCESS) {
             LOG(ERROR) << "alloc buffer for constant failed: " << GetRetCodeStr(status);
             return status;
