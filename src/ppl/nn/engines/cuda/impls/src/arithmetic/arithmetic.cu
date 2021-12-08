@@ -815,7 +815,8 @@ ppl::common::RetCode PPLCUDAArithMeticForwardImpInt8(
     } else {
         ArithmeticParam param;
         int packed_channel = 1;
-        if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8) {
+        if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8 ||
+            output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC16) {
             ppl_arithmetic_prepare_strides_nhwc(input_shape0, input_shape1, output_shape, packed_channel,
                 param.stride_in0, param.stride_in1, param.stride_out);
             ppl_cukernel_arithmetic_int8<op_type, T><<<grid_size, block_size, 0, stream>>>(num_elems, dim_count, param, (const T*)input0, (const T*)input1, (T*)output, in_scale0, in_scale1, out_scale);
