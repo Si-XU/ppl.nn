@@ -42,6 +42,11 @@ void TuringIMMAImpgemm::GetAttrParam(void*& param) const {
 
 bool TuringIMMAImpgemm::IsSupported(const ir::Node* node, const OptKernelOptions& options,
                                     dataformat_t input_format) const {
+    // check if conv is depthwise
+    auto tensor1 = options.tensors->find(node->GetInput(1))->second->GetShape();
+    if (group == tensor1.GetDim(0) && tensor1.GetDim(1) == 1 && group != 1) {
+        return false;
+    }
     // check if conv quant to INT8
     auto quant0 = options.quants->at(node->GetInput(0));
     if (quant0.type != DATATYPE_INT8) {
