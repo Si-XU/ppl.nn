@@ -55,7 +55,6 @@ bool TuringIMMAImpgemm::IsSupported(const ir::Node* node, const OptKernelOptions
 double TuringIMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& options) {
     this->attr_param_ = *(reinterpret_cast<CudaConvParam*>(options.param));
     attr_param_.extra_param.algo_info.algo_type = "TuringIMMAImpgemm";
-    return 0;
     auto shape_in1 = options.tensors->find(node->GetInput(1))->second->GetShape();
     if (shape_in1.GetDim(2) == 1) {
         attr_param_.extra_param.algo_info.kernel_index = 1000;

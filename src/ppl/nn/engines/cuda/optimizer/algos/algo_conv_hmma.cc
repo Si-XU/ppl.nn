@@ -80,7 +80,6 @@ double TuringHMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
     this->attr_param_ = *(reinterpret_cast<CudaConvParam*>(options.param));
     attr_param_.extra_param.algo_info.algo_type = "TuringHMMAImpgemm";
     attr_param_.extra_param.algo_info.kernel_index = 5100;
-    return 0;
 
     // If the node has selcted, return answer directly
     auto pair = selection_res_.find(node->GetId());

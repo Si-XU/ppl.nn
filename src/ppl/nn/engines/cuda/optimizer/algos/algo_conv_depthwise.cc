@@ -62,7 +62,6 @@ double DepthwiseDirect::ExcuteTimer(const ir::Node* node, OptKernelOptions& opti
     this->attr_param_ = *(reinterpret_cast<CudaConvParam*>(options.param));
     attr_param_.extra_param.algo_info.algo_type = "DepthwiseDirect";
     attr_param_.extra_param.algo_info.kernel_index = 0;
-    return 0;
 
     // If the node has selcted, return answer directly
     auto pair = selection_res_.find(node->GetId());
@@ -119,12 +118,12 @@ double DepthwiseDirect::ExcuteTimer(const ir::Node* node, OptKernelOptions& opti
     // Do select
     auto stream = options.device->GetStream();
     auto kernel_id = PPLCUDADepthwiseSelectKernel(stream, input_buffer.addr, weight_buffer.addr, bias_buffer.addr, 1,
-                                                  temp_conv_param, temp_fuse_param, output_buffer.addr, shape_out.GetDataType(), input_quant0.scale[0], input_quant1.scale[0], output_quant.scale[0]);
+                                                  temp_conv_param, temp_fuse_param, output_buffer.addr, shape_out.GetDataType(), input_quant0.scale[0], input_quant1.scale, output_quant.scale[0]);
     attr_param_.extra_param.algo_info.kernel_index = kernel_id;
 
     auto run_begin_ts = std::chrono::system_clock::now();
     PPLCUDADepthwiseForwardCudaImp(stream, kernel_id, input_buffer.addr, weight_buffer.addr, bias_buffer.addr,
-                                   temp_conv_param, temp_fuse_param, output_buffer.addr, shape_out.GetDataType(), input_quant0.scale[0], input_quant1.scale[0], output_quant.scale[0]);
+                                   temp_conv_param, temp_fuse_param, output_buffer.addr, shape_out.GetDataType(), input_quant0.scale[0], input_quant1.scale, output_quant.scale[0]);
     auto run_end_ts = std::chrono::system_clock::now();
     auto diff = std::chrono::duration_cast<std::chrono::microseconds>(run_end_ts - run_begin_ts);
     double timer = (double)diff.count() / 1000;
@@ -193,6 +192,7 @@ RetCode DepthwiseDirect::ModifyParam(const ir::Node* node, OptKernelOptions& opt
         auto shape_in0 = options.tensors->find(node->GetInput(0))->second->GetShape();
         auto shape_in1 = options.tensors->find(node->GetInput(1))->second->GetShape();
         auto shape_out = options.tensors->find(node->GetOutput(0))->second->GetShape();
+
 
         ConvertToForwardConvParam(shape_in0, shape_in1, shape_out, attr_param_.param, temp_conv_param);
         auto stream = options.device->GetStream();

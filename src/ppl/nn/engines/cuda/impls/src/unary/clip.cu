@@ -17,6 +17,7 @@
 
 #include "cudakernel/unary/clip.h"
 #include <cuda_fp16.h>
+#include<stdio.h>
 
 #if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
 template <typename T>

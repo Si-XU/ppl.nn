@@ -18,6 +18,7 @@
 #ifndef __PPLCUDA_HALF_DEPTHWISE_INFO_H__
 #define __PPLCUDA_HALF_DEPTHWISE_INFO_H__
 #include <string>
+#include <vector>
 #include "conv_depthwise_kernel.h"
 #include "cudakernel/common/common.h"
 
@@ -94,7 +95,7 @@ typedef void half_depthwise_t(
 typedef void int8_depthwise_t(
     const int8_t* input,
     const int8_t* filter,
-    const int8_t* bias,
+    const float* bias,
     DivModFast padc_fast,
     DivModFast hw_fast,
     DivModFast width_fast,
@@ -124,9 +125,9 @@ typedef void int8_depthwise_t(
     int total_elements,
     int8_t* output,
     fuse_param_t fuse_paramse,
-    float pic_scale,
-    float flt_scale,
-    float out_scale);
+    const float pic_scale,
+    const float* flt_scale,
+    const float out_scale);
 
 struct depthwise_kernel_info
 {
