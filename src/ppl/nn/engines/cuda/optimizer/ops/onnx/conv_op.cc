@@ -117,10 +117,12 @@ RetCode ConvOp::Finalize(const OptKernelOptions& options) {
 KernelImpl* ConvOp::CreateKernelImpl() const {
     if (param_.extra_param.algo_info.algo_type == "TuringHMMAImpgemm") {
         return CreateKernelImplWithParam<ConvHmmaKernel>(&param_);
-    } else if (param_.extra_param.algo_info.algo_type == "DepthwiseDirect") {
-        return CreateKernelImplWithParam<ConvDepthwiseKernel>(&param_);
     } else if (param_.extra_param.algo_info.algo_type == "TuringIMMAImpgemm") {
         return CreateKernelImplWithParam<ConvImmaKernel>(&param_);
+    } else if (param_.extra_param.algo_info.algo_type == "DepthwiseDirect") {
+        return CreateKernelImplWithParam<ConvDepthwiseKernel>(&param_);
+    } else if (param_.extra_param.algo_info.algo_type == "DepthwiseDirectInt8") {
+        return CreateKernelImplWithParam<ConvDepthwiseKernel>(&param_);
     }
     return nullptr;
 }

@@ -450,6 +450,24 @@ RetCode OptGraph::UpdateType() {
         if (conf_pair != args_->node_types.end()) {
             kernel_type = conf_pair->second;
         }
+        if (kernel_type == DATATYPE_INT8) {
+            for (uint32_t i = 0; i < node->GetInputCount(); ++i) {
+                auto edge_id = node->GetInput(i);
+                if (edge_id == INVALID_EDGEID) {
+                    continue;
+                }
+                auto& input_quant = graph_quants.at(edge_id);
+                input_quant.type = kernel_type;
+            }
+            for (uint32_t i = 0; i < node->GetOutputCount(); ++i) {
+                auto edge_id = node->GetOutput(i);
+                if (edge_id == INVALID_EDGEID) {
+                    continue;
+                }
+                auto& output_quant = graph_quants.at(edge_id);
+                output_quant.type = kernel_type;
+            }
+        }
 
         auto status = kernel->InferType(&IOinfo, &graph_quants, kernel_type);
         if (status != RC_SUCCESS) {
