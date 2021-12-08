@@ -143,10 +143,10 @@ RetCode BridgeOp::DeleteBridgeNode(ir::Node* node, ir::Graph* graph,
 
         return RC_SUCCESS;
     } else {
-        LOG(ERROR) << "node name " << node->GetName();
-        LOG(ERROR) << "format " << prequant.format << " " << postquant.format;
-        LOG(ERROR) << "type " << prequant.type << " " << postquant.type;
-        LOG(ERROR) << "quant " << EqualQuant(prequant, postquant);
+        // LOG(ERROR) << "node name " << node->GetName();
+        // LOG(ERROR) << "format " << prequant.format << " " << postquant.format;
+        // LOG(ERROR) << "type " << prequant.type << " " << postquant.type;
+        // LOG(ERROR) << "quant " << EqualQuant(prequant, postquant);
     }
     return RC_UNSUPPORTED;
 }
