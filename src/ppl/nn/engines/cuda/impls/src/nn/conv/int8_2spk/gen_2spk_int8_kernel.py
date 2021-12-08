@@ -31,7 +31,7 @@ class KernelInfo:
                 "_w" + str(self.warp_y) + "x" + str(self.warp_x) + \
                 "_k" + str(self.k_size) + "_s" + str(self.s_size) + "_buf" + str(self.buf_size)
 
-        self.kname = "nv2spkConv_hmma8816_nhwc_" + self.flt_size + self.kconfig
+        self.kname = "nv2spkConv_imma8816_nhwc_" + self.flt_size + self.kconfig
         self.fname = self.flt_size + "/int8_2spk_"  + self.flt_size + self.kconfig + ".cu"
 
         self.WARP_SIZE = 32
@@ -122,7 +122,7 @@ class KernelInfo:
         f.write("#include \"int8_2spk/%s/bound_macros.h\"\n\n" % self.flt_size)
         f.write("#include \"int8_2spk/common/ldsm_macros.h\"\n\n")
         f.write("#include \"int8_2spk/%s/dmem_macros.h\"\n\n" % self.flt_size)
-        f.write("#include \"int8_2spk/common/hmma_macros.h\"\n\n")
+        f.write("#include \"int8_2spk/common/imma_macros.h\"\n\n")
         f.write("#include \"int8_2spk/common/reduce_macros.h\"\n\n")
         f.write("#include \"int8_2spk/common/smem_macros.h\"\n\n")
 

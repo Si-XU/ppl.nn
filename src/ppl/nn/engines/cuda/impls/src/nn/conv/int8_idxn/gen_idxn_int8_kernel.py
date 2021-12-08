@@ -27,7 +27,7 @@ class KernelInfo:
                 "_w" + str(self.warp_y) + "x" + str(self.warp_x) + \
                 "_k" + str(self.k_size) + "_s" + str(self.s_size)
 
-        self.kname = "nvIdxnConv_hmma8816_nhwc" + self.kconfig + "_nosmem"
+        self.kname = "nvIdxnConv_imma8816_nhwc" + self.kconfig + "_nosmem"
         self.fname = "kernels" + "/int8_idxn"  + self.kconfig + ".cu"
 
         self.WARP_SIZE = 32
@@ -61,7 +61,7 @@ class KernelInfo:
 
         if self.s_size == 16:
             f.write("#include \"int8_idxn/common/dmem_i1_macros.h\"\n\n")
-            f.write("#include \"int8_idxn/common/hmma_i1_macros.h\"\n\n")
+            f.write("#include \"int8_idxn/common/imma_i1_macros.h\"\n\n")
 
             f.write("#define LOAD_dAv1(_regA, _dAv1, _in_id, _in_off)    LOAD_dAv1_SIZE%d(_regA, _dAv1, _in_id, _in_off)\n" % self.dAvn_size)
             f.write("#define LOAD_dBv1(_regB, _dBv1, _dBv1_off)          LOAD_dBv1_SIZE%d(_regB, _dBv1, _dBv1_off)\n\n" % self.dBvn_size)
@@ -69,7 +69,7 @@ class KernelInfo:
             f.write("#define MMA_INSTS(_C, _A, _B)                       MMA_INST_1INT_%dx%d(_C, _A, _B)\n\n" % (self.dAvn_size, self.dBvn_size))
         elif self.s_size == 32:
             f.write("#include \"int8_idxn/common/dmem_i2_macros.h\"\n\n")
-            f.write("#include \"int8_idxn/common/hmma_i2_macros.h\"\n\n")
+            f.write("#include \"int8_idxn/common/imma_i2_macros.h\"\n\n")
 
             f.write("#define LOAD_dAv2(_regA, _dAv2, _in_id, _in_off)    LOAD_dAv2_SIZE%d(_regA, _dAv2, _in_id, _in_off)\n" % self.dAvn_size)
             f.write("#define LOAD_dBv2(_regB, _dBv2, _dBv2_off)          LOAD_dBv2_SIZE%d(_regB, _dBv2, _dBv2_off)\n\n" % self.dBvn_size)
@@ -77,7 +77,7 @@ class KernelInfo:
             f.write("#define MMA_INSTS(_C, _A, _B)                       MMA_INST_2INT_%dx%d(_C, _A, _B)\n\n" % (self.dAvn_size, self.dBvn_size))
         elif self.s_size == 64:
             f.write("#include \"int8_idxn/common/dmem_i4_macros.h\"\n\n")
-            f.write("#include \"int8_idxn/common/hmma_i4_macros.h\"\n\n")
+            f.write("#include \"int8_idxn/common/imma_i4_macros.h\"\n\n")
 
             f.write("#define LOAD_dAv4(_regA, _dAv4, _in_id, _in_off)    LOAD_dAv4_SIZE%d(_regA, _dAv4, _in_id, _in_off)\n" % self.dAvn_size)
             f.write("#define LOAD_dBv4(_regB, _dBv4, _dBv4_off)          LOAD_dBv4_SIZE%d(_regB, _dBv4, _dBv4_off)\n\n" % self.dBvn_size)
