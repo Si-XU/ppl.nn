@@ -256,8 +256,8 @@ class SpkHeaderFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#ifndef __PPLCUDA_2SPK_%s_SPK_KERNELS_H__\n" % flt_size.upper())
-        self.f.write("#define __PPLCUDA_2SPK_%s_SPK_KERNELS_H__\n" % flt_size.upper())
+        self.f.write("#ifndef __PPLCUDA_INT8_2SPK_%s_SPK_KERNELS_H__\n" % flt_size.upper())
+        self.f.write("#define __PPLCUDA_INT8_2SPK_%s_SPK_KERNELS_H__\n" % flt_size.upper())
 
         self.f.write("\n\n#include \"kernel_type.h\"\n\n")
 
@@ -280,13 +280,13 @@ class InitFile:
         self.f.write("#include \"conv_common.h\"\n\n")
 
         self.f.write("#include \"int8_2spk/%s_lut_kernels.h\"\n" % self.flt_size)
-        #self.f.write("#include \"int8_2spk/%s_spk_kernels.h\"\n\n" % self.flt_size)
+        self.f.write("#include \"int8_2spk/%s_spk_kernels.h\"\n\n" % self.flt_size)
 
         self.f.write("void InitializeInt82spkConv%sKernelContainer(std::vector<kernel_info_t> & kernel_container)\n{\n" % self.flt_size.upper())
 
     def AppendKernel(self, kname):
-        #self.f.write("\tADD_KERNEL(CONV_2SPK_%s, \"%s\", &%s, &%s, NULL);\n" % (self.flt_size.upper(), kname, kname, kname))
-        self.f.write("\tADD_KERNEL(CONV_2SPK_%s, \"%s\", &%s, NULL, NULL);\n" % (self.flt_size.upper(), kname, kname))
+        self.f.write("\tADD_KERNEL(CONV_2SPK_%s, \"%s\", &%s, &%s, NULL);\n" % (self.flt_size.upper(), kname, kname, kname))
+        #self.f.write("\tADD_KERNEL(CONV_2SPK_%s, \"%s\", &%s, NULL, NULL);\n" % (self.flt_size.upper(), kname, kname))
 
     def Close(self):
         self.f.write("\n}\n")
@@ -328,7 +328,7 @@ class HashFile:
 def GenAllKernels(parent_path):
 
     #for flt_size in ["f1", "f3", "fn", "fs"]:
-    for flt_size in ["f1", "f3", "fn"]:
+    for flt_size in ["f1", "f3", "fn", "fs"]:
         init_file = InitFile(parent_path, flt_size)
 
         path = parent_path + '/' + flt_size
@@ -361,10 +361,10 @@ def GenAllKernels(parent_path):
                                     if not kernel.ExceedScope():
                                         kernel.GenKernel()
                                         lut_header_file.AppendKernel(kernel.kname)
-                                        #spk_header_file.AppendKernel(kernel.kname)
+                                        spk_header_file.AppendKernel(kernel.kname)
 
                                         lut_source_file.AppendKernel(kernel.fname)
-                                        #spk_source_file.AppendKernel(kernel.fname)
+                                        spk_source_file.AppendKernel(kernel.fname)
 
                                         init_file.AppendKernel(kernel.kname)
         lut_header_file.Close()

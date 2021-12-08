@@ -71,9 +71,13 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     uint spk_id    =  blockIdx.z %  splitk;
     uint spf_id    = (blockIdx.z % (splitk * flt_hw)) / splitk;
     uint grp_id    =  blockIdx.z / (splitk * flt_hw);
+
+    uint num_chl_per_spk = (spk_id != splitk - 1) ? num_chl_per_spk_head: num_chl_per_spk_tail;
 #elif defined(ENABLE_SPLITK) && !defined(ENABLE_SPLITF)
     uint spk_id    =  blockIdx.z %  splitk;
     uint grp_id    =  blockIdx.z /  splitk;
+
+    uint num_chl_per_spk = (spk_id != splitk - 1) ? num_chl_per_spk_head: num_chl_per_spk_tail;
 #elif !defined(ENABLE_SPLITK) && defined(ENABLE_SPLITF)
     uint spf_id    =  blockIdx.z %  flt_hw;
     uint grp_id    =  blockIdx.z /  flt_hw;
@@ -174,9 +178,8 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #endif
 
 #if defined(ENABLE_SPLITK)
-    //TODO modify
-    int  flt_c_v16_end = chl_lut.idx[spk_id + 1] >> 4;
-    int  flt_c_v16_id  = ldg_idx + (chl_lut.idx[spk_id] >> 4);
+    int  flt_c_v16_end = (spk_id * num_chl_per_spk_head + num_chl_per_spk) >> 4;
+    int  flt_c_v16_id  = ldg_idx + ((spk_id * num_chl_per_spk_head) >> 4);
 #elif defined(ENABLE_SPLITF) || defined(ENABLE_FUSE)
     int  flt_c_v16_end = num_chl_per_grp_pad_v16;
     int  flt_c_v16_id  = ldg_idx;
@@ -336,7 +339,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #endif
 
 #if defined(ENABLE_SPLITK)
-    for (uint j = 0; j < kloop_lut.idx[spk_id]; j++)
+    for (uint j = 0; j < flt_hw * DivUp(num_chl_per_spk, TILE_K_PER_SET); j++)
 #elif defined(ENABLE_SPLITF) || defined(ENABLE_FUSE)
     for (uint j = 0; j < kloop_num; j++)
 #endif
@@ -435,7 +438,9 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
     float4 deScale;
     float *fR = (float *)Rv4;
+#if defined(ENABLE_FUSE)
     int outData;
+#endif
     for(int s = 0; s < OUTPUT_STEPS; s++)
     {
 	//fp16时不用每次swizzle idx，是因为一个cta的线程可以把sub_mma行(即8行)的数据一次加载完，下一个sub_mma块就可以沿用上一次读的索引不变，只需加上偏移即可。
@@ -472,11 +477,18 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
         SET_CONCAT_OFF_V4(has_concat, concatV4_off);
 #endif
+
+#if defined(ENABLE_FUSE)
         quantOutData(Rv4[0], fR, out_scale);
         packchar4(outData, Rv4[0].x, Rv4[0].y, Rv4[0].z, Rv4[0].w);
+#endif
 	
 
-        OUTPUT_PRC_HALF(outData);
+#if defined(ENABLE_FUSE)
+        OUTPUT_PRC_INT8_V4(outData);
+#else
+        OUTPUT_PRC_FLOAT_V4(Rv4[0]);
+#endif
 
         dCv4_idy += OUTPUT_SIZE_Y_IN_THD;
     }

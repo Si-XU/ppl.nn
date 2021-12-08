@@ -162,6 +162,9 @@ double TuringIMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
     algo_select.splitf = attr_param_.extra_param.algo_info.splitf;
     options.algos->emplace(key_str, std::move(algo_select));
     LoadAlgoInfo(options.args->save_algo_path, attr_param_.extra_param.algo_info, key_str);
+cudaDeviceSynchronize();
+auto e = cudaGetLastError();
+printf("imma error: %d, %d, (%d,%d)\n", e, attr_param_.extra_param.algo_info.kid, algo_select.splitk, algo_select.splitf);
     return timer;
 }
 
