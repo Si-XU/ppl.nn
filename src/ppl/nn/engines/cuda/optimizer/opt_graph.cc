@@ -314,7 +314,7 @@ RetCode OptGraph::AddBridgeKernels() {
         }
     }
 
-    LOG(DEBUG) << "added " << count << " new bridge kernels";
+    LOG(INFO) << "added " << count << " new bridge kernels";
     return RC_SUCCESS;
 }
 
@@ -450,6 +450,7 @@ RetCode OptGraph::UpdateType() {
         if (conf_pair != args_->node_types.end()) {
             kernel_type = conf_pair->second;
         }
+
         auto status = kernel->InferType(&IOinfo, &graph_quants, kernel_type);
         if (status != RC_SUCCESS) {
             LOG(ERROR) << "Set type for node[" << node->GetName() << "] failed: " << GetRetCodeStr(status);
@@ -598,7 +599,7 @@ RetCode OptGraph::DeleteBridgeKernels() {
         }
     }
 
-    LOG(DEBUG) << "deleted " << count << " bridge kernels";
+    LOG(INFO) << "deleted " << count << " bridge kernels";
     return RC_SUCCESS;
 }
 
@@ -615,11 +616,11 @@ RetCode OptGraph::DoOptimize(CudaDevice* device) {
         return status;
     }
 
-    // status = FuseOperator();
-    // if (status != RC_SUCCESS) {
-    //     LOG(ERROR) << "Fuse operators failed: " << GetRetCodeStr(status);
-    //     return status;
-    // }
+    status = FuseOperator();
+    if (status != RC_SUCCESS) {
+        LOG(ERROR) << "Fuse operators failed: " << GetRetCodeStr(status);
+        return status;
+    }
 
     status = AddBridgeKernels();
     if (status != RC_SUCCESS) {
@@ -657,11 +658,11 @@ RetCode OptGraph::DoOptimize(CudaDevice* device) {
         return status;
     }
 
-    // status = FuseOperator();
-    // if (status != RC_SUCCESS) {
-    //     LOG(ERROR) << "Fuse operators failed: " << GetRetCodeStr(status);
-    //     return status;
-    // }
+    status = FuseOperator();
+    if (status != RC_SUCCESS) {
+        LOG(ERROR) << "Fuse operators failed: " << GetRetCodeStr(status);
+        return status;
+    }
 
     return RC_SUCCESS;
 }

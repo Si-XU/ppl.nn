@@ -161,7 +161,8 @@ ppl::common::RetCode PPLCUDAChannelShuffleForwardImp(
 
     #define SWITCH_CASE(TYPE)                                                                                       \
     case sizeof(TYPE): {                                                                                            \
-        if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8){                                         \
+        if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8 ||                                       \
+            output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC16){                                       \
             ppl_cukernel_channel_shuffle_nhwc<<<grid_size, block_size, 0, stream>>>(                                \
                 num_elems, group, channels_per_group, pad_channels, channels_fast,                                  \
                 (const TYPE *)input, (TYPE *)output);                                           \
@@ -175,7 +176,8 @@ ppl::common::RetCode PPLCUDAChannelShuffleForwardImp(
 
     switch (ppl::common::GetSizeOfDataType(input_shape->GetDataType())) {
         case sizeof(int8_t): {                                                                                            
-            if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8){                                         
+            if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8 ||
+                output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC16){                                         
                 ppl_cukernel_channel_shuffle_nhwc_int8<<<grid_size, block_size, 0, stream>>>(                                
                     num_elems, group, channels_per_group, pad_channels, channels_fast,                                  
                     (const int8_t *)input, (int8_t *)output, in_scale, out_scale);                                           
