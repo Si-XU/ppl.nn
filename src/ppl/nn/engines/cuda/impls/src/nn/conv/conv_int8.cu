@@ -270,7 +270,6 @@ double PPLCUDAConvolutionSelectKernelInt8(
             if(!g_int8_kernel_container[kid].CheckSplitkFeasible(num_chl_per_grp, splitk)) continue;
 
             if(!g_int8_kernel_container[kid].CheckSplitfFeasible(splitf, splitk)) continue;
-if(splitf!=1)    printf("splitf: %d\n", splitf);
 
 
             int4 *conv_out = (splitk > 1 || splitf > 1) ? splitk_buf : final_out;
@@ -369,18 +368,7 @@ if(splitf!=1)    printf("splitf: %d\n", splitf);
                 algo_param.splitf = splitf;
 	            minTime = elapsed;
 	        }
-            if (splitf > 1) {
-                printf("end splitf: %d, %d\n", splitf, splitk);
-                algo_param.kid = kid;
-                algo_param.splitk = splitk;
-                algo_param.splitf = splitf;
-	            minTime = elapsed;
-                break;
-            }
         }
-            if (algo_param.splitf > 1) {
-                break;
-            }
     }
 
     if(is_out_grp_pad) {
@@ -423,8 +411,7 @@ void PPLCUDAConvolutionForwardImpInt8(
     int num_chl_per_grp_pad = Align(num_chl_per_grp, pad_size);
     int num_flt_per_grp_pad = Align(num_flt_per_grp, pad_size);
 
-    //if(!g_int8_kernel_container[kid].CheckKernelTypeFeasible(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk)) {printf( "[ERROR]: conv kernel does not math with conv param\n");}
-    printf("kernel name: %d, %d, %s\n", splitk, splitf, g_int8_kernel_container[kid].kname.c_str());
+    //printf("kernel name: %d, %d, %s\n", splitk, splitf, g_int8_kernel_container[kid].kname.c_str());
     int in_hw  = conv_param.in_height * conv_param.in_width;
     int flt_hw = conv_param.flt_height * conv_param.flt_width;
     int out_hw = conv_param.out_height * conv_param.out_width;
