@@ -258,13 +258,13 @@ double PPLCUDAConvolutionSelectKernelInt8(
 
     const int SPLITK_OPTIONS[] = {1, 2, 4, 8};
 
-    for(unsigned int spk = 0; spk < 4; spk++) {
+    for(unsigned int spk = 0; spk < 1; spk++) {
         unsigned int splitk = SPLITK_OPTIONS[spk];
 
         for(unsigned int kid = 0; kid < g_int8_kernel_container.size(); kid++) {
 
             unsigned int splitf = (g_int8_kernel_container[kid].ktype == CONV_2SPK_FS) ? flt_hw : 1;
-        
+            if (g_int8_kernel_container[kid].ktype == CONV_2SPK_FS) continue;
             if(!g_int8_kernel_container[kid].CheckKernelTypeFeasibleInt8(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk)) continue;
 
             if(!g_int8_kernel_container[kid].CheckSplitkFeasible(num_chl_per_grp, splitk)) continue;
@@ -361,14 +361,16 @@ double PPLCUDAConvolutionSelectKernelInt8(
 	        cudaEventRecord(end, stream);
 	        cudaEventSynchronize(end);
 	        cudaEventElapsedTime(&elapsed, begin, end);
-
+            // printf("conv %s , time = %f \n", g_int8_kernel_container[kid].kname.c_str(), elapsed);
 	        if(elapsed < minTime){
                 algo_param.kid = kid;
                 algo_param.splitk = splitk;
                 algo_param.splitf = splitf;
 	            minTime = elapsed;
-	        }
+            }
         }
+        // printf("fast conv %s , time = %f \n", g_int8_kernel_container[algo_param.kid].kname.c_str(), minTime);
+
     }
 
     if(is_out_grp_pad) {

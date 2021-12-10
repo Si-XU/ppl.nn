@@ -163,7 +163,7 @@ struct depthwise_kernel_info
         this->kernel_index = kernel_index;
         this->tile_h       = tile_h;
         this->tile_w       = tile_w;
-        this->in_tile_h    = in_tile_h;
+        this->in_tile_h    = in_tile_h;     
         this->in_tile_w    = in_tile_w;
         this->kernel_h     = kernel_h;
         this->kernel_w     = kernel_w;
