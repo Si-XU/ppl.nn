@@ -492,6 +492,8 @@ __inline__ uint64_t GetMaxSplitSize(
     uint64_t split_size = conv_param.out_height * conv_param.out_width *
                           num_flt_per_grp_pad * conv_param.num_grp *
                           conv_param.in_num;
+    if (type==ppl::common::DATATYPE_INT8)
+        type=ppl::common::DATATYPE_FLOAT32;
     unsigned int bytes = ppl::common::GetSizeOfDataType(type);
 
     return split_size * bytes * MAX_SPLIT_SIZE;
