@@ -177,8 +177,8 @@ RetCode CudaKernel::Execute(KernelExecContext* ctx) {
 //     std::ofstream out_fs(outputname + ".dat");
 //     out_fs.write((char*)out_data.get(), save_bytes);
 // }
-
 #ifndef NDEBUG
+
     auto run_end_ts = std::chrono::system_clock::now();
     auto diff = std::chrono::duration_cast<std::chrono::microseconds>(run_end_ts - run_begin_ts);
     LOG(INFO) << "After execute kernel[" << GetName() << "] with running time " << (float)diff.count()

@@ -41,6 +41,30 @@
 #include "float.h"
 
 #define TIMES 4
+#define __INT4__ 4
+
+#define INT8_SPK_KPARAM_LIST                               \
+        pad_input,                                         \
+        d_flt,                                             \
+        conv_out,                                          \
+        kloop_num,                                         \
+        in_lut,                   in_lut_size,             \
+        flt_lut,                  flt_lut_size,            \
+        num_chl_per_spk_head,                              \
+        num_chl_per_spk_tail,                              \
+        in_hw, out_hw,                                     \
+        flt_hw, splitk,                                    \
+        conv_param.in_height,     conv_param.in_width,     \
+        conv_param.in_num,        conv_param.num_grp,      \
+        num_chl_per_grp,          num_chl_per_grp_pad,     \
+        conv_param.flt_height,    conv_param.flt_width,    \
+        num_flt_per_grp,          num_flt_per_grp_pad,     \
+        conv_param.out_height,    conv_param.out_width,    \
+        conv_param.stride_height, conv_param.stride_width, \
+        conv_param.pad_height,    conv_param.pad_width,    \
+        conv_param.hole_height,   conv_param.hole_width,   \
+        conv_param.has_bias,      (int *)bias,             \
+        quant_param.in_scale,     quant_param.d_flt_scale
 
 #define INT8_LUT_KPARAM_LIST \
             pad_input,                                                                  \
@@ -106,9 +130,9 @@
             fuse_param.has_concat,         concat_offset_v8,                            \
             concat_stride_v8
 
-#define MERGE_KPARAM_LIST \
-        	conv_out,                      final_out,                                   \
-        	spk_height_v1,                 spk_width_v8,                                \
+#define INT8_MERGE_KPARAM_LIST \
+        	conv_out,                      (int*)final_out,                             \
+        	spk_height_v1,                 spk_width_v4,                                \
         	out_hw,                        splitk * splitf,                             \
             conv_param.has_bias,           bias,                                        \
             fuse_param.has_activation,     clip_min,                                    \
@@ -120,7 +144,8 @@
             fuse_param.has_elt_prelu,      (const void *) fuse_param.elt_prelu,         \
             leaky,                         elt_leaky,                                   \
             fuse_param.has_concat,         concat_offset_v8,                            \
-            concat_stride_v8
+            concat_stride_v8,                                                           \
+            quant_param.out_scale,         quant_param.pre_scale                        \
 
 static std::vector<kernel_info_t> g_int8_kernel_container;
 static bool is_g_int8_kernel_container_initialized = false;
@@ -134,6 +159,7 @@ __inline__ void InitializeKernelContainer(std::vector<kernel_info_t> &g_kernel_c
         InitializeInt82spkConvF1KernelContainer(g_int8_kernel_container);
         InitializeInt82spkConvF3KernelContainer(g_int8_kernel_container);
         InitializeInt82spkConvFNKernelContainer(g_int8_kernel_container);
+        InitializeInt82spkConvFSKernelContainer(g_int8_kernel_container);
 
         InitializeInt8IdxnConvKernelContainer(g_int8_kernel_container);
 #endif
@@ -230,10 +256,9 @@ double PPLCUDAConvolutionSelectKernelInt8(
     cudaEventCreate(&begin);
     cudaEventCreate(&end);
 
-    const int SPLITK_OPTIONS[] = {1};//{1, 2, 4, 8};
+    const int SPLITK_OPTIONS[] = {1, 2, 4, 8};
 
-    //for(unsigned int spk = 0; spk < 4; spk++) {
-    for(unsigned int spk = 0; spk < 1; spk++) {
+    for(unsigned int spk = 0; spk < 4; spk++) {
         unsigned int splitk = SPLITK_OPTIONS[spk];
 
         for(unsigned int kid = 0; kid < g_int8_kernel_container.size(); kid++) {
@@ -242,9 +267,9 @@ double PPLCUDAConvolutionSelectKernelInt8(
         
             if(!g_int8_kernel_container[kid].CheckKernelTypeFeasibleInt8(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk)) continue;
 
-            //if(!g_int8_kernel_container[kid].CheckSplitkFeasible(num_chl_per_grp, splitk)) continue;
+            if(!g_int8_kernel_container[kid].CheckSplitkFeasible(num_chl_per_grp, splitk)) continue;
 
-            //if(!g_int8_kernel_container[kid].CheckSplitfFeasible(splitf, splitk)) continue;
+            if(!g_int8_kernel_container[kid].CheckSplitfFeasible(splitf, splitk)) continue;
 
 
             int4 *conv_out = (splitk > 1 || splitf > 1) ? splitk_buf : final_out;
@@ -298,22 +323,24 @@ double PPLCUDAConvolutionSelectKernelInt8(
                         (g_int8_kernel_container[kid].int8_lut_kptr)<<<grid_size, block_size, 0, stream>>>(INT8_LUT_KPARAM_LIST);
 
                     }
-#if 0
+#if 1
 		    else {
-                        int chl_lut_size, kloop_lut_size;
-                        struct chl_lut_t chl_lut;
-                        struct kloop_lut_t kloop_lut;
+                        //int chl_lut_size, kloop_lut_size;
+                        //struct chl_lut_t chl_lut;
+                        //struct kloop_lut_t kloop_lut;
 
-                        InitializeChlLut(chl_lut_size, chl_lut.idx, conv_param.num_chl, conv_param.num_grp, pad_size,
-                                g_int8_kernel_container[kid].tile_k_per_cta, splitk);
-                        InitializeKloopLut(kloop_lut_size, kloop_lut.idx, conv_param.num_chl, conv_param.num_grp, pad_size,
-                                g_int8_kernel_container[kid].tile_k_per_cta, splitk, splitf, flt_hw);
+                        //InitializeChlLut(chl_lut_size, chl_lut.idx, conv_param.num_chl, conv_param.num_grp, pad_size,
+                        //        g_int8_kernel_container[kid].tile_k_per_cta, splitk);
+                        //InitializeKloopLut(kloop_lut_size, kloop_lut.idx, conv_param.num_chl, conv_param.num_grp, pad_size,
+                        //        g_int8_kernel_container[kid].tile_k_per_cta, splitk, splitf, flt_hw);
+                        int num_chl_per_spk_head, num_chl_per_spk_tail;
+                        InitializeNumChlPerSpk(num_chl_per_spk_head, num_chl_per_spk_tail, conv_param.num_chl, conv_param.num_grp, pad_size, g_int8_kernel_container[kid].tile_k_per_cta, splitk);
     
-                        (g_int8_kernel_container[kid].spk_kptr)<<<grid_size, block_size, 0, stream>>>(SPK_KPARAM_LIST);
+                        (g_int8_kernel_container[kid].int8_spk_kptr)<<<grid_size, block_size, 0, stream>>>(INT8_SPK_KPARAM_LIST);
                     }
 
                     if(splitk > 1 || splitf > 1) {
-                        int spk_width_v8   = num_flt_per_grp_pad * conv_param.num_grp / pad_size;
+                        int spk_width_v4   = num_flt_per_grp_pad * conv_param.num_grp / __INT4__;
                         int spk_height_v1  = out_hw * conv_param.in_num;
 
                         dim3 merge_grid_size, merge_block_size;
@@ -322,10 +349,10 @@ double PPLCUDAConvolutionSelectKernelInt8(
                         merge_block_size.z = 1;
 
                         merge_grid_size.x  = spk_height_v1;
-                        merge_grid_size.y  = DivUp(spk_width_v8, merge_block_size.x);
+                        merge_grid_size.y  = DivUp(spk_width_v4, merge_block_size.x);
                         merge_grid_size.z  = 1;
 
-                        MergeConvSplitResults<<<merge_grid_size, merge_block_size, 0, stream>>>(MERGE_KPARAM_LIST);
+                        MergeConvSplitResultsFp32<<<merge_grid_size, merge_block_size, 0, stream>>>(INT8_MERGE_KPARAM_LIST);
                     }
 #endif
                 }
@@ -384,8 +411,7 @@ void PPLCUDAConvolutionForwardImpInt8(
     int num_chl_per_grp_pad = Align(num_chl_per_grp, pad_size);
     int num_flt_per_grp_pad = Align(num_flt_per_grp, pad_size);
 
-    //if(!g_int8_kernel_container[kid].CheckKernelTypeFeasible(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk)) {printf( "[ERROR]: conv kernel does not math with conv param\n");}
-    // printf("kernel name: %s\n", g_int8_kernel_container[kid].kname.c_str());
+    //printf("kernel name: %d, %d, %s\n", splitk, splitf, g_int8_kernel_container[kid].kname.c_str());
     int in_hw  = conv_param.in_height * conv_param.in_width;
     int flt_hw = conv_param.flt_height * conv_param.flt_width;
     int out_hw = conv_param.out_height * conv_param.out_width;
@@ -526,25 +552,27 @@ void PPLCUDAConvolutionForwardImpInt8(
         if(splitk == 1) {
             (g_int8_kernel_container[kid].int8_lut_kptr)<<<grid_size, block_size, 0, stream>>>(INT8_LUT_KPARAM_LIST);
         }
-#if 0
-	else {
-            int chl_lut_size, kloop_lut_size;
-            struct chl_lut_t chl_lut;
-            struct kloop_lut_t kloop_lut;
+#if 1
+	    else {
+            //int chl_lut_size, kloop_lut_size;
+            //struct chl_lut_t chl_lut;
+            //struct kloop_lut_t kloop_lut;
 
-            InitializeChlLut(chl_lut_size, chl_lut.idx, conv_param.num_chl, conv_param.num_grp, pad_size,
-                    g_int8_kernel_container[kid].tile_k_per_cta, splitk);
-            InitializeKloopLut(kloop_lut_size, kloop_lut.idx, conv_param.num_chl, conv_param.num_grp, pad_size,
-                    g_int8_kernel_container[kid].tile_k_per_cta, splitk, splitf, flt_hw);
+            //InitializeChlLut(chl_lut_size, chl_lut.idx, conv_param.num_chl, conv_param.num_grp, pad_size,
+            //        g_int8_kernel_container[kid].tile_k_per_cta, splitk);
+            //InitializeKloopLut(kloop_lut_size, kloop_lut.idx, conv_param.num_chl, conv_param.num_grp, pad_size,
+            //        g_int8_kernel_container[kid].tile_k_per_cta, splitk, splitf, flt_hw);
+            int num_chl_per_spk_head, num_chl_per_spk_tail;
+            InitializeNumChlPerSpk(num_chl_per_spk_head, num_chl_per_spk_tail, conv_param.num_chl, conv_param.num_grp, pad_size, g_int8_kernel_container[kid].tile_k_per_cta, splitk);
 
-            (g_int8_kernel_container[kid].spk_kptr)<<<grid_size, block_size, 0, stream>>>(SPK_KPARAM_LIST);
+            (g_int8_kernel_container[kid].int8_spk_kptr)<<<grid_size, block_size, 0, stream>>>(INT8_SPK_KPARAM_LIST);
         }
 #endif
     }
     
-#if 0
+#if 1
     if(splitk > 1 || splitf > 1) {
-        int spk_width_v8   = num_flt_per_grp_pad * conv_param.num_grp / pad_size;
+        int spk_width_v4   = num_flt_per_grp_pad * conv_param.num_grp / __INT4__;
         int spk_height_v1  = out_hw * conv_param.in_num;
 
         dim3 merge_grid_size, merge_block_size;
@@ -553,10 +581,10 @@ void PPLCUDAConvolutionForwardImpInt8(
         merge_block_size.z = 1;
 
         merge_grid_size.x  = spk_height_v1;
-        merge_grid_size.y  = DivUp(spk_width_v8, merge_block_size.x);
+        merge_grid_size.y  = DivUp(spk_width_v4, merge_block_size.x);
         merge_grid_size.z  = 1;
 
-        MergeConvSplitResults<<<merge_grid_size, merge_block_size, 0, stream>>>(MERGE_KPARAM_LIST);
+        MergeConvSplitResultsFp32<<<merge_grid_size, merge_block_size, 0, stream>>>(INT8_MERGE_KPARAM_LIST);
     }
 #endif
 
@@ -707,7 +735,7 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
                     algo_param.tiles.cta_size_in_thd = (algo_param.tiles.m_cta / algo_param.tiles.m_warp) *
                                                     (algo_param.tiles.n_cta / algo_param.tiles.n_warp) *
                                                     WARP_SIZE;
-                    algo_param.algo_name = "nvIdxnConv_hmma8816_nhwc_b" + ToString(algo_param.tiles.m_cta) + "x" + ToString(algo_param.tiles.n_cta) +
+                    algo_param.algo_name = "nvIdxnConv_imma8816_nhwc_b" + ToString(algo_param.tiles.m_cta) + "x" + ToString(algo_param.tiles.n_cta) +
                                         "_w" + ToString(algo_param.tiles.m_warp) + "x" + ToString(algo_param.tiles.n_warp) +
                                         "_k" + ToString(algo_param.tiles.k_cta) + "_s" + ToString(algo_param.tiles.k_per_step) + "_nosmem";
                 } else { // Use 2spk algo for large channel
@@ -731,7 +759,7 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
                         f_size                    = "f3";
                         algo_param.tiles.flt_size = 3;
                     }
-                    algo_param.algo_name = "nv2spkConv_hmma8816_nhwc_" + f_size + "_b" + ToString(algo_param.tiles.m_cta) + "x" + ToString(algo_param.tiles.n_cta) +
+                    algo_param.algo_name = "nv2spkConv_imma8816_nhwc_" + f_size + "_b" + ToString(algo_param.tiles.m_cta) + "x" + ToString(algo_param.tiles.n_cta) +
                                         "_w" + ToString(algo_param.tiles.m_warp) + "x" + ToString(algo_param.tiles.n_warp) +
                                         "_k" + ToString(algo_param.tiles.k_cta) + "_s" + ToString(algo_param.tiles.k_per_set) + "_buf1";
                     if (splitk > 1) {
@@ -902,7 +930,7 @@ void PPLCUDAConvolutionForwardJitImpInt8(
 
 #if 0
     if (splitk > 1 || splitf > 1) {
-        int spk_width_v8  = num_flt_per_grp_pad * conv_param.num_grp / pad_size;
+        int spk_width_v4  = num_flt_per_grp_pad * conv_param.num_grp / __INT4__;
         int spk_height_v1 = out_hw * conv_param.in_num;
 
         dim3 merge_grid_size, merge_block_size;
@@ -911,10 +939,10 @@ void PPLCUDAConvolutionForwardJitImpInt8(
         merge_block_size.z = 1;
 
         merge_grid_size.x = spk_height_v1;
-        merge_grid_size.y = DivUp(spk_width_v8, merge_block_size.x);
+        merge_grid_size.y = DivUp(spk_width_v4, merge_block_size.x);
         merge_grid_size.z = 1;
 
-        MergeConvSplitResults<<<merge_grid_size, merge_block_size, 0, stream>>>(MERGE_KPARAM_LIST);
+        MergeConvSplitResultsFP32<<<merge_grid_size, merge_block_size, 0, stream>>>(INT8_MERGE_KPARAM_LIST);
     }
 #endif
 
