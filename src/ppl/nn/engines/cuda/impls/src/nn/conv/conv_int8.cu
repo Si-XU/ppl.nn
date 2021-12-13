@@ -40,7 +40,7 @@
 
 #include "float.h"
 
-#define TIMES 1
+#define TIMES 4
 #define __INT4__ 4
 
 #define INT8_SPK_KPARAM_LIST                               \
@@ -737,7 +737,7 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
                     algo_param.tiles.cta_size_in_thd = (algo_param.tiles.m_cta / algo_param.tiles.m_warp) *
                                                     (algo_param.tiles.n_cta / algo_param.tiles.n_warp) *
                                                     WARP_SIZE;
-                    algo_param.algo_name = "nvIdxnConv_hmma8816_nhwc_b" + ToString(algo_param.tiles.m_cta) + "x" + ToString(algo_param.tiles.n_cta) +
+                    algo_param.algo_name = "nvIdxnConv_imma8816_nhwc_b" + ToString(algo_param.tiles.m_cta) + "x" + ToString(algo_param.tiles.n_cta) +
                                         "_w" + ToString(algo_param.tiles.m_warp) + "x" + ToString(algo_param.tiles.n_warp) +
                                         "_k" + ToString(algo_param.tiles.k_cta) + "_s" + ToString(algo_param.tiles.k_per_step) + "_nosmem";
                 } else { // Use 2spk algo for large channel
@@ -761,7 +761,7 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
                         f_size                    = "f3";
                         algo_param.tiles.flt_size = 3;
                     }
-                    algo_param.algo_name = "nv2spkConv_hmma8816_nhwc_" + f_size + "_b" + ToString(algo_param.tiles.m_cta) + "x" + ToString(algo_param.tiles.n_cta) +
+                    algo_param.algo_name = "nv2spkConv_imma8816_nhwc_" + f_size + "_b" + ToString(algo_param.tiles.m_cta) + "x" + ToString(algo_param.tiles.n_cta) +
                                         "_w" + ToString(algo_param.tiles.m_warp) + "x" + ToString(algo_param.tiles.n_warp) +
                                         "_k" + ToString(algo_param.tiles.k_cta) + "_s" + ToString(algo_param.tiles.k_per_set) + "_buf1";
                     if (splitk > 1) {
