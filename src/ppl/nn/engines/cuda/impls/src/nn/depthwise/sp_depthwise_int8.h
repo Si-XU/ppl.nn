@@ -568,9 +568,6 @@ __global__ void ppl_cuda_depthwise_int8_nhwc_f3s2(
     }
 
     int64_t base_offset = out_idx * 4;
-    // typedef float (*array)[1];
-    // float (*a)[1] = (array)fC;
-
     simple_fuse_process_float<16, 1>(fC, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
     // fuse_process_float<4, 1>(a + 4, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
     // fuse_process_float<4, 1>(a + 8, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
