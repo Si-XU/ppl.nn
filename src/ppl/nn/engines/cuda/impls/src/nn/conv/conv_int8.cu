@@ -608,7 +608,6 @@ ppl::common::RetCode PPLCUDAConvolutionPredictKernelInt8(
     algo_param_t &algo_param,
     conv_param_t &conv_param)
 {
-    int in_hw       = conv_param.in_num * conv_param.in_height * conv_param.in_width;
     int out_hw      = conv_param.in_num * conv_param.out_height * conv_param.out_width;
     int flt_hw      = conv_param.flt_height * conv_param.flt_width;
     int chl_per_grp = conv_param.num_chl / conv_param.num_grp;
