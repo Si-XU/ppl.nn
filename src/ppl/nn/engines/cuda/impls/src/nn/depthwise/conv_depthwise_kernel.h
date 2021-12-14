@@ -28,7 +28,6 @@
 #include <vector>
 
 
-
 #define PARAMLIST      const half* input, \
     const half* filter,\
     const half* bias,\
@@ -376,6 +375,36 @@ __forceinline__ __device__ void fuse_process_float(
 }
 
 
+template<int TILE_H, int TILE_W>
+__forceinline__ __device__ void simple_fuse_process_float(
+    float *out_val,
+    int h_idx,
+    int w_idx,
+    int c_idx,
+    int out_height, 
+    int out_width,
+    int channels,
+    int paddingc,
+    int base_offset,
+    fuse_param_t fuse_params
+)
+{
+#if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
+#pragma unroll
+    for (int i = 0; i < TILE_H * TILE_W; i++) {
+            if (fuse_params.has_activation){
+                if (fuse_params.has_activation == 1){
+                    out_val[i] =  out_val[i] >= 0.0 ? out_val[i] : 0.0;
+		        }
+            } else if (fuse_params.has_clip) {
+                 out_val[i] =  out_val[i] >= fuse_params.clip_max ? 
+                        fuse_params.clip_max :  out_val[i] <= fuse_params.clip_min ? 
+                        fuse_params.clip_min :  out_val[i];
+            }
+    }
+#endif  
+}
+
 
 template<int TILE_H, int TILE_W, typename T>
 __forceinline__ __device__ void write_global(
@@ -426,7 +455,7 @@ __forceinline__ __device__ void write_global_int8(
         for (int j = 0; j < TILE_W; j++) {
             bool in_padding = h_idx * TILE_H + i < out_height && w_idx * TILE_W + j < out_width;
             if (in_padding) {
-                int32_t res = round(out_val[i][j] / out_scale);
+                int32_t res = round(out_val[i][j] * out_scale);
                 if(res > 127) res = 127;
                 else if(res < -128) res = -128;
                 output[base_offset + i * out_width * paddingc + j * paddingc] = c_idx < channels ? res : 0;
@@ -1032,7 +1061,7 @@ __global__ void ppl_cuda_depthwise_int8mma<-1,-1,-1,-1,-1,-1,-1,-1>(
         paddingc = fuse_params.concat_stride;
         base_offset = fuse_params.concat_offset + n_idx * out_height * out_width * paddingc + h_idx * out_width * paddingc + w_idx * paddingc + c_idx;
     }
-    int32_t res = round(out_val / out_scale);
+    int32_t res = round(out_val * out_scale);
     if(res > 127) res = 127;
     else if(res < -128) res = -128;
     output[base_offset] = res;
