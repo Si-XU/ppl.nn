@@ -234,7 +234,7 @@ __global__ void ppl_cukernel_pooling_max_f3s2(
             val = (val > iregs[i * 2 + 2][j * 2 + 2]) ? val : iregs[i * 2 + 2][j * 2 + 2];
 
             if (oy + i < out_height && ox + j < out_width) {
-                int res = round((float(val) * in_scale) / out_scale);
+                int res = round((float(val) * in_scale) * out_scale );
                 if(res > 127) res = 127;
                 else if( res < -128) res = -128;
                 output[outOff + (oy + i) * out_width + ox + j] = res;
@@ -431,7 +431,7 @@ __global__ void ppl_cukernel_pooling_max_f3s1(
             val = (val > iregs[i + 2][j + 2]) ? val : iregs[i + 2][j + 2];
 
             if (oy + i < out_height && ox + j < out_width) {
-                int res = round((float(val) * in_scale) / out_scale);
+                int res = round((float(val) * in_scale) * out_scale );
                 if(res > 127) res = 127;
                 else if( res < -128) res = -128;
                 output[outOff + (oy + i) * out_width + ox + j] = res;
@@ -675,7 +675,7 @@ __global__ void ppl_cukernel_pooling_max_common(
 
             // store output
             if (oy + i < out_height && ox + j < out_width) {
-                res = round(res * in_scale / out_scale);
+                res = round(res * in_scale * out_scale );
                 if(res > 127) res = 127;
                 else if( res < -128) res = -128;
                 output[outOff + (oy + i) * out_width + ox + j] = res;
@@ -805,7 +805,7 @@ __global__ void ppl_cukernel_pooling_max_common(
             // store output
             if (oy + i < out_height && ox + j < out_width) {
                 int64_t out_index = outOff + (oy + i) * out_width + ox + j;
-                res = round(res * in_scale / out_scale);
+                res = round(res * in_scale * out_scale );
                 if(res > 127) res = 127;
                 else if( res < -128) res = -128;
                 output[out_index] = res;
@@ -1172,7 +1172,7 @@ __global__ void ppl_cukernel_pooling_max_common_NHWC(
             if (oy + i < out_height && ox + j < out_width) {
                 int out_off_h                           = (oy + i) * out_width * pad_channels;
                 int out_off_w                           = (ox + j) * pad_channels;
-                res = round(res * in_scale / out_scale);
+                res = round(res * in_scale * out_scale );
                 if(res > 127) res = 127;
                 else if( res < -128) res = -128;
                 output[out_off + out_off_h + out_off_w] = res;
@@ -1236,7 +1236,7 @@ __global__ void ppl_cukernel_pooling_max_common_NHWC(
             if (oy + i < out_height && ox + j < out_width) {
                 int out_off_h                           = (oy + i) * out_width * pad_channels;
                 int out_off_w                           = (ox + j) * pad_channels;
-                res = round(res * in_scale / out_scale);
+                res = round(res * in_scale * out_scale );
                 if(res > 127) res = 127;
                 else if( res < -128) res = -128;
                 output[out_off + out_off_h + out_off_w] = res;
@@ -1308,7 +1308,7 @@ __global__ void ppl_cukernel_pooling_max_f3s2_NHWC(
             if (oy + i < out_height && ox + j < out_width) {
                 int out_off_h                           = (oy + i) * out_width * pad_channels;
                 int out_off_w                           = (ox + j) * pad_channels;
-                int res = round(val * in_scale / out_scale);
+                int res = round(val * in_scale * out_scale );
                 if(res > 127) res = 127;
                 else if( res < -128) res = -128;
                 output[out_off + out_off_h + out_off_w] = res;
@@ -1377,7 +1377,7 @@ __global__ void ppl_cukernel_pooling_max_f3s1_NHWC(
             if (oy + i < out_height && ox < out_width) {
                 int out_off_h                           = (oy + i) * out_width * pad_channels;
                 int out_off_w                           = (ox + j) * pad_channels;
-                int res = round(val * in_scale / out_scale);
+                int res = round(val * in_scale * out_scale );
                 if(res > 127) res = 127;
                 else if( res < -128) res = -128;
                 output[out_off + out_off_h + out_off_w] = res;
@@ -1802,6 +1802,7 @@ ppl::common::RetCode PPLCUDAMaxPoolingForwardImp(
             kernel_height, kernel_width, stride_height, stride_width,
             padding_height, padding_width);
     } else if (output_shape->GetDataType() == ppl::common::DATATYPE_INT8) {
+        out_scale = 1.0f / out_scale;
         return PPLCUDAMaxPoolingForwardImpInt8(
             stream, input_shape, (const int8_t*)input, output_shape, (int8_t*)output,
             kernel_height, kernel_width, stride_height, stride_width,
@@ -1841,6 +1842,7 @@ ppl::common::RetCode PPLCUDAMaxPoolingForwardImp(
             kernel_height, kernel_width, stride_height, stride_width,
             padding_height, padding_width);
     } else if (output_shape->GetDataType() == ppl::common::DATATYPE_INT8) {
+        out_scale = 1.0f / out_scale;
         return PPLCUDAMaxPoolingForwardImpInt8(
             stream, input_shape, (const int8_t*)input, output_shape, (int8_t*)output,
             indices_shape, indices,

@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 #include "conv_depthwise_kernel.h"
+#include "sp_depthwise_int8.h"
 #include "cudakernel/common/common.h"
 
 #define BLOCK_SIZE 256

@@ -165,6 +165,7 @@ void PPLCUDADepthwiseForwardCudaImp(
         tile_height, tile_width, channels, paddingc, out_height, out_width, 
         in_batch_stride, in_height_stride, in_width_stride, elems, (float*)output, fuse_param);
     } else if(type == ppl::common::DATATYPE_INT8) {
+        out_scale = 1.0f / out_scale;
         if (kernel_id >= 7) 
         {   
             dim_grid.x  = DivUp(DivUp(out_height,4) * out_width * DivUp(channels, 4), 256);
