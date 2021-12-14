@@ -17,7 +17,7 @@
 
 #if defined(ENABLE_FUSE)
 
-#define OUTPUT_PRC_HALF(_Rv1) \
+#define OUTPUT_PRC_INT8_V4(_Rv1) \
         { \
             if( dCv4_x_valid && dCv4_y_valid ) \
             { \
@@ -27,11 +27,11 @@
 
 #else
 
-#define OUTPUT_PRC_HALF(_Rv1) \
+#define OUTPUT_PRC_FLOAT_V4(_Rv4) \
         { \
             if( dCv4_x_valid && dCv4_y_valid ) \
             { \
-                ((int*)dC)[ dCv4_off ] = _Rv1; \
+                ((int4 *)dC)[ dCv4_off ] = _Rv4; \
             } \
         }
 #endif

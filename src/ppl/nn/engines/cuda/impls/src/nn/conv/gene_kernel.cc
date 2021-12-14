@@ -677,7 +677,7 @@ ppl::common::RetCode Int8CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
     WriteIncludeFile(file_str, "/int8_2spk/" + flt_size + "/bound_macros.h");
     WriteIncludeFile(file_str, "/int8_2spk/common/ldsm_macros.h");
     WriteIncludeFile(file_str, "/int8_2spk/" + flt_size + "/dmem_macros.h");
-    WriteIncludeFile(file_str, "/int8_2spk/common/hmma_macros.h");
+    WriteIncludeFile(file_str, "/int8_2spk/common/imma_macros.h");
     WriteIncludeFile(file_str, "/int8_2spk/common/reduce_macros.h");
     WriteIncludeFile(file_str, "/int8_2spk/common/smem_macros.h");
 
@@ -781,7 +781,7 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
 
     if (s_size == 16) {
         WriteIncludeFile(file_str, "/int8_idxn/common/dmem_i1_macros.h");
-        WriteIncludeFile(file_str, "/int8_idxn/common/hmma_i1_macros.h");
+        WriteIncludeFile(file_str, "/int8_idxn/common/imma_i1_macros.h");
 
         file_str << "#define LOAD_dAv1(_regA, _dAv1, _in_id, _in_off)    LOAD_dAv1_SIZE" << dAvn_size << "(_regA, _dAv1, _in_id, _in_off)\n";
         file_str << "#define LOAD_dBv1(_regB, _dBv1, _dBv1_off)          LOAD_dBv1_SIZE" << dBvn_size << "(_regB, _dBv1, _dBv1_off)\n\n";
@@ -789,7 +789,7 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
         file_str << "#define MMA_INSTS(_C, _A, _B)                       MMA_INST_1INT_" << dAvn_size << "x" << dBvn_size << "(_C, _A, _B)\n\n";
     } else if (s_size == 32) {
         WriteIncludeFile(file_str, "/int8_idxn/common/dmem_i2_macros.h");
-        WriteIncludeFile(file_str, "/int8_idxn/common/hmma_i2_macros.h");
+        WriteIncludeFile(file_str, "/int8_idxn/common/imma_i2_macros.h");
 
         file_str << "#define LOAD_dAv2(_regA, _dAv2, _in_id, _in_off)    LOAD_dAv2_SIZE" << dAvn_size << "(_regA, _dAv2, _in_id, _in_off)\n";
         file_str << "#define LOAD_dBv2(_regB, _dBv2, _dBv2_off)          LOAD_dBv2_SIZE" << dBvn_size << "(_regB, _dBv2, _dBv2_off)\n\n";
@@ -797,7 +797,7 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
         file_str << "#define MMA_INSTS(_C, _A, _B)                       MMA_INST_2INT_" << dAvn_size << "x" << dBvn_size << "(_C, _A, _B)\n\n";
     } else if (s_size == 64) {
         WriteIncludeFile(file_str, "/int8_idxn/common/dmem_i4_macros.h");
-        WriteIncludeFile(file_str, "/int8_idxn/common/hmma_i4_macros.h");
+        WriteIncludeFile(file_str, "/int8_idxn/common/imma_i4_macros.h");
 
         file_str << "#define LOAD_dAv4(_regA, _dAv4, _in_id, _in_off)    LOAD_dAv4_SIZE" << dAvn_size << "(_regA, _dAv4, _in_id, _in_off)\n";
         file_str << "#define LOAD_dBv4(_regB, _dBv4, _dBv4_off)          LOAD_dBv4_SIZE" << dBvn_size << "(_regB, _dBv4, _dBv4_off)\n\n";
@@ -878,7 +878,7 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionFor2spk(std::string& file_
     }
 
     if (fuse_info.channel_offset >= 0) {
-        file_str << "JIT_SET_CONCAT_OFF_V4(fR, concatV4_off)\n";
+        file_str << "JIT_SET_CONCAT_OFF_V4(concatV4_off)\n";
     }
 
     file_str << "}\n";
@@ -921,7 +921,7 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionForIdxn(std::string& file_
         }
 
         if (fuse_index < fuse_size && fuse_info.types[fuse_index] == "Add") {
-            file_str << "JIT_FUSE_ELT_2x" << i << "_V1(pre_data)\n";
+            file_str << "JIT_FUSE_ELT_1x" << i << "_V1(pre_data)\n";
             fuse_index++;
         }
 

@@ -12,7 +12,7 @@ fi
 
 options="-DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install $*"
 
-pplnn_build_dir="${workdir}/cuda-build"
+pplnn_build_dir="${workdir}/pplnn-build"
 mkdir ${pplnn_build_dir}
 cd ${pplnn_build_dir}
 cmd="cmake $options .. && cmake --build . -j ${processor_num} --config Release && cmake --build . --target install -j ${processor_num} --config Release"

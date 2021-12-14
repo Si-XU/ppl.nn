@@ -103,6 +103,21 @@ private:
     std::map<nodeid_t, SelectionInfo> selection_res_;
 };
 
+class DepthwiseDirectInt8 final : public ConvAlgorithm {
+public:
+    void GetAttrParam(void*& param) const override;
+    void DeleteAttrParam(void*& param) override;
+    bool IsSupported(const ir::Node* node, const OptKernelOptions& options, ppl::common::dataformat_t input_format) const override;
+    double ExcuteTimer(const ir::Node* node, OptKernelOptions& options) override;
+    RetCode ModifyParam(ir::Node* node, OptKernelOptions& options) override;
+    void ReshapeOnEdges(const ir::Node* node, std::map<edgeid_t, std::unique_ptr<TensorImpl>>* tensors,
+                                ppl::common::dataformat_t input_format, ppl::common::dataformat_t output_format) override;
+
+private:
+    CudaConvParam attr_param_;
+    std::map<nodeid_t, SelectionInfo> selection_res_;
+};
+
 }}} // namespace ppl::nn::cuda
 
 #endif

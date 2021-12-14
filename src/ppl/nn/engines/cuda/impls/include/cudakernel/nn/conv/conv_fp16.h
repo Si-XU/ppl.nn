@@ -151,6 +151,11 @@ ppl::common::RetCode PPLCUDAConvolutionPredictKernel(
     algo_param_t& algo_param,
     conv_param_t& conv_param);
 
+ppl::common::RetCode PPLCUDAConvolutionPredictKernelInt8(
+    ppl::common::datatype_t type,
+    algo_param_t &algo_param,
+    conv_param_t &conv_param);
+
 double PPLCUDAConvolutionSelectKernel(
     cudaStream_t& stream,
     ppl::common::datatype_t type,

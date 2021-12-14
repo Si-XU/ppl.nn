@@ -73,6 +73,7 @@ RetCode ConvertToForwardConvParam(const TensorShape& shape_in0, const TensorShap
     GetPadSize(flt_pad_size, shape_in1.GetDataType());
     //conv_param.num_chl_pad = (conv_param.num_chl + 7) / 8 * 8;
     //conv_param.num_flt_pad = (conv_param.num_flt + 7) / 8 * 8;
+    //std::cout << "in pad size: " << in_pad_size << " flt_pad_size: " << flt_pad_size << std::endl;
     conv_param.num_chl_pad = Align(conv_param.num_chl, in_pad_size);
     conv_param.num_flt_pad = Align(conv_param.num_flt, flt_pad_size);
     conv_param.flt_height = shape_in1.GetDim(2);

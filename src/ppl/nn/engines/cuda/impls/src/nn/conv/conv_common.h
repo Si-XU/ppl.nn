@@ -344,6 +344,7 @@ struct kernel_info_t {
 
     bool CheckKernelTypeFeasibleInt8(int flt_height, int flt_width, int num_chl_per_grp, int splitk)
     {
+        if (ktype == CONV_IDXN_C2 || ktype == CONV_IDXN_C4 || ktype == CONV_IDXN_C32) {
         if (num_chl_per_grp > 0 && num_chl_per_grp <= 4) {
             if (ktype == CONV_IDXN_C2 && splitk == 1) {
                 int num_chl_per_grp_pad = Align(num_chl_per_grp, 4);
@@ -375,6 +376,7 @@ struct kernel_info_t {
                 return (kloop_time == 1);
             } else
                 return false;
+        }
         } else if (flt_height == 1 && flt_width == 1) {
             return (ktype == CONV_2SPK_F1 || ktype == CONV_SWZL_F1) ? true : false;
         } else if (flt_height == 3 && flt_width == 3) {
@@ -490,6 +492,8 @@ __inline__ uint64_t GetMaxSplitSize(
     uint64_t split_size = conv_param.out_height * conv_param.out_width *
                           num_flt_per_grp_pad * conv_param.num_grp *
                           conv_param.in_num;
+    if (type==ppl::common::DATATYPE_INT8)
+        type=ppl::common::DATATYPE_FLOAT32;
     unsigned int bytes = ppl::common::GetSizeOfDataType(type);
 
     return split_size * bytes * MAX_SPLIT_SIZE;
@@ -505,6 +509,8 @@ __inline__ uint64_t GetSplitKFSize(
     uint64_t split_size = conv_param.out_height * conv_param.out_width *
                           num_flt_per_grp_pad * conv_param.num_grp *
                           conv_param.in_num;
+    if (type==ppl::common::DATATYPE_INT8)
+        type=ppl::common::DATATYPE_FLOAT32;
     unsigned int bytes = ppl::common::GetSizeOfDataType(type);
 
     return split_size * bytes * splitf * splitk;
@@ -552,7 +558,7 @@ void InitializeSwzlConvFNKernelContainer(std::vector<kernel_info_t> & kernel_con
 void InitializeInt82spkConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
 void InitializeInt82spkConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
 void InitializeInt82spkConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
-//void InitializeInt82spkConvFSKernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeInt82spkConvFSKernelContainer(std::vector<kernel_info_t> & kernel_container);
 
 void InitializeInt8IdxnConvKernelContainer(std::vector<kernel_info_t> & kernel_container);
 #endif
