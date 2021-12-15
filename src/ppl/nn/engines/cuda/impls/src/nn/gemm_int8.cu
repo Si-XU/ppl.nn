@@ -494,22 +494,22 @@ ppl::common::RetCode PPLCUDAGemmForwardImpInt8(
 
     // fuse configs
     ppl::common::RetCode status = ppl::common::RC_SUCCESS;
-    printf("m= %d\n", M);
-    if (M == 1) {
-        status = PPLCUDAGemvForwardImpInt8<int8_t>(stream,
-                                               M,
-                                               N_pad,
-                                               K_pad,
-                                               input,
-                                               weight,
-                                               bias,
-                                               (void *)final_out,
-                                               param,
-                                               temp_buffer,
-                                               quant_param,
-                                               fuse_param);
-        return status;
-    }
+    // TODO Add GEMMV
+    // if (M == 1) {
+    //     status = PPLCUDAGemvForwardImpInt8<int8_t>(stream,
+    //                                            M,
+    //                                            N_pad,
+    //                                            K_pad,
+    //                                            input,
+    //                                            weight,
+    //                                            bias,
+    //                                            (void *)final_out,
+    //                                            param,
+    //                                            temp_buffer,
+    //                                            quant_param,
+    //                                            fuse_param);
+    //     return status;
+    // }
     // kernel configs
 #ifdef PPLNN_ENABLE_CUDA_JIT
     int tile_m_per_cta  = algo_param.tiles.m_cta;
