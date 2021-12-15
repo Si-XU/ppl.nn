@@ -83,7 +83,6 @@ int PPLCUDADepthwiseSelectKernel(
     cudaEventCreate(&begin);
     cudaEventCreate(&end);
     for (uint32_t id = 0; id < func_vec.size(); id++) {
-        // if(id < 7) continue;
         if (!CanSupport(func_vec[id], conv_param))
             continue;
         cudaEventRecord(begin, stream);
