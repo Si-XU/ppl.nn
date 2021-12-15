@@ -115,15 +115,16 @@ uint64_t PPLGemmCUDAGetBufSize(
 }
 
 unsigned int PPLCUDAGemmGetBiasSize(
-    const ppl::common::datatype_t type,
+    const ppl::common::datatype_t infer_type,//output type
+    const ppl::common::datatype_t bias_type,
     const int N,
     const bool is_scalar)
 {
     if (!is_scalar)
         return 0;
-    int pad_size  = GetPadSize(type); // ldg 128 bytes
+    int pad_size  = GetPadSize(infer_type); // ldg 128 bytes
     int N_pad     = Align(N, pad_size);
-    int type_size = ppl::common::GetSizeOfDataType(type);
+    int type_size = ppl::common::GetSizeOfDataType(bias_type);
     return N_pad * type_size;
 }
 
@@ -221,13 +222,14 @@ ppl::common::RetCode PPLCUDAGemmModifyWeights(
 }
 ppl::common::RetCode PPLCUDAGemmModifyBias(
     const cudaStream_t &stream,
+    const ppl::common::datatype_t infer_type,
     const ppl::nn::TensorShape *bias_shape,
     void *bias,
     const ppl::nn::common::GemmParam *param)
 {
     if (param->bias_term) {
         auto type    = bias_shape->GetDataType();
-        int pad_size = GetPadSize(type);
+        int pad_size = GetPadSize(infer_type);
         float beta   = param->beta;
         int N        = bias_shape->GetDim(0);
         int N_pad    = Align(N, pad_size);
