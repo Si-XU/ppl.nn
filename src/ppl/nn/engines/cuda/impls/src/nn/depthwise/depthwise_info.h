@@ -175,6 +175,7 @@ struct depthwise_kernel_info
         this->kernel_w     = kernel_w;
         this->stride_h     = stride_h;
         this->stride_w     = stride_w;
+        this->algo_type    = algo_type; 
     }
 };
 
