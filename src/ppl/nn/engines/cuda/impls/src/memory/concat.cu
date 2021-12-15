@@ -366,7 +366,7 @@ ppl::common::RetCode PPLCUDAConcatForwardImp(
                 // nhwc, axis == 1 means last dim
         if (output_shape->GetDataType() == ppl::common::DATATYPE_INT8 && num_inputs == 2 &&
             axis == 1) {
-            if (!(input_dims[0][axis] & 0x15) && !(input_dims[1][axis] & 0x15)) {
+            if (!(input_dims[0][axis] & 0xFFFFFFFF) && !(input_dims[1][axis] & 0xFFFFFFFF)) {
                 int block_size    = 256;
                 int channel_shift = 4;
                 int grid_size     = ((output_elems >> channel_shift) + block_size - 1) / block_size;
@@ -381,7 +381,6 @@ ppl::common::RetCode PPLCUDAConcatForwardImp(
                                                                                           (const float4*)inputs[1],
                                                                                           (float4*)output);
             } else {
-                // printf("test = %d, %d\n",input_dims[0][axis], input_dims[1][axis]);
                 int block_size      = 256;
                 int grid_size       = (output_elems + block_size - 1) / block_size;
                 int axis_width0     = input_dims[0][axis];
