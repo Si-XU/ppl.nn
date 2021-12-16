@@ -99,36 +99,6 @@ void init_f1_int8_kvec(std::vector<kernel_info_t> &g_int8_kvec, ppl::common::dat
 #endif
 }
 
-//uint64_t PPLGemmCUDAGetBufSize(
-//    const ppl::nn::TensorShape *input_shape,
-//    int transA)
-//{
-//    auto type     = input_shape->GetDataType();
-//    int type_size = ppl::common::GetSizeOfDataType(type);
-//
-//    if (transA) {
-//        int pad_size = GetPadSize(type); // ldg 128 bytes
-//        int K        = input_shape->GetDim(0);
-//        int M        = input_shape->GetDim(1);
-//        int K_pad    = Align(K, pad_size);
-//        return M * K_pad * type_size;
-//    }
-//    return 0;
-//}
-
-//unsigned int PPLCUDAGemmGetBiasSize(
-//    const ppl::common::datatype_t type,
-//    const int N,
-//    const bool is_scalar)
-//{
-//    if (!is_scalar)
-//        return 0;
-//    int pad_size  = GetPadSize(type); // ldg 128 bytes
-//    int N_pad     = Align(N, pad_size);
-//    int type_size = ppl::common::GetSizeOfDataType(type);
-//    return N_pad * type_size;
-//}
-
 // block size: (32,32,1)
 __global__ void int8_matrix_transpose(
     int *output,
@@ -153,17 +123,6 @@ __global__ void int8_matrix_transpose(
         output[out_y * in_row + out_x] = value;
 }
 
-//template <typename T>
-//__global__ void scale(T *input, float scale, unsigned int size)
-//{
-//    unsigned int off = blockIdx.x * 512 + threadIdx.x;
-//    bool in_range    = off <= size;
-//    T value          = in_range ? input[off] : (T)0;
-//    float fp_value   = (float)value;
-//    fp_value         = scale * fp_value;
-//    if (in_range)
-//        input[off] = (T)fp_value;
-//}
 ppl::common::RetCode PPLCUDAGemmModifyWeightsInt8(
     const cudaStream_t &stream,
     ppl::nn::TensorShape *weight_shape,
@@ -195,55 +154,8 @@ ppl::common::RetCode PPLCUDAGemmModifyWeightsInt8(
         }
 #undef TRANSWEIGHT
     }
-    //else if (alpha != 1.f) {
-    //    int grid_size = DivUp(dim0 * dim1, 512);
-    //    switch (type) {
-    //        case ppl::common::DATATYPE_FLOAT32: {
-    //            scale<float><<<grid_size, 512, 0, stream>>>((float *)weight, alpha, dim0 * dim1);
-    //            break;
-    //        }
-    //        case ppl::common::DATATYPE_FLOAT16: {
-    //            scale<__half><<<grid_size, 512, 0, stream>>>((__half *)weight, alpha, dim0 * dim1);
-    //            break;
-    //        }
-    //        default:
-    //            return ppl::common::RC_UNSUPPORTED;
-    //    }
-    //}
     return ppl::common::RC_SUCCESS;
 }
-//ppl::common::RetCode PPLCUDAGemmModifyBias(
-//    const cudaStream_t &stream,
-//    const ppl::nn::TensorShape *bias_shape,
-//    void *bias,
-//    const ppl::nn::common::GemmParam *param)
-//{
-//    if (param->bias_term) {
-//        auto type    = bias_shape->GetDataType();
-//        int pad_size = GetPadSize(type);
-//        float beta   = param->beta;
-//        int N        = bias_shape->GetDim(0);
-//        int N_pad    = Align(N, pad_size);
-//        if (type == ppl::common::DATATYPE_FLOAT32) {
-//            if (bias_shape->IsScalar())
-//                return ppl::common::RC_UNSUPPORTED;
-//            if (beta != 0.f && beta != 1.f) {
-//                int grid_size = DivUp(N_pad, 512);
-//                scale<float><<<grid_size, 512, 0, stream>>>((float *)bias, beta, N_pad);
-//            }
-//        } else if (type == ppl::common::DATATYPE_FLOAT16) {
-//            if (bias_shape->IsScalar())
-//                return ppl::common::RC_UNSUPPORTED;
-//            if (beta != 0.f && beta != 1.f) {
-//                int grid_size = DivUp(N_pad, 512);
-//                scale<__half><<<grid_size, 512, 0, stream>>>((__half *)bias, beta, N_pad);
-//            }
-//        } else {
-//            return ppl::common::RC_UNSUPPORTED;
-//        }
-//    }
-//    return ppl::common::RC_SUCCESS;
-//}
 
 #define MAX_KERNEL_SIZE (1 + 12 + 30)
 
@@ -445,6 +357,7 @@ ppl::common::RetCode PPLCUDAGemvForwardImpInt8(
     const cudaStream_t &stream,
     const int M,
     const int N,
+    const int padN,
     const int K,
     const void *input,
     const void *weight,
@@ -494,10 +407,11 @@ ppl::common::RetCode PPLCUDAGemmForwardImpInt8(
 
     // fuse configs
     ppl::common::RetCode status = ppl::common::RC_SUCCESS;
-    printf("m= %d\n", M);
     if (M == 1) {
+        //printf("in gemv\n");
         status = PPLCUDAGemvForwardImpInt8<int8_t>(stream,
                                                M,
+                                               N,
                                                N_pad,
                                                K_pad,
                                                input,
@@ -678,19 +592,22 @@ __device__ __inline__ void clip(int4 &v, float clip_min, float clip_max)
 }
 
 #if 1
+// partition workload according to input matrix
 // matrix: NxK
-// FIXME N should not be paded in matrix:(N, padK)
+// FIXME N should not be paded in matrix:(N, padK), but output is (1, N_int4_pad)
 //  N: pad int4
 //  K: pad int4
 //  layout and fuse pattern  consistent with gemm
 // BLK_TILE_N: min:8
+// THD_TILE_N_V4: num of int
 template <typename T, int BLK_TILE_N, int THD_TILE_N_V4, int BLK_SIZE>
 __global__ void int8_gemv(void *output,
                      const void *vec,
                      const void *matrix,
                      const void *bias,
                      const int padK,
-                     const int padN,
+                     const int N,
+                     const int padOutN,//pad int4, 16
                      const fuse_param_t fuse_param,
                      const quant_param_t quant_param)
 {
@@ -699,20 +616,30 @@ __global__ void int8_gemv(void *output,
     constexpr int T_NUMS_PER_INT  = sizeof(int)  / sizeof(T);
     constexpr int T_NUMS_PER_INT4 = sizeof(int4) / sizeof(T);
     constexpr int DT_NUMS_PER_INT4= sizeof(int4) / sizeof(int);
-    constexpr int BLK_TILE_N_V4   = BLK_TILE_N / T_NUMS_PER_INT4;
-    constexpr int THD_TILE_N      = THD_TILE_N_V4 * T_NUMS_PER_INT4;
+    constexpr int BLK_TILE_N_V4   = BLK_TILE_N / T_NUMS_PER_INT;
+    constexpr int THD_TILE_N      = THD_TILE_N_V4 * T_NUMS_PER_INT;
     constexpr int BLK_SIZE_Y      = BLK_TILE_N_V4 / THD_TILE_N_V4;
     constexpr int BLK_SIZE_X      = BLK_SIZE / BLK_SIZE_Y;
     constexpr int BLK_TILE_K      = BLK_SIZE_X;
-    int pad_k_v4                  = padK / T_NUMS_PER_INT4;
-    int pad_n_v4                  = padN / T_NUMS_PER_INT4;
-    int n_id                      = blockIdx.x * BLK_TILE_N + threadIdx.y * T_NUMS_PER_INT4;
+    bool in_n_range[THD_TILE_N];
+#pragma unroll
+    for (int i = 0; i < THD_TILE_N; i++) {
+        in_n_range[i] = blockIdx.x * BLK_TILE_N + threadIdx.y + i * BLK_SIZE_Y < N;
+    }
+    int pad_k_v4                  = padK / T_NUMS_PER_INT4;// 16 int8
+    int pad_out_n_v4              = padOutN / DT_NUMS_PER_INT4;// 16 int8
+    int n_id                      = blockIdx.x * BLK_TILE_N + threadIdx.y * T_NUMS_PER_INT;
+    //dequant
+    float4 flt_scale_v4[THD_TILE_N_V4];
+    float *flt_scale = (float*)flt_scale_v4;
+    for (int i = 0; i < THD_TILE_N_V4; i++) {
+        flt_scale_v4[i] = ((float4*)quant_param.d_flt_scale)[blockIdx.x * BLK_TILE_N_V4 + i * BLK_SIZE_Y + threadIdx.y];
+    }
 
     int64_t b_base_v4    = (int64_t)n_id * pad_k_v4;
     int4 *matrix_base_v4 = (int4 *)matrix + b_base_v4;
     int4 reg_c[THD_TILE_N];
     int4 reg_b[THD_TILE_N];
-    bool in_n_range[THD_TILE_N_V4];
     int4 reg_a;
     int4 zero       = {0, 0, 0, 0};
     int c[THD_TILE_N] = {int(0)};
@@ -723,12 +650,9 @@ __global__ void int8_gemv(void *output,
     for (int i = 0; i < THD_TILE_N; i++) {
         reg_c[i] = zero;
     }
-#pragma unroll
-    for (int i = 0; i < THD_TILE_N_V4; i++) {
-        in_n_range[i] = blockIdx.x * BLK_TILE_N_V4 + threadIdx.y + i * BLK_SIZE_Y < pad_n_v4;
-    }
 
     // ld global VxM
+    // each tid.y ld thd_tile_n/4 * 4(int8) along n, get thd_tile_n (int32) result
 #pragma unroll
     for (int k = 0; k < DivUp(pad_k_v4, BLK_TILE_K); k++) {
         int64_t off   = k * BLK_TILE_K + threadIdx.x;
@@ -737,12 +661,18 @@ __global__ void int8_gemv(void *output,
 #pragma unroll
         for (int i = 0; i < THD_TILE_N_V4; i++) {
 #pragma unroll
-            for (int j = 0; j < T_NUMS_PER_INT4; j++) {
-                reg_b[i * T_NUMS_PER_INT4 + j] = in_n_range[i] && in_range ? matrix_base_v4[(i * T_NUMS_PER_INT4 * BLK_SIZE_Y + j) * pad_k_v4 + off]
-                                                                           : zero;
-                fma_v4<T>(reg_a, reg_b[i * T_NUMS_PER_INT4 + j], reg_c[i * T_NUMS_PER_INT4 + j]);
+            for (int j = 0; j < T_NUMS_PER_INT; j++) {
+                reg_b[i * T_NUMS_PER_INT + j] = in_n_range[i * T_NUMS_PER_INT + j] && in_range ?
+                                       matrix_base_v4[(i * T_NUMS_PER_INT * BLK_SIZE_Y + j) * pad_k_v4 + off]
+                                       : zero;
+                fma_v4<T>(reg_a, reg_b[i * T_NUMS_PER_INT + j], reg_c[i * T_NUMS_PER_INT + j]);
             }
         }
+        //for (int i = 0; i < THD_TILE_N; i++) {
+        //    reg_b[i] = in_n_range[i] && in_range ? matrix_base_v4[(i * BLK_SIZE_Y) * pad_k_v4 + off]
+        //    fma_v4<T>(reg_a, reg_b[i], reg_c[i]);
+        //}
+
     }
     // int4 reduce to half
 #pragma unroll
@@ -834,12 +764,13 @@ __global__ void int8_gemv(void *output,
         }
     }
 
+    //FIXME ld can be placed in the begining
     //dequant
-    float4 flt_scale_v4[THD_TILE_N_V4];
-    float *flt_scale = (float*)flt_scale_v4;
-    for (int i = 0; i < THD_TILE_N_V4; i++) {
-        flt_scale_v4[i] = ((float4*)quant_param.d_flt_scale)[blockIdx.x * BLK_TILE_N_V4 + i * BLK_SIZE_Y + threadIdx.y];
-    }
+    //float4 flt_scale_v4[THD_TILE_N_V4];
+    //float *flt_scale = (float*)flt_scale_v4;
+    //for (int i = 0; i < THD_TILE_N_V4; i++) {
+    //    flt_scale_v4[i] = ((float4*)quant_param.d_flt_scale)[blockIdx.x * BLK_TILE_N_V4 + i * BLK_SIZE_Y + threadIdx.y];
+    //}
     float *fc = (float*)c;
     for (int i = 0; i < THD_TILE_N; i++){
         fc[i] = quant_param.in_scale * flt_scale[i] * c[i];
@@ -854,12 +785,16 @@ __global__ void int8_gemv(void *output,
         }
     }
     __syncthreads();
+    //if(blockIdx.x==0 && threadIdx.y == 0 &&threadIdx.x==0){
+    //    for(int i = 0; i < THD_TILE_N*BLK_SIZE_Y; i++){
+    //        printf("(%d, %f)\t", i, ((float*)smem)[i]);
+    //    }
+    //}
 
     int tid = threadIdx.y * BLK_SIZE_X + threadIdx.x;
     for (int thd_off = tid; thd_off < BLK_TILE_N_V4; thd_off += BLK_SIZE) {
         int out_off          = blockIdx.x * BLK_TILE_N_V4 + thd_off;
-        //bool in_output_range = out_off < pad_n_v4;
-        bool in_output_range = out_off < padN/T_NUMS_PER_INT;
+        bool in_output_range = out_off < pad_out_n_v4;
 
         if (in_output_range) {
             int4 bias_data = bias != NULL ? ((int4 *)bias)[out_off] : zero;
@@ -916,6 +851,7 @@ template <typename T>
 ppl::common::RetCode PPLCUDAGemvForwardImpInt8(
     const cudaStream_t &stream,
     const int M,
+    const int N,
     const int padN,
     const int padK,
     const void *input,
@@ -930,22 +866,22 @@ ppl::common::RetCode PPLCUDAGemvForwardImpInt8(
     if (!param.transB)
         return ppl::common::RC_UNSUPPORTED;
 
-    constexpr int ELEM_NUM_PR_LD = sizeof(int4) / sizeof(T);
+    constexpr int ELEM_NUM_PR_ST = sizeof(int) / sizeof(T);
     constexpr int expect_blocks  = 64;
     // constexpr int MAX_BLK_SIZE = 256;
     // constexpr int MAX_THD_TILE_N_V4 = 4;
-    int n_v4                     = padN / ELEM_NUM_PR_LD;
+    int n_v4                     = padN / ELEM_NUM_PR_ST;
     int blk_tile_n_v4            = DivUp(n_v4, expect_blocks / M);
 #define LAUNCH_KERNEL()                                                                                                                  \
     {                                                                                                                                    \
-        constexpr int BLK_TILE_N = BLK_SIZE_Y * THD_TILE_N_V4 * ELEM_NUM_PR_LD;                                                          \
+        constexpr int BLK_TILE_N = BLK_SIZE_Y * THD_TILE_N_V4 * ELEM_NUM_PR_ST;                                                          \
         constexpr int BLK_SIZE   = BLK_SIZE_Y * BLK_SIZE_X;                                                                              \
         dim3 grid;                                                                                                                       \
         grid.x       = DivUp(padN, BLK_TILE_N);                                                                                          \
         grid.y       = 1;                                                                                                                \
         grid.z       = 1;                                                                                                                \
         dim3 threads = dim3(BLK_SIZE_X, BLK_SIZE_Y, 1);                                                                                  \
-        int8_gemv<T, BLK_TILE_N, THD_TILE_N_V4, BLK_SIZE><<<grid, threads, 0, stream>>>(output, input, weight, bias, padK, padN, fuse_param, quant_param); \
+        int8_gemv<T, BLK_TILE_N, THD_TILE_N_V4, BLK_SIZE><<<grid, threads, 0, stream>>>(output, input, weight, bias, padK, N, padN, fuse_param, quant_param); \
     }
 #define CONFIG_KERNEL(_blk_tile_n_v4)                  \
     {                                                  \
@@ -974,13 +910,17 @@ ppl::common::RetCode PPLCUDAGemvForwardImpInt8(
             LAUNCH_KERNEL();                           \
         }                                              \
     }
-    if (padK >= 512) {
-        //constexpr int BLK_SIZE_X = 64;
-        constexpr int BLK_SIZE_X = 32;
+    if (padK >= 8196) {
+        constexpr int BLK_SIZE_X = 128;
+        CONFIG_KERNEL(blk_tile_n_v4);
+    } else if (padK >= 1024) {
+        constexpr int BLK_SIZE_X = 64;
+    //if (padK >= 512) {
+        //constexpr int BLK_SIZE_X = 32;
         CONFIG_KERNEL(blk_tile_n_v4);
     } else {
-        //constexpr int BLK_SIZE_X = 32;
-        constexpr int BLK_SIZE_X = 16;
+        constexpr int BLK_SIZE_X = 32;
+        //constexpr int BLK_SIZE_X = 16;
         CONFIG_KERNEL(blk_tile_n_v4);
     }
 
