@@ -42,6 +42,12 @@ RetCode BatchNormalizationOp::Init(const OptKernelOptions& options) {
             status = InferInheritedType(info);
         } else if (type == DATATYPE_INT8) {
             status = CopyQuantType(info, quant);
+            for (uint32_t i = 1; i < 5; ++i) {
+                if (info->GetInputCount() >= i) {
+                    auto shape = &info->GetInput<TensorImpl>(i)->GetShape();
+                    shape->SetDataType(ppl::common::DATATYPE_FLOAT32);
+                }
+            }
         } else {
             status = InferDefaultType(info, type);
         }
