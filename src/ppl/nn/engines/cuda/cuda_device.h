@@ -46,13 +46,13 @@ public:
         if (status != ppl::common::RC_SUCCESS) {
             return status;
         }
-        std::default_random_engine eng;
-        std::uniform_real_distribution<float> dis(-2.64f, 2.64f);
-        std::unique_ptr<float[]> host_random_data(new float[bytes / sizeof(float)]);
-        for (size_t i = 0; i < bytes / sizeof(float); ++i) {
-            host_random_data[i] = dis(eng);
-        }
-        cudaMemcpyAsync(buffer->addr, host_random_data.get(), bytes, cudaMemcpyHostToDevice, context_.stream);
+        // std::default_random_engine eng;
+        // std::uniform_real_distribution<float> dis(-2.64f, 2.64f);
+        // std::unique_ptr<float[]> host_random_data(new float[bytes / sizeof(float)]);
+        // for (size_t i = 0; i < bytes / sizeof(float); ++i) {
+        //     host_random_data[i] = dis(eng);
+        // }
+        // cudaMemcpyAsync(buffer->addr, host_random_data.get(), bytes, cudaMemcpyHostToDevice, context_.stream);
         return status;
     }
 

@@ -209,6 +209,9 @@ void InitKernelList(std::vector<depthwise_kernel_info> &vec, ppl::common::dataty
         vec.push_back(depthwise_kernel_info(nullptr, nullptr, ppl_cuda_depthwise_int8mma<2,2,6,6,5,5,1,1>, "ppl_cuda_depthwise_int8mma",i,2,2,6,6,5,5,1,1,0)); i++;
         vec.push_back(depthwise_kernel_info(nullptr, nullptr, ppl_cuda_depthwise_int8_nhwc_f3s1<2,2,4,4,3,3,1,1>, "ppl_cuda_depthwise_int8_nhwc_f3s1",i,2,2,4,4,3,3,1,1,1)); i++;
         vec.push_back(depthwise_kernel_info(nullptr, nullptr, ppl_cuda_depthwise_int8_nhwc_f3s2<2,2,4,4,3,3,2,2>, "ppl_cuda_depthwise_int8_nhwc_f3s2",i,2,2,4,4,3,3,2,2,1)); i++;
+        vec.push_back(depthwise_kernel_info(nullptr, nullptr, ppl_cuda_depthwise_int8_nhwc_f5s1<2,2,4,4,5,5,1,1>, "ppl_cuda_depthwise_int8_nhwc_f5s1",i,2,2,4,4,5,5,1,1,1)); i++;
+        vec.push_back(depthwise_kernel_info(nullptr, nullptr, ppl_cuda_depthwise_int8_nhwc_f5s2<2,2,4,4,5,5,2,2>, "ppl_cuda_depthwise_int8_nhwc_f5s1",i,2,2,4,4,5,5,2,2,1)); i++;
+
     }
 }
 
