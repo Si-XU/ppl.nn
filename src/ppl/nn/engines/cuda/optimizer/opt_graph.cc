@@ -634,11 +634,11 @@ RetCode OptGraph::DoOptimize(CudaDevice* device) {
         return status;
     }
 
-    status = FuseOperator();
-    if (status != RC_SUCCESS) {
-        LOG(ERROR) << "Fuse operators failed: " << GetRetCodeStr(status);
-        return status;
-    }
+    // status = FuseOperator();
+    // if (status != RC_SUCCESS) {
+    //     LOG(ERROR) << "Fuse operators failed: " << GetRetCodeStr(status);
+    //     return status;
+    // }
 
     status = AddBridgeKernels();
     if (status != RC_SUCCESS) {
@@ -676,11 +676,11 @@ RetCode OptGraph::DoOptimize(CudaDevice* device) {
         return status;
     }
 
-    status = FuseOperator();
-    if (status != RC_SUCCESS) {
-        LOG(ERROR) << "Fuse operators failed: " << GetRetCodeStr(status);
-        return status;
-    }
+    // status = FuseOperator();
+    // if (status != RC_SUCCESS) {
+    //     LOG(ERROR) << "Fuse operators failed: " << GetRetCodeStr(status);
+    //     return status;
+    // }
 
     return RC_SUCCESS;
 }
