@@ -16,12 +16,15 @@
 // under the License.
 
 #include "ppl/nn/engines/cuda/kernels/ppl/bridge_kernel.h"
+#include "ppl/common/cuda/cuda_types.h"
 #include "ppl/nn/common/logger.h"
-#include<iostream>
 
 namespace ppl { namespace nn { namespace cuda {
 
 bool BridgeKernel::EqualTypeAndFormat(const TensorImpl* input, const TensorImpl* output) {
+    auto src_align_size = ppl::common::cuda::GetDataFormatChannelAlignment(input->GetShape().GetDataFormat());
+    auto dst_align_size = ppl::common::cuda::GetDataFormatChannelAlignment(output->GetShape().GetDataFormat());
+
     if (input->GetShape().GetDataType() != output->GetShape().GetDataType()) {
         return false;
     }
@@ -30,7 +33,16 @@ bool BridgeKernel::EqualTypeAndFormat(const TensorImpl* input, const TensorImpl*
         return true;
     }
 
+    if (input->GetShape().GetDim(1) % src_align_size != 0 || output->GetShape().GetDim(1) % dst_align_size != 0) {
+        return false;
+    }
+
     if (input->GetShape().GetDimCount() == 2 && output->GetShape().GetDimCount() == 2) {
+        return true;
+    }
+
+    if (input->GetShape().GetDimCount() == 4 && output->GetShape().GetDimCount() == 4 &&
+        input->GetShape().GetDim(2) == 1 && input->GetShape().GetDim(3) == 1) {
         return true;
     }
 
@@ -42,6 +54,12 @@ ppl::common::RetCode BridgeKernel::DoExecute(KernelExecContext* ctx) {
     auto output = ctx->GetOutput<TensorImpl>(0);
     ppl::common::RetCode status = ppl::common::RC_SUCCESS;
     auto converter = output->GetDevice()->GetDataConverter();
+
+    if (EqualTypeAndFormat(input, output)) {
+        output->TransferBufferFrom(input);
+        return status;
+    }
+
     if (input->GetShape().GetDataType() != ppl::common::DATATYPE_INT8 &&
         output->GetShape().GetDataType() != ppl::common::DATATYPE_INT8) {
         status = converter->Convert(&output->GetBufferDesc(), output->GetShape(), input->GetBufferDesc(), input->GetShape());

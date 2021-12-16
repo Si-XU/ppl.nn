@@ -30,14 +30,16 @@ namespace ppl { namespace nn { namespace cuda {
 RetCode ChannelShuffleOp::Init(const OptKernelOptions& options) {
     infer_type_func_ = [](InputOutputInfo* info, std::vector<CudaTensorQuant>* quant, datatype_t type) -> RetCode {
         ppl::common::RetCode status;
-        //std::cout << "type: " << type <<" "<< info->GetInput<TensorImpl>(0)->GetShape().GetDataType()<<" "<<info->GetOutput<TensorImpl>(0)->GetShape().GetDataType()<< std::endl;
-        type = DATATYPE_INT8;
         if (type == DATATYPE_UNKNOWN) {
             status = InferInheritedType(info);
         } else if (type == DATATYPE_INT8) {
             status = CopyQuantType(info, quant);
         } else {
             status = InferDefaultType(info, type);
+        }
+        for (uint32_t i = info->GetOutputCount(); i < info->GetInputCount(); ++i) { // Shape op's outputs
+            auto shape = &info->GetInput<TensorImpl>(i)->GetShape();
+            shape->SetDataType(ppl::common::DATATYPE_INT64);
         }
         return status;
     };
