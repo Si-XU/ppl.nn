@@ -99,36 +99,6 @@ void init_f1_int8_kvec(std::vector<kernel_info_t> &g_int8_kvec, ppl::common::dat
 #endif
 }
 
-//uint64_t PPLGemmCUDAGetBufSize(
-//    const ppl::nn::TensorShape *input_shape,
-//    int transA)
-//{
-//    auto type     = input_shape->GetDataType();
-//    int type_size = ppl::common::GetSizeOfDataType(type);
-//
-//    if (transA) {
-//        int pad_size = GetPadSize(type); // ldg 128 bytes
-//        int K        = input_shape->GetDim(0);
-//        int M        = input_shape->GetDim(1);
-//        int K_pad    = Align(K, pad_size);
-//        return M * K_pad * type_size;
-//    }
-//    return 0;
-//}
-
-//unsigned int PPLCUDAGemmGetBiasSize(
-//    const ppl::common::datatype_t type,
-//    const int N,
-//    const bool is_scalar)
-//{
-//    if (!is_scalar)
-//        return 0;
-//    int pad_size  = GetPadSize(type); // ldg 128 bytes
-//    int N_pad     = Align(N, pad_size);
-//    int type_size = ppl::common::GetSizeOfDataType(type);
-//    return N_pad * type_size;
-//}
-
 // block size: (32,32,1)
 __global__ void int8_matrix_transpose(
     int *output,
@@ -153,17 +123,6 @@ __global__ void int8_matrix_transpose(
         output[out_y * in_row + out_x] = value;
 }
 
-//template <typename T>
-//__global__ void scale(T *input, float scale, unsigned int size)
-//{
-//    unsigned int off = blockIdx.x * 512 + threadIdx.x;
-//    bool in_range    = off <= size;
-//    T value          = in_range ? input[off] : (T)0;
-//    float fp_value   = (float)value;
-//    fp_value         = scale * fp_value;
-//    if (in_range)
-//        input[off] = (T)fp_value;
-//}
 ppl::common::RetCode PPLCUDAGemmModifyWeightsInt8(
     const cudaStream_t &stream,
     ppl::nn::TensorShape *weight_shape,
@@ -195,55 +154,8 @@ ppl::common::RetCode PPLCUDAGemmModifyWeightsInt8(
         }
 #undef TRANSWEIGHT
     }
-    //else if (alpha != 1.f) {
-    //    int grid_size = DivUp(dim0 * dim1, 512);
-    //    switch (type) {
-    //        case ppl::common::DATATYPE_FLOAT32: {
-    //            scale<float><<<grid_size, 512, 0, stream>>>((float *)weight, alpha, dim0 * dim1);
-    //            break;
-    //        }
-    //        case ppl::common::DATATYPE_FLOAT16: {
-    //            scale<__half><<<grid_size, 512, 0, stream>>>((__half *)weight, alpha, dim0 * dim1);
-    //            break;
-    //        }
-    //        default:
-    //            return ppl::common::RC_UNSUPPORTED;
-    //    }
-    //}
     return ppl::common::RC_SUCCESS;
 }
-//ppl::common::RetCode PPLCUDAGemmModifyBias(
-//    const cudaStream_t &stream,
-//    const ppl::nn::TensorShape *bias_shape,
-//    void *bias,
-//    const ppl::nn::common::GemmParam *param)
-//{
-//    if (param->bias_term) {
-//        auto type    = bias_shape->GetDataType();
-//        int pad_size = GetPadSize(type);
-//        float beta   = param->beta;
-//        int N        = bias_shape->GetDim(0);
-//        int N_pad    = Align(N, pad_size);
-//        if (type == ppl::common::DATATYPE_FLOAT32) {
-//            if (bias_shape->IsScalar())
-//                return ppl::common::RC_UNSUPPORTED;
-//            if (beta != 0.f && beta != 1.f) {
-//                int grid_size = DivUp(N_pad, 512);
-//                scale<float><<<grid_size, 512, 0, stream>>>((float *)bias, beta, N_pad);
-//            }
-//        } else if (type == ppl::common::DATATYPE_FLOAT16) {
-//            if (bias_shape->IsScalar())
-//                return ppl::common::RC_UNSUPPORTED;
-//            if (beta != 0.f && beta != 1.f) {
-//                int grid_size = DivUp(N_pad, 512);
-//                scale<__half><<<grid_size, 512, 0, stream>>>((__half *)bias, beta, N_pad);
-//            }
-//        } else {
-//            return ppl::common::RC_UNSUPPORTED;
-//        }
-//    }
-//    return ppl::common::RC_SUCCESS;
-//}
 
 #define MAX_KERNEL_SIZE (1 + 12 + 30)
 
@@ -254,93 +166,96 @@ __inline__ std::string ToString(int v)
     return ss.str();
 }
 
-//double PPLCUDAGemmJITSelectKernel(
-//    int device_id,
-//    cudaStream_t &stream,
-//    ppl::common::datatype_t type,
-//    ppl::nn::TensorShape *input_shape,
-//    void *input,
-//    ppl::nn::TensorShape *weight_shape,
-//    void *weight,
-//    void *bias,
-//    ppl::nn::TensorShape *output_shape,
-//    void *output,
-//    void *temp_buffer,
-//    conv_param_t &conv_param,
-//    fuse_param_t &fuse_param,
-//    algo_param_t &algo_param,
-//    uint64_t workspace)
-//{
-//    auto pre_algo_param     = algo_param;
-//    int pad_size            = GetPadSize(type);
-//    int num_chl_per_grp     = conv_param.num_chl / conv_param.num_grp;
-//    int num_flt_per_grp     = conv_param.num_flt / conv_param.num_grp;
-//    int num_flt_per_grp_pad = Align(num_flt_per_grp, pad_size);
-//    int flt_hw              = conv_param.flt_height * conv_param.flt_width;
-//
-//    int size_x    = DivUp(conv_param.in_num * conv_param.out_height * conv_param.out_width, algo_param.tiles.m_cta);
-//    int size_y    = DivUp(num_flt_per_grp_pad, algo_param.tiles.n_cta);
-//    int grid_size = size_x * size_y;
-//
-//    std::vector<std::string> knames;
-//    std::vector<algo_param_t> params;
-//    std::string total_source = "";
-//    int declare_times        = 0;
-//    float elapsed            = 0.0f;
-//
-//    unsigned int splitk = 1;
-//    unsigned int splitf = 1;
-//
-//    for (unsigned int index = 0; index < MAX_KERNEL_SIZE; index++) {
-//        conv_ktype_t ktype;
-//        algo_param = pre_algo_param;
-//        PPLCUDAConvolutionModifyAlgoParam(algo_param, index); // change algo_param
-//        algo_param.splitk = splitk;
-//        algo_param.splitf = splitf;
-//
-//        algo_param.tiles.cta_size_in_thd = (algo_param.tiles.m_cta / algo_param.tiles.m_warp) *
-//                                           (algo_param.tiles.n_cta / algo_param.tiles.n_warp) *
-//                                           (algo_param.tiles.k_cta / algo_param.tiles.k_per_set) *
-//                                           WARP_SIZE;
-//        ktype                     = CONV_2SPK_F1;
-//        std::string f_size        = "f1";
-//        algo_param.tiles.flt_size = 1;
-//        algo_param.algo_name      = "nv2spkConv_hmma1688_nhwc_" + f_size + "_b" + ToString(algo_param.tiles.m_cta) + "x" + ToString(algo_param.tiles.n_cta) +
-//                               "_w" + ToString(algo_param.tiles.m_warp) + "x" + ToString(algo_param.tiles.n_warp) +
-//                               "_k" + ToString(algo_param.tiles.k_cta) + "_s" + ToString(algo_param.tiles.k_per_set) + "_buf1";
-//
-//        kernel_info_t temp_kernel(-1, ktype, algo_param.algo_name.c_str());
-//        if (!temp_kernel.CheckKernelTilesFeasible(type, device_id))
-//            continue;
-//        if (!temp_kernel.CheckKernelTypeFeasible(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk))
-//            continue;
-//        if (!temp_kernel.CheckSplitkFeasible(num_chl_per_grp, splitk))
-//            continue;
-//        if (!temp_kernel.CheckSplitfFeasible(splitf, splitk))
-//            continue;
-//        if (!temp_kernel.CheckQuickSelectFeasible(algo_param, num_chl_per_grp, grid_size, flt_hw, splitk, splitf, device_id))
-//            continue;
-//
-//        auto mgr = CodeGeneFactorManager::Instance();
-//        auto gene_factor = mgr->FindKernel(type);
-//        std::string source = "";
-//        gene_factor->Gene2spkKernel(source, algo_param.algo_name, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_set, algo_param.splitk, algo_param.splitf, algo_param.tiles.buf, declare_times);
-//        declare_times++;
-//
-//        if (std::find(knames.begin(), knames.end(), algo_param.algo_name) == knames.end()) {
-//            total_source = total_source + source;
-//        }
-//        knames.push_back(algo_param.algo_name);
-//        params.push_back(algo_param);
-//    }
-//
-//    int index = 0;
-//    std::vector<const char *> compile_params;
-//    elapsed = AlgoForwardTime(stream, knames, total_source, index, compile_params, device_id, true, type, (int4 *)input, (int4 *)weight, (int4 *)output, (int4 *)bias, (int4 *)temp_buffer, params, conv_param, fuse_param, workspace);
-//
-//    algo_param = params[index];
-//    return elapsed;
-//}
+double PPLCUDAGemmJITSelectKernelInt8(
+   int device_id,
+   cudaStream_t &stream,
+   ppl::common::datatype_t type,
+   ppl::nn::TensorShape *input_shape,
+   void *input,
+   ppl::nn::TensorShape *weight_shape,
+   void *weight,
+   void *bias,
+   ppl::nn::TensorShape *output_shape,
+   void *output,
+   void *temp_buffer,
+   conv_param_t &conv_param,
+   quant_param_t &quant_param,
+   fuse_param_t &fuse_param,
+   algo_param_t &algo_param,
+   uint64_t workspace)
+{
+   auto pre_algo_param     = algo_param;
+   int pad_size            = GetPadSize(type);
+   int num_chl_per_grp     = conv_param.num_chl / conv_param.num_grp;
+   int num_flt_per_grp     = conv_param.num_flt / conv_param.num_grp;
+   int num_flt_per_grp_pad = Align(num_flt_per_grp, pad_size);
+   int flt_hw              = conv_param.flt_height * conv_param.flt_width;
+
+   int size_x    = DivUp(conv_param.in_num * conv_param.out_height * conv_param.out_width, algo_param.tiles.m_cta);
+   int size_y    = DivUp(num_flt_per_grp_pad, algo_param.tiles.n_cta);
+   int grid_size = size_x * size_y;
+
+   std::vector<std::string> knames;
+   std::vector<algo_param_t> params;
+   std::string total_source = "";
+   int declare_times        = 0;
+   float elapsed            = 0.0f;
+
+   unsigned int splitk = 1;
+   unsigned int splitf = 1;
+
+   for (unsigned int index = 0; index < MAX_KERNEL_SIZE; index++) {
+       conv_ktype_t ktype;
+       algo_param = pre_algo_param;
+       PPLCUDAConvolutionModifyAlgoParam(algo_param, index); // change algo_param
+       algo_param.splitk = splitk;
+       algo_param.splitf = splitf;
+
+       algo_param.tiles.cta_size_in_thd = (algo_param.tiles.m_cta / algo_param.tiles.m_warp) *
+                                          (algo_param.tiles.n_cta / algo_param.tiles.n_warp) *
+                                          (algo_param.tiles.k_cta / algo_param.tiles.k_per_set) *
+                                          WARP_SIZE;
+       ktype                     = CONV_2SPK_F1;
+       std::string f_size        = "f1";
+       algo_param.tiles.flt_size = 1;
+       algo_param.algo_name      = "nv2spkConv_imma8816_nhwc_" + f_size + "_b" + ToString(algo_param.tiles.m_cta) + "x" + ToString(algo_param.tiles.n_cta) +
+                              "_w" + ToString(algo_param.tiles.m_warp) + "x" + ToString(algo_param.tiles.n_warp) +
+                              "_k" + ToString(algo_param.tiles.k_cta) + "_s" + ToString(algo_param.tiles.k_per_set) + "_buf1";
+
+       kernel_info_t temp_kernel(-1, ktype, algo_param.algo_name.c_str());
+       if (!temp_kernel.CheckKernelTilesFeasible(type, device_id))
+           continue;
+       if (!temp_kernel.CheckKernelTypeFeasibleInt8(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk))
+           continue;
+       if (!temp_kernel.CheckSplitkFeasible(num_chl_per_grp, splitk))
+           continue;
+       if (!temp_kernel.CheckSplitfFeasible(splitf, splitk))
+           continue;
+       if (!temp_kernel.CheckQuickSelectFeasible(algo_param, num_chl_per_grp, grid_size, flt_hw, splitk, splitf, device_id))
+           continue;
+
+       auto mgr = CodeGeneFactorManager::Instance();
+       auto gene_factor = mgr->FindKernel(type);
+       std::string source = "";
+       fuse_info_t empty_fuse_info;
+       gene_factor->Gene2spkKernel(source, algo_param.algo_name, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_set, algo_param.splitk, algo_param.splitf, algo_param.tiles.buf, declare_times);
+       gene_factor->ReplaceFusionFor2spk(source, empty_fuse_info);
+       declare_times++;
+
+       if (std::find(knames.begin(), knames.end(), algo_param.algo_name) == knames.end()) {
+           total_source = total_source + source;
+       }
+       knames.push_back(algo_param.algo_name);
+       params.push_back(algo_param);
+   }
+
+   int index = 0;
+   std::vector<const char *> compile_params;
+   elapsed = AlgoForwardTimeInt8(stream, knames, total_source, index, compile_params, device_id, true, type, (int4 *)input, (int4 *)weight, (int4 *)output, (int4 *)bias, (int4 *)temp_buffer, params, conv_param, quant_param, fuse_param, workspace);
+
+   algo_param = params[index];
+   return elapsed;
+}
 
 double PPLCUDAGemmSelectKernelInt8(
     const cudaStream_t &stream,
@@ -445,6 +360,7 @@ ppl::common::RetCode PPLCUDAGemvForwardImpInt8(
     const cudaStream_t &stream,
     const int M,
     const int N,
+    const int padN,
     const int K,
     const void *input,
     const void *weight,
@@ -472,8 +388,8 @@ ppl::common::RetCode PPLCUDAGemmForwardImpInt8(
     const algo_param_t &algo_param)
 {
     auto type = weight_shape->GetDataType();
-#ifndef PPLNN_ENABLE_CUDA_JIT
     float alpha  = param.alpha;
+#ifndef PPLNN_ENABLE_CUDA_JIT
     if (!is_g_int8_kvec_set)
         init_f1_int8_kvec(g_int8_kvec, type);
 #endif
@@ -494,22 +410,22 @@ ppl::common::RetCode PPLCUDAGemmForwardImpInt8(
 
     // fuse configs
     ppl::common::RetCode status = ppl::common::RC_SUCCESS;
-    // TODO Add GEMMV
-    // if (M == 1) {
-    //     status = PPLCUDAGemvForwardImpInt8<int8_t>(stream,
-    //                                            M,
-    //                                            N_pad,
-    //                                            K_pad,
-    //                                            input,
-    //                                            weight,
-    //                                            bias,
-    //                                            (void *)final_out,
-    //                                            param,
-    //                                            temp_buffer,
-    //                                            quant_param,
-    //                                            fuse_param);
-    //     return status;
-    // }
+    if (M == 1) {
+        status = PPLCUDAGemvForwardImpInt8<int8_t>(stream,
+                                               M,
+                                               N,
+                                               N_pad,
+                                               K_pad,
+                                               input,
+                                               weight,
+                                               bias,
+                                               (void *)final_out,
+                                               param,
+                                               temp_buffer,
+                                               quant_param,
+                                               fuse_param);
+        return status;
+    }
     // kernel configs
 #ifdef PPLNN_ENABLE_CUDA_JIT
     int tile_m_per_cta  = algo_param.tiles.m_cta;
@@ -550,10 +466,12 @@ ppl::common::RetCode PPLCUDAGemmForwardImpInt8(
     void *prelu      = (void *)fuse_param.prelu;
     void *pre_data   = (void *)fuse_param.pre_data;
     void *elt_prelu  = (void *)fuse_param.elt_prelu;
-    half leaky       = fuse_param.leaky;
-    half elt_leaky   = fuse_param.elt_leaky;
+    float in_quant   = alpha * quant_param.in_scale;
+    void *flt_quant  = (void *)quant_param.d_flt_scale;
+    float out_quant  = quant_param.out_scale;
+    float pre_quant  = quant_param.pre_scale;
 
-    void *args[]        = {&input0_tmp, &weight, &final_out, &kLoopNum, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &in_hw, &out_hw, &flt_hw, &splitk, &in_height, &in_width, &batch, &num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &flt_height, &flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &out_height, &out_width, &stride_height, &stride_width, &pad_height, &pad_width, &hole_height, &hole_width, &has_bias, &bias, &fuse_param.has_activation, &fuse_param.clip_min, &fuse_param.has_clip, &fuse_param.clip_max, &fuse_param.has_prelu, &prelu, &fuse_param.has_elt, &(pre_data), &fuse_param.has_elt_activation, &fuse_param.elt_clip_min, &fuse_param.has_elt_clip, &fuse_param.elt_clip_max, &fuse_param.has_elt_prelu, &(elt_prelu), &leaky, &elt_leaky, &fuse_param.has_concat, &concat_offset_v8, &concat_stride_v8};
+    void *args[]        = {&input0_tmp, &weight, &final_out, &kLoopNum, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &in_hw, &out_hw, &flt_hw, &splitk, &in_height, &in_width, &batch, &num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &flt_height, &flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &out_height, &out_width, &stride_height, &stride_width,  &pad_height, &pad_width, &hole_height, &hole_width, &has_bias, &bias, (in_quant), &(flt_quant),  &(out_quant), &(pre_quant),&fuse_param.has_activation, &fuse_param.clip_min, &fuse_param.has_clip, &fuse_param.clip_max, &fuse_param.has_prelu, &(prelu), &fuse_param.has_elt, &(pre_data), &fuse_param.has_elt_activation, &fuse_param.elt_clip_min, &fuse_param.has_elt_clip,  &fuse_param.elt_clip_max, &fuse_param.has_elt_prelu, &(elt_prelu), &fuse_param.leaky, &fuse_param.elt_leaky, &fuse_param.has_concat, &concat_offset_v8, &concat_stride_v8};
     CUfunction function = module->GetKernelFunc();
     CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
 #else
@@ -678,19 +596,22 @@ __device__ __inline__ void clip(int4 &v, float clip_min, float clip_max)
 }
 
 #if 1
+// partition workload according to input matrix
 // matrix: NxK
-// FIXME N should not be paded in matrix:(N, padK)
+// FIXME N should not be paded in matrix:(N, padK), but output is (1, N_int4_pad)
 //  N: pad int4
 //  K: pad int4
 //  layout and fuse pattern  consistent with gemm
 // BLK_TILE_N: min:8
+// THD_TILE_N_V4: num of int
 template <typename T, int BLK_TILE_N, int THD_TILE_N_V4, int BLK_SIZE>
 __global__ void int8_gemv(void *output,
                      const void *vec,
                      const void *matrix,
                      const void *bias,
                      const int padK,
-                     const int padN,
+                     const int N,
+                     const int padOutN,//pad int4, 16
                      const fuse_param_t fuse_param,
                      const quant_param_t quant_param)
 {
@@ -699,20 +620,30 @@ __global__ void int8_gemv(void *output,
     constexpr int T_NUMS_PER_INT  = sizeof(int)  / sizeof(T);
     constexpr int T_NUMS_PER_INT4 = sizeof(int4) / sizeof(T);
     constexpr int DT_NUMS_PER_INT4= sizeof(int4) / sizeof(int);
-    constexpr int BLK_TILE_N_V4   = BLK_TILE_N / T_NUMS_PER_INT4;
-    constexpr int THD_TILE_N      = THD_TILE_N_V4 * T_NUMS_PER_INT4;
+    constexpr int BLK_TILE_N_V4   = BLK_TILE_N / T_NUMS_PER_INT;
+    constexpr int THD_TILE_N      = THD_TILE_N_V4 * T_NUMS_PER_INT;
     constexpr int BLK_SIZE_Y      = BLK_TILE_N_V4 / THD_TILE_N_V4;
     constexpr int BLK_SIZE_X      = BLK_SIZE / BLK_SIZE_Y;
     constexpr int BLK_TILE_K      = BLK_SIZE_X;
-    int pad_k_v4                  = padK / T_NUMS_PER_INT4;
-    int pad_n_v4                  = padN / T_NUMS_PER_INT4;
-    int n_id                      = blockIdx.x * BLK_TILE_N + threadIdx.y * T_NUMS_PER_INT4;
+    bool in_n_range[THD_TILE_N];
+#pragma unroll
+    for (int i = 0; i < THD_TILE_N; i++) {
+        in_n_range[i] = blockIdx.x * BLK_TILE_N + threadIdx.y + i * BLK_SIZE_Y < N;
+    }
+    int pad_k_v4                  = padK / T_NUMS_PER_INT4;// 16 int8
+    int pad_out_n_v4              = padOutN / DT_NUMS_PER_INT4;// 16 int8
+    int n_id                      = blockIdx.x * BLK_TILE_N + threadIdx.y * T_NUMS_PER_INT;
+    //dequant
+    float4 flt_scale_v4[THD_TILE_N_V4];
+    float *flt_scale = (float*)flt_scale_v4;
+    for (int i = 0; i < THD_TILE_N_V4; i++) {
+        flt_scale_v4[i] = ((float4*)quant_param.d_flt_scale)[blockIdx.x * BLK_TILE_N_V4 + i * BLK_SIZE_Y + threadIdx.y];
+    }
 
     int64_t b_base_v4    = (int64_t)n_id * pad_k_v4;
     int4 *matrix_base_v4 = (int4 *)matrix + b_base_v4;
     int4 reg_c[THD_TILE_N];
     int4 reg_b[THD_TILE_N];
-    bool in_n_range[THD_TILE_N_V4];
     int4 reg_a;
     int4 zero       = {0, 0, 0, 0};
     int c[THD_TILE_N] = {int(0)};
@@ -723,12 +654,9 @@ __global__ void int8_gemv(void *output,
     for (int i = 0; i < THD_TILE_N; i++) {
         reg_c[i] = zero;
     }
-#pragma unroll
-    for (int i = 0; i < THD_TILE_N_V4; i++) {
-        in_n_range[i] = blockIdx.x * BLK_TILE_N_V4 + threadIdx.y + i * BLK_SIZE_Y < pad_n_v4;
-    }
 
     // ld global VxM
+    // each tid.y ld thd_tile_n/4 * 4(int8) along n, get thd_tile_n (int32) result
 #pragma unroll
     for (int k = 0; k < DivUp(pad_k_v4, BLK_TILE_K); k++) {
         int64_t off   = k * BLK_TILE_K + threadIdx.x;
@@ -737,12 +665,18 @@ __global__ void int8_gemv(void *output,
 #pragma unroll
         for (int i = 0; i < THD_TILE_N_V4; i++) {
 #pragma unroll
-            for (int j = 0; j < T_NUMS_PER_INT4; j++) {
-                reg_b[i * T_NUMS_PER_INT4 + j] = in_n_range[i] && in_range ? matrix_base_v4[(i * T_NUMS_PER_INT4 * BLK_SIZE_Y + j) * pad_k_v4 + off]
-                                                                           : zero;
-                fma_v4<T>(reg_a, reg_b[i * T_NUMS_PER_INT4 + j], reg_c[i * T_NUMS_PER_INT4 + j]);
+            for (int j = 0; j < T_NUMS_PER_INT; j++) {
+                reg_b[i * T_NUMS_PER_INT + j] = in_n_range[i * T_NUMS_PER_INT + j] && in_range ?
+                                       matrix_base_v4[(i * T_NUMS_PER_INT * BLK_SIZE_Y + j) * pad_k_v4 + off]
+                                       : zero;
+                fma_v4<T>(reg_a, reg_b[i * T_NUMS_PER_INT + j], reg_c[i * T_NUMS_PER_INT + j]);
             }
         }
+        //for (int i = 0; i < THD_TILE_N; i++) {
+        //    reg_b[i] = in_n_range[i] && in_range ? matrix_base_v4[(i * BLK_SIZE_Y) * pad_k_v4 + off]
+        //    fma_v4<T>(reg_a, reg_b[i], reg_c[i]);
+        //}
+
     }
     // int4 reduce to half
 #pragma unroll
@@ -834,12 +768,13 @@ __global__ void int8_gemv(void *output,
         }
     }
 
+    //FIXME ld can be placed in the begining
     //dequant
-    float4 flt_scale_v4[THD_TILE_N_V4];
-    float *flt_scale = (float*)flt_scale_v4;
-    for (int i = 0; i < THD_TILE_N_V4; i++) {
-        flt_scale_v4[i] = ((float4*)quant_param.d_flt_scale)[blockIdx.x * BLK_TILE_N_V4 + i * BLK_SIZE_Y + threadIdx.y];
-    }
+    //float4 flt_scale_v4[THD_TILE_N_V4];
+    //float *flt_scale = (float*)flt_scale_v4;
+    //for (int i = 0; i < THD_TILE_N_V4; i++) {
+    //    flt_scale_v4[i] = ((float4*)quant_param.d_flt_scale)[blockIdx.x * BLK_TILE_N_V4 + i * BLK_SIZE_Y + threadIdx.y];
+    //}
     float *fc = (float*)c;
     for (int i = 0; i < THD_TILE_N; i++){
         fc[i] = quant_param.in_scale * flt_scale[i] * c[i];
@@ -854,12 +789,16 @@ __global__ void int8_gemv(void *output,
         }
     }
     __syncthreads();
+    //if(blockIdx.x==0 && threadIdx.y == 0 &&threadIdx.x==0){
+    //    for(int i = 0; i < THD_TILE_N*BLK_SIZE_Y; i++){
+    //        printf("(%d, %f)\t", i, ((float*)smem)[i]);
+    //    }
+    //}
 
     int tid = threadIdx.y * BLK_SIZE_X + threadIdx.x;
     for (int thd_off = tid; thd_off < BLK_TILE_N_V4; thd_off += BLK_SIZE) {
         int out_off          = blockIdx.x * BLK_TILE_N_V4 + thd_off;
-        //bool in_output_range = out_off < pad_n_v4;
-        bool in_output_range = out_off < padN/T_NUMS_PER_INT;
+        bool in_output_range = out_off < pad_out_n_v4;
 
         if (in_output_range) {
             int4 bias_data = bias != NULL ? ((int4 *)bias)[out_off] : zero;
@@ -916,6 +855,7 @@ template <typename T>
 ppl::common::RetCode PPLCUDAGemvForwardImpInt8(
     const cudaStream_t &stream,
     const int M,
+    const int N,
     const int padN,
     const int padK,
     const void *input,
@@ -930,22 +870,22 @@ ppl::common::RetCode PPLCUDAGemvForwardImpInt8(
     if (!param.transB)
         return ppl::common::RC_UNSUPPORTED;
 
-    constexpr int ELEM_NUM_PR_LD = sizeof(int4) / sizeof(T);
+    constexpr int ELEM_NUM_PR_ST = sizeof(int) / sizeof(T);
     constexpr int expect_blocks  = 64;
     // constexpr int MAX_BLK_SIZE = 256;
     // constexpr int MAX_THD_TILE_N_V4 = 4;
-    int n_v4                     = padN / ELEM_NUM_PR_LD;
+    int n_v4                     = padN / ELEM_NUM_PR_ST;
     int blk_tile_n_v4            = DivUp(n_v4, expect_blocks / M);
 #define LAUNCH_KERNEL()                                                                                                                  \
     {                                                                                                                                    \
-        constexpr int BLK_TILE_N = BLK_SIZE_Y * THD_TILE_N_V4 * ELEM_NUM_PR_LD;                                                          \
+        constexpr int BLK_TILE_N = BLK_SIZE_Y * THD_TILE_N_V4 * ELEM_NUM_PR_ST;                                                          \
         constexpr int BLK_SIZE   = BLK_SIZE_Y * BLK_SIZE_X;                                                                              \
         dim3 grid;                                                                                                                       \
         grid.x       = DivUp(padN, BLK_TILE_N);                                                                                          \
         grid.y       = 1;                                                                                                                \
         grid.z       = 1;                                                                                                                \
         dim3 threads = dim3(BLK_SIZE_X, BLK_SIZE_Y, 1);                                                                                  \
-        int8_gemv<T, BLK_TILE_N, THD_TILE_N_V4, BLK_SIZE><<<grid, threads, 0, stream>>>(output, input, weight, bias, padK, padN, fuse_param, quant_param); \
+        int8_gemv<T, BLK_TILE_N, THD_TILE_N_V4, BLK_SIZE><<<grid, threads, 0, stream>>>(output, input, weight, bias, padK, N, padN, fuse_param, quant_param); \
     }
 #define CONFIG_KERNEL(_blk_tile_n_v4)                  \
     {                                                  \
@@ -974,13 +914,17 @@ ppl::common::RetCode PPLCUDAGemvForwardImpInt8(
             LAUNCH_KERNEL();                           \
         }                                              \
     }
-    if (padK >= 512) {
-        //constexpr int BLK_SIZE_X = 64;
-        constexpr int BLK_SIZE_X = 32;
+    if (padK >= 8196) {
+        constexpr int BLK_SIZE_X = 128;
+        CONFIG_KERNEL(blk_tile_n_v4);
+    } else if (padK >= 1024) {
+        constexpr int BLK_SIZE_X = 64;
+    //if (padK >= 512) {
+        //constexpr int BLK_SIZE_X = 32;
         CONFIG_KERNEL(blk_tile_n_v4);
     } else {
-        //constexpr int BLK_SIZE_X = 32;
-        constexpr int BLK_SIZE_X = 16;
+        constexpr int BLK_SIZE_X = 32;
+        //constexpr int BLK_SIZE_X = 16;
         CONFIG_KERNEL(blk_tile_n_v4);
     }
 

@@ -103,6 +103,24 @@ ppl::common::RetCode PPLCUDAGemmModifyWeightsInt8(
     void *tmp_weight, // if need transpose
     const ppl::nn::common::GemmParam *param);
 
+double PPLCUDAGemmJITSelectKernelInt8(
+    int device_id,
+    cudaStream_t& stream,
+    ppl::common::datatype_t type,
+    ppl::nn::TensorShape* input_shape,
+    void* input,
+    ppl::nn::TensorShape* weight_shape,
+    void* weight,
+    void* bias,
+    ppl::nn::TensorShape* output_shape,
+    void* output,
+    void* temp_buffer,
+    conv_param_t& conv_param,
+    quant_param_t &quant_param,
+    fuse_param_t& fuse_param,
+    algo_param_t& algo_param,
+    uint64_t workspace = (uint64_t)8 * 1024 * 1024 * 1024);
+
 double PPLCUDAGemmSelectKernelInt8(
     const cudaStream_t &stream,
     const ppl::nn::TensorShape *input_shape,
