@@ -19,6 +19,61 @@
 #define PPL_CUKERNEL_CONV_SP_DEPTHWISE_KERNEL_H_
 #include <cuda_fp16.h>
 
+// template<int TILE_H, int TILE_W>
+// __forceinline__ __device__ void simple_fuse_process_float(
+//     float *out_val,
+//     int h_idx,
+//     int w_idx,
+//     int c_idx,
+//     int out_height, 
+//     int out_width,
+//     int channels,
+//     int paddingc,
+//     int base_offset,
+//     fuse_param_t fuse_params
+// )
+// {
+// #if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
+// #pragma unroll
+//     for (int i = 0; i < TILE_H * TILE_W; i++) {
+//             if (fuse_params.has_activation){
+//                 if (fuse_params.has_activation == 1)
+//                 {
+//                     out_val[i] =  out_val[i] >= 0.0 ? out_val[i] : 0.0;
+// 		        }
+//             } else if (fuse_params.has_clip) {
+//                  out_val[i] =  out_val[i] >= fuse_params.clip_max ? 
+//                         fuse_params.clip_max :  out_val[i] <= fuse_params.clip_min ? 
+//                         fuse_params.clip_min :  out_val[i];
+//             }
+//     }
+// #endif  
+// }
+#define PREDEFINEIF #if
+#define PREDEFINEENDIF #endif
+#define PRAGMAUNROLL #pragma
+
+#define FUSE_PROCESS_FLOAT(out_val, fuse_params, TILE_H, TILE_W) \
+{ \
+    if (fuse_params.has_activation){ \
+        if (fuse_params.has_activation == 1) \
+            { \
+            _Pragma("unroll")\
+                for (int i = 0; i < TILE_H * TILE_W; i++) { \
+                    out_val[i] =  out_val[i] >= 0.0f ? out_val[i] : 0.0f;\
+		        }\
+            }\
+    } else if (fuse_params.has_clip) { \
+            _Pragma("unroll")\
+                for (int i = 0; i < TILE_H * TILE_W; i++) { \
+                 out_val[i] =  out_val[i] >= fuse_params.clip_max ? \
+                        fuse_params.clip_max :  out_val[i] <= fuse_params.clip_min ? \
+                        fuse_params.clip_min :  out_val[i];\
+            }\
+        }\
+}
+
+
 #define PACK4INT(data, x, y, z, w) \
     x = (0xffu & x); \
     y = (0xffu & y) << 8;\
@@ -356,8 +411,10 @@ __global__ void ppl_cuda_depthwise_int8_nhwc_f3s1(
         fC[15] +=  regBias.w;
     }
 
-    int64_t base_offset = out_idx * 4;
-    simple_fuse_process_float<16, 1>(fC, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
+    // int64_t base_offset = out_idx * 4;
+    // simple_fuse_process_float<16, 1>(fC, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
+    FUSE_PROCESS_FLOAT(fC, fuse_params, 16, 1)
+
 #pragma unroll
     for(int i = 0; i < 16; i++)
     {
@@ -567,8 +624,9 @@ __global__ void ppl_cuda_depthwise_int8_nhwc_f3s2(
         fC[15] +=  regBias.w;
     }
 
-    int64_t base_offset = out_idx * 4;
-    simple_fuse_process_float<16, 1>(fC, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
+    // int64_t base_offset = out_idx * 4;
+    FUSE_PROCESS_FLOAT(fC, fuse_params, 16, 1)
+    // simple_fuse_process_float<16, 1>(fC, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
     // fuse_process_float<4, 1>(a + 4, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
     // fuse_process_float<4, 1>(a + 8, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
     // fuse_process_float<4, 1>(a + 12, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
@@ -1058,8 +1116,9 @@ __global__ void ppl_cuda_depthwise_int8_nhwc_f5s1(
         fC[15] +=  regBias.w;
     }
 
-    int64_t base_offset = out_idx * 4;
-    simple_fuse_process_float<16, 1>(fC, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
+    // int64_t base_offset = out_idx * 4;
+    FUSE_PROCESS_FLOAT(fC, fuse_params, 16, 1)
+    // simple_fuse_process_float(fC, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
     // fuse_process_float<4, 1>(a + 4, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
     // fuse_process_float<4, 1>(a + 8, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
     // fuse_process_float<4, 1>(a + 12, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
@@ -1341,11 +1400,13 @@ __global__ void ppl_cuda_depthwise_int8_nhwc_f5s2(
         fC[15] +=  regBias.w;
     }
 
-    int64_t base_offset = out_idx * 4;
-    simple_fuse_process_float<16, 1>(fC, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
+    // int64_t base_offset = out_idx * 4;
+    // simple_fuse_process_float<16, 1>(fC, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
     // fuse_process_float<4, 1>(a + 4, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
     // fuse_process_float<4, 1>(a + 8, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
     // fuse_process_float<4, 1>(a + 12, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
+    FUSE_PROCESS_FLOAT(fC, fuse_params, 16, 1)
+
 #pragma unroll
     for(int i = 0; i < 16; i++)
     {
