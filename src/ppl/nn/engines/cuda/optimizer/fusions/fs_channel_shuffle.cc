@@ -244,7 +244,7 @@ const RetCode ChannelShuffleFusion::FuseNode(ir::Node* node, bool reliable, cons
     auto topo = options.graph->topo.get();
     if (CanFuse(node, options)) {
         LOG(DEBUG) << "Fuse node[" << node->GetName() << "] into channel shuffle";
-        std::string node_name = "ChannelShuffle_" + node->GetName();
+        // std::string node_name = "ChannelShuffle_" + node->GetName();
         options.info->kernels.erase(node->GetId());
         for (uint32_t i = 0; i < 2; ++i) {
             FuseWithNextNodes(node, options);
@@ -265,7 +265,7 @@ const RetCode ChannelShuffleFusion::FuseNode(ir::Node* node, bool reliable, cons
         }
 
         node->SetType(ir::Node::Type("ppl", "ChannelShuffle", 1));
-        node->SetName(node_name);
+        // node->SetName(node_name);
         auto creator = OptKernelCreatorManager::Instance()->Find(node->GetType().domain, node->GetType().name,
                                                                  node->GetType().version);
         if (!creator) {

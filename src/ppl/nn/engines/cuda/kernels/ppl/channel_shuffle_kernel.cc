@@ -42,8 +42,8 @@ ppl::common::RetCode ChannelShuffleKernel::DoExecute(KernelExecContext* ctx) {
 
     if (ctx->GetOutputCount() == 1) {
         auto Y_shape = Y->GetShape();
-        if(Y_shape.GetElementsExcludingPadding() < Y_shape.GetElementsIncludingPadding())
-            cudaMemset(Y->GetBufferPtr(), 0, Y_shape.GetBytesIncludingPadding());
+        // if(Y_shape.GetElementsExcludingPadding() < Y_shape.GetElementsIncludingPadding())
+        //     cudaMemset(Y->GetBufferPtr(), 0, Y_shape.GetBytesIncludingPadding());
         PPLCUDAChannelShuffleForwardImp(GetStream(), group_, &X->GetShape(), X->GetBufferPtr(),
                                                              &Y->GetShape(), Y->GetBufferPtr(), 
                                                              input_quant0.scale[0], output_quant0.scale[0]);
@@ -56,10 +56,10 @@ ppl::common::RetCode ChannelShuffleKernel::DoExecute(KernelExecContext* ctx) {
         auto input_quant1 = GetCommonParam()->cuda_tensor_info->at(input_id1);
         auto output_id1 = Y2->GetEdge()->GetId();
         auto output_quant1 = GetCommonParam()->cuda_tensor_info->at(output_id1);
-        if(Y->GetShape().GetElementsExcludingPadding() < Y->GetShape().GetElementsIncludingPadding())
-            cudaMemset(Y->GetBufferPtr(), 0, Y->GetShape().GetBytesIncludingPadding());
-        if(Y2->GetShape().GetElementsExcludingPadding() < Y2->GetShape().GetElementsIncludingPadding())
-            cudaMemset(Y2->GetBufferPtr(), 0, Y2->GetShape().GetBytesIncludingPadding());
+        // if(Y->GetShape().GetElementsExcludingPadding() < Y->GetShape().GetElementsIncludingPadding())
+        //     cudaMemset(Y->GetBufferPtr(), 0, Y->GetShape().GetBytesIncludingPadding());
+        // if(Y2->GetShape().GetElementsExcludingPadding() < Y2->GetShape().GetElementsIncludingPadding())
+        //     cudaMemset(Y2->GetBufferPtr(), 0, Y2->GetShape().GetBytesIncludingPadding());
         PPLCUDAFuseChannelShuffleForwardImp(GetStream(), group_, &X->GetShape(), X->GetBufferPtr(), X2->GetBufferPtr(),
                                                                  &Y->GetShape(), Y->GetBufferPtr(), Y2->GetBufferPtr(),
                                                                  input_quant0.scale[0], input_quant1.scale[0],
