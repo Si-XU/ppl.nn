@@ -27,11 +27,19 @@ bool BridgeKernel::EqualTypeAndFormat(const TensorImpl* input, const TensorImpl*
     auto src_align_size = ppl::common::cuda::GetDataFormatChannelAlignment(input->GetShape().GetDataFormat());
     auto dst_align_size = ppl::common::cuda::GetDataFormatChannelAlignment(output->GetShape().GetDataFormat());
 
-    if (input->GetShape().GetDataType() != output->GetShape().GetDataType() || !EqualQuant(in_quant, out_quant)) {
+    if (input->GetShape().GetDataType() != output->GetShape().GetDataType()) {
+        return false;
+    }
+
+    if (input->GetShape().GetDataType() == ppl::common::DATATYPE_INT8 && !EqualQuant(in_quant, out_quant)) {
         return false;
     }
 
     if (input->GetShape().GetDataFormat() == output->GetShape().GetDataFormat()) {
+        return true;
+    }
+
+    if (input->GetShape().GetDimCount() == 1 && output->GetShape().GetDimCount() == 1) {
         return true;
     }
 
@@ -62,7 +70,8 @@ ppl::common::RetCode BridgeKernel::DoExecute(KernelExecContext* ctx) {
     auto output_id = output->GetEdge()->GetId();
     auto output_quant = GetCommonParam()->cuda_tensor_info->at(output_id);
 
-    if (EqualTypeAndFormat(input, output, input_quant, output_quant)) {
+    if (input->GetEdge()->CalcConsumerCount() == 1 && input->GetType() == TENSORTYPE_NORMAL &&
+        EqualTypeAndFormat(input, output, input_quant, output_quant)) {
         output->TransferBufferFrom(input);
         return status;
     }
