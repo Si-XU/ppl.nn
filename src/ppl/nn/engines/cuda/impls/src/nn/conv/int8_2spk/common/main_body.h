@@ -28,6 +28,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     int2 * i2C = (int2 *) Cv4;
     int *    C = (int *)  Cv4;
 
+#pragma unroll
     for (int i = 0; i < C_ITEMS_PER_THD; i++) { C[i] = _ZERO_; }
 
     int4  Rv4[INTER_SET_REDUCE_RATIO];
@@ -194,6 +195,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     int     dAv4_off[READ_dAv4_STEPS];
     bool in_hw_valid[READ_dAv4_STEPS];
 
+#pragma unroll
     for(int i = 0; i < READ_dAv4_STEPS; i++)
     {
         SET_dAv4_BOUND(i, dAv4_off[i], in_hw_valid[i]);
@@ -202,6 +204,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     int dAv4_off[READ_dAv4_STEPS];
     int in_hw_mask[READ_dAv4_STEPS];
 
+#pragma unroll
     for(int i = 0; i < READ_dAv4_STEPS; i++)
     {
         SET_dAv4_BOUND(i, dAv4_off[i], in_hw_mask[i]);
@@ -215,6 +218,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     int in_h_start[READ_dAv4_STEPS];
     int in_w_start[READ_dAv4_STEPS];
 
+#pragma unroll
     for(int i = 0; i < READ_dAv4_STEPS; i++)
     {
         SET_dAv4_BOUND(i, dAv4_off[i], in_n_id[i], in_h_start[i], in_w_start[i]);
@@ -226,6 +230,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     int     dBv4_off[READ_dBv4_STEPS];
     bool flt_n_valid[READ_dBv4_STEPS];
 
+#pragma unroll
     for(int i = 0; i < READ_dBv4_STEPS; i++)
     {
         SET_dBv4_BOUND(i, dBv4_off[i], flt_n_valid[i]);
@@ -441,6 +446,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #if defined(ENABLE_FUSE)
     int outData;
 #endif
+#pragma unroll
     for(int s = 0; s < OUTPUT_STEPS; s++)
     {
 	//fp16时不用每次swizzle idx，是因为一个cta的线程可以把sub_mma行(即8行)的数据一次加载完，下一个sub_mma块就可以沿用上一次读的索引不变，只需加上偏移即可。
