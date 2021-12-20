@@ -64,6 +64,7 @@ RetCode GemmOp::Init(const OptKernelOptions& options) {
             }
             return ppl::common::RC_SUCCESS;
         }
+        type = DATATYPE_FLOAT16;
         return InferDefaultType(info, type);
     };
 

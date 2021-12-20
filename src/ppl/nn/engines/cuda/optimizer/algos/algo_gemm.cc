@@ -45,10 +45,10 @@ void GemmAlgorithm::GetAttrParam(void*& param) const {
 bool GemmAlgorithm::IsSupported(const ir::Node* node, const OptKernelOptions& options, dataformat_t input_format) const {
     // check if conv is quantization
     auto quant0 = options.quants->at(node->GetInput(0));
-    if (quant0.type != DATATYPE_INT8) {
+    if (quant0.type == DATATYPE_INT8 && input_format != DATAFORMAT_NHWC16) {
         return false;
     }
-    if (input_format != DATAFORMAT_NHWC16) {
+    if (quant0.type == DATATYPE_INT16 && input_format != DATAFORMAT_NHWC8) {
         return false;
     }
     return true;
