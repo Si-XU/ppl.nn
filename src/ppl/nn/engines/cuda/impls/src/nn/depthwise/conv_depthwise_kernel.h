@@ -28,7 +28,6 @@
 #include <vector>
 
 
-
 #define PARAMLIST      const half* input, \
     const half* filter,\
     const half* bias,\
@@ -426,7 +425,7 @@ __forceinline__ __device__ void write_global_int8(
         for (int j = 0; j < TILE_W; j++) {
             bool in_padding = h_idx * TILE_H + i < out_height && w_idx * TILE_W + j < out_width;
             if (in_padding) {
-                int32_t res = round(out_val[i][j] / out_scale);
+                int32_t res = round(out_val[i][j] * out_scale);
                 if(res > 127) res = 127;
                 else if(res < -128) res = -128;
                 output[base_offset + i * out_width * paddingc + j * paddingc] = c_idx < channels ? res : 0;
@@ -1032,7 +1031,7 @@ __global__ void ppl_cuda_depthwise_int8mma<-1,-1,-1,-1,-1,-1,-1,-1>(
         paddingc = fuse_params.concat_stride;
         base_offset = fuse_params.concat_offset + n_idx * out_height * out_width * paddingc + h_idx * out_width * paddingc + w_idx * paddingc + c_idx;
     }
-    int32_t res = round(out_val / out_scale);
+    int32_t res = round(out_val * out_scale);
     if(res > 127) res = 127;
     else if(res < -128) res = -128;
     output[base_offset] = res;

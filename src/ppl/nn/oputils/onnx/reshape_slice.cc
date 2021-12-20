@@ -29,7 +29,6 @@ RetCode ReshapeSlice(InputOutputInfo* info, const int64_t* starts, const int64_t
                      const int64_t* steps) {
     const TensorShape& shape = info->GetInput<TensorImpl>(0)->GetShape();
     int dim_count = shape.GetDimCount();
-
     vector<int64_t> output_dim(dim_count);
     for (int it = 0; it < dim_count; ++it) {
         output_dim[it] = shape.GetDim(it);

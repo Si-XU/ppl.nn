@@ -97,7 +97,7 @@ double GemmAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& option
     temp_conv_param.hole_width = 1;
     temp_conv_param.num_grp = 1;
 
-    std::string key_str = node->GetName();
+    std::string key_str = GetConvShapeString(temp_conv_param); // node->GetName();
     auto algo_info = options.algos->find(key_str);
     if (algo_info != options.algos->end()) {
         attr_param_.extra_param.algo_info.algo_name = algo_info->second.kname;
@@ -107,7 +107,13 @@ double GemmAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& option
         PPLCUDAConvolutionLoadAlgoParam(attr_param_.extra_param.algo_info);
         return 0.0f;
     } else { // Give the default kernel
-        attr_param_.extra_param.algo_info.algo_name = "nv2spkConv_hmma1688_nhwc_f1_b128x128_w64x64_k32_s32_buf1";
+        if (shape_in0.GetDataType() == DATATYPE_FLOAT16) {
+            attr_param_.extra_param.algo_info.algo_name = "nv2spkConv_hmma1688_nhwc_f1_b128x128_w64x64_k32_s32_buf1";    
+        } else if (shape_in0.GetDataType() == DATATYPE_INT8) {
+            attr_param_.extra_param.algo_info.algo_name = "nv2spkConv_imma8816_nhwc_f1_b128x128_w64x64_k32_s32_buf1";    
+        } else {
+            return ALGO_MAX_TIME;
+        }
         attr_param_.extra_param.algo_info.kid = 0;
         attr_param_.extra_param.algo_info.splitk = 1;
         attr_param_.extra_param.algo_info.splitf = 1;
@@ -143,26 +149,34 @@ double GemmAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& option
     temp_quant_param.out_scale = 1.0f / options.quants->at(node->GetId()).scale[0];
     temp_quant_param.d_flt_scale = wegiht_quant.addr;
     temp_quant_param.pre_scale = 0.0f;
+    double timer = -1.f;
 #ifdef PPLNN_ENABLE_CUDA_JIT
     // Do select
     LOG(INFO) << "Compiling " << node->GetName();
     int device_id = options.device->GetDeviceId();
-    PPLCUDAConvolutionPredictKernel(shape_in0.GetDataType(), attr_param_.extra_param.algo_info, temp_conv_param);
-    auto timer = PPLCUDAGemmJITSelectKernel(device_id, stream, shape_in0.GetDataType(), &shape_in0, input_buffer.addr, &shape_in1,
+    if (shape_in0.GetDataType()==ppl::common::DATATYPE_FLOAT16) {
+        PPLCUDAConvolutionPredictKernel(shape_in0.GetDataType(), attr_param_.extra_param.algo_info, temp_conv_param);
+        timer = PPLCUDAGemmJITSelectKernel(device_id, stream, shape_in0.GetDataType(), &shape_in0, input_buffer.addr, &shape_in1,
                                             weight_buffer.addr, bias_buffer.addr, &shape_out, output_buffer.addr,
                                             temp_buffer.addr, temp_conv_param, temp_fuse_param,
                                             attr_param_.extra_param.algo_info);
+    } else if (shape_in0.GetDataType()==ppl::common::DATATYPE_INT8) {
+        PPLCUDAConvolutionPredictKernelInt8(shape_in0.GetDataType(), attr_param_.extra_param.algo_info, temp_conv_param);
+        timer = PPLCUDAGemmJITSelectKernelInt8(device_id, stream, shape_in0.GetDataType(), &shape_in0, input_buffer.addr, &shape_in1,
+                                            weight_buffer.addr, bias_buffer.addr, &shape_out, output_buffer.addr,
+                                            temp_buffer.addr, temp_conv_param, temp_quant_param, temp_fuse_param,
+                                            attr_param_.extra_param.algo_info);
+    }
 #else
     // Do Select
-    double timer = -1.f;
     if (shape_in0.GetDataType()==ppl::common::DATATYPE_FLOAT16) {
-        auto timer = PPLCUDAGemmSelectKernel(stream, &shape_in0, input_buffer.addr, &shape_in1, weight_buffer.addr,
-                                         bias_buffer.addr, &shape_out, output_buffer.addr, temp_buffer.addr,
-                                         attr_param_.param, temp_fuse_param, attr_param_.extra_param.algo_info);
+        timer = PPLCUDAGemmSelectKernel(stream, &shape_in0, input_buffer.addr, &shape_in1, weight_buffer.addr,
+                                        bias_buffer.addr, &shape_out, output_buffer.addr, temp_buffer.addr,
+                                        attr_param_.param, temp_fuse_param, attr_param_.extra_param.algo_info);
     } else if (shape_in0.GetDataType()==ppl::common::DATATYPE_INT8) {
-        auto timer = PPLCUDAGemmSelectKernelInt8(stream, &shape_in0, input_buffer.addr, &shape_in1, weight_buffer.addr,
-                                         bias_buffer.addr, &shape_out, output_buffer.addr, temp_buffer.addr,
-                                         attr_param_.param, temp_quant_param, temp_fuse_param, attr_param_.extra_param.algo_info);
+        timer = PPLCUDAGemmSelectKernelInt8(stream, &shape_in0, input_buffer.addr, &shape_in1, weight_buffer.addr,
+                                        bias_buffer.addr, &shape_out, output_buffer.addr, temp_buffer.addr,
+                                        attr_param_.param, temp_quant_param, temp_fuse_param, attr_param_.extra_param.algo_info);
     }
 #endif
     CudaArgs::AlgoSelects algo_select;

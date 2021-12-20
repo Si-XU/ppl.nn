@@ -36,6 +36,38 @@ __global__ void cuda_kernel_cvtformat(
 {
 }
 
+
+#define cvtC16TOC8(type)                                                                               \
+template<>                                                                                              \
+__global__ void cuda_kernel_cvtformat<type, NHWC16_NHWC8>(                                              \
+    type* input,                                                                                        \
+    type* output,                                                                                       \
+    ReFormatParam param)                                                                                \
+{                                                                                                       \
+                                                                                                        \
+    int64_t num = blockIdx.z;                                                                           \
+    for (int n = num; n < param.n_outer; n+= blockDim.z) {                                              \
+        int64_t idx_w = blockIdx.x * blockDim.x + threadIdx.x;                                          \
+        int64_t idx_h = blockIdx.y * blockDim.y + threadIdx.y;                                          \
+                                                                                                        \
+        if (idx_w < param.dst_pad && idx_h < param.n_inner) {                                           \
+            int64_t dst_offset = n * param.dst_pad * param.n_inner + idx_h * param.dst_pad + idx_w;     \
+            int64_t src_offset = n * param.src_pad * param.n_inner + idx_h * param.src_pad + idx_w;     \
+            output[dst_offset] = input[src_offset];                   \
+        }                                                                                               \
+    }                                                                                                   \
+}                                                                                                       
+
+#if __CUDACC_VER_MAJOR__ >= 9
+    cvtC16TOC8(half)
+#endif
+    cvtC16TOC8(float)
+    cvtC16TOC8(char)
+    cvtC16TOC8(double)
+    cvtC16TOC8(int8_t)
+
+
+
 #define cvtC8TOC16(type)                                                                               \
 template<>                                                                                              \
 __global__ void cuda_kernel_cvtformat<type, NHWC8_NHWC16>(                                              \
@@ -421,11 +453,18 @@ void GenDimParam(
         dimBlock.y = DIM;
         dimGrid.x  = DivUp(param.dst_pad, DIM);
         dimGrid.y  = DivUp(param.n_inner, DIM);
+    } else if (mode == NHWC16_NHWC8){
+        dimBlock.x = DIM;
+        dimBlock.y = DIM;
+        dimGrid.x  = DivUp(param.dst_pad, DIM);
+        dimGrid.y  = DivUp(param.n_inner, DIM);
     } 
 }
-#define RFC8toC16              \
+#define RFC8C16              \
     case NHWC8_NHWC16:         \
-        RUN(NHWC8_NHWC16);
+        RUN(NHWC8_NHWC16);     \
+    case NHWC16_NHWC8:         \
+        RUN(NHWC16_NHWC8);
 
 #define RFNHWC                 \
     case NDARRAY_NHWC:         \
@@ -448,8 +487,8 @@ void PPLCUDANormalCVTFormat(cudaStream_t stream, const void *input, void *output
         GenDimParam<mode>(param, dimBlock, dimGrid);                                  \
         switch (GetSizeOfDataType(param.out_type)) {                                    \
             case 1:                                                                   \
-                cuda_kernel_cvtformat<char, mode><<<dimGrid, dimBlock, 0, stream>>>(  \
-                    (char *)input, (char *)output, param);                            \
+                cuda_kernel_cvtformat<int8_t, mode><<<dimGrid, dimBlock, 0, stream>>>(  \
+                    (int8_t *)input, (int8_t *)output, param);                            \
                 break;                                                                \
             case 2:                                                                   \
                 cuda_kernel_cvtformat<half, mode><<<dimGrid, dimBlock, 0, stream>>>(  \
@@ -470,7 +509,7 @@ void PPLCUDANormalCVTFormat(cudaStream_t stream, const void *input, void *output
     } while (0)
 
     switch (GetCVTFormatMode(param)) {
-        RFC8toC16
+        RFC8C16
         RFNHWC
         RFN4CX
         default:
@@ -577,6 +616,8 @@ CVTFormatMode GetCVTFormatMode(ReFormatParam param)
         switch (param.out_format) {
             case DATAFORMAT_NDARRAY:
                 return NHWC_NDARRAY;
+            case DATAFORMAT_NHWC8:
+                return NHWC16_NHWC8;
             default:
                 return CVTFormatUnknown;
         }

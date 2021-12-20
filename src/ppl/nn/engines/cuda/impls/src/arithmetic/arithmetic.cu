@@ -817,10 +817,27 @@ ppl::common::RetCode PPLCUDAArithMeticForwardImpInt8(
         int packed_channel = 1;
         if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8 ||
             output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC16) {
-            ppl_arithmetic_prepare_strides_nhwc(input_shape0, input_shape1, output_shape, packed_channel,
-                param.stride_in0, param.stride_in1, param.stride_out);
-            ppl_cukernel_arithmetic_int8<op_type, T><<<grid_size, block_size, 0, stream>>>(num_elems, dim_count, param, (const T*)input0, (const T*)input1, (T*)output, in_scale0, in_scale1, out_scale);
-         } else if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NDARRAY) {
+                if(ppl_feature_broadcast(input_shape0, input_shape1, &axis)) {
+                    int inner_dim = output_shape->GetElementsToDimensionIncludingPadding(axis) * 
+                                    output_shape->GetElementsFromDimensionIncludingPadding(axis - 1) / 
+                                    output_shape->GetElementsIncludingPadding();
+                    int outer_stride =  output_shape->GetElementsFromDimensionIncludingPadding(1);
+                    bool first_shorter = false;
+                    if (input_shape0->GetRealDimCount() == input_shape1->GetRealDimCount() &&
+                        input_shape0->GetDim(axis) < input_shape1->GetDim(axis)) {
+                        first_shorter = true;
+                    }
+                    if (input_shape0->GetElementsExcludingPadding() < input_shape1->GetElementsExcludingPadding())  {
+                        first_shorter = true;
+                    }
+                    ppl_cukernel_arithmetic_one_broadcast_int8<op_type, T><<<grid_size, block_size, 0,
+                    stream>>>(num_elems, outer_stride, inner_dim, first_shorter, (const T*)input0, (const T*)input1, (T*)output, in_scale0, in_scale1, out_scale);
+                } else {
+                    ppl_arithmetic_prepare_strides_nhwc(input_shape0, input_shape1, output_shape, packed_channel,
+                    param.stride_in0, param.stride_in1, param.stride_out);
+                    ppl_cukernel_arithmetic_int8<op_type, T><<<grid_size, block_size, 0, stream>>>(num_elems, dim_count, param, (const T*)input0, (const T*)input1, (T*)output, in_scale0, in_scale1, out_scale);
+                }
+        } else if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NDARRAY) {
             if (num_broadcast_dims == 1) {
                 int inner_dim = 1;
                 for(int it = axis + 1; it < dim_count; inner_dim *= output_shape->GetDim(it), ++it);

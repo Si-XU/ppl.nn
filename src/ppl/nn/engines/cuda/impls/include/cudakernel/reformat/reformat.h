@@ -86,6 +86,7 @@ enum CVTFormatMode {
     NDARRAY_NHWC  = 31,
     NHWC_NDARRAY  = 32,
     NHWC8_NHWC16  = 33,
+    NHWC16_NHWC8  = 34,
 };
 
 enum CVTTypeMode {

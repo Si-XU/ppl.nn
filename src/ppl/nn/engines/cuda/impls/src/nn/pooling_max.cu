@@ -234,7 +234,7 @@ __global__ void ppl_cukernel_pooling_max_f3s2(
             val = (val > iregs[i * 2 + 2][j * 2 + 2]) ? val : iregs[i * 2 + 2][j * 2 + 2];
 
             if (oy + i < out_height && ox + j < out_width) {
-                int res = round((float(val) * in_scale) / out_scale);
+                int res = round((float(val) * in_scale) * out_scale );
                 if(res > 127) res = 127;
                 else if( res < -128) res = -128;
                 output[outOff + (oy + i) * out_width + ox + j] = res;
@@ -431,7 +431,7 @@ __global__ void ppl_cukernel_pooling_max_f3s1(
             val = (val > iregs[i + 2][j + 2]) ? val : iregs[i + 2][j + 2];
 
             if (oy + i < out_height && ox + j < out_width) {
-                int res = round((float(val) * in_scale) / out_scale);
+                int res = round((float(val) * in_scale) * out_scale );
                 if(res > 127) res = 127;
                 else if( res < -128) res = -128;
                 output[outOff + (oy + i) * out_width + ox + j] = res;
@@ -675,7 +675,7 @@ __global__ void ppl_cukernel_pooling_max_common(
 
             // store output
             if (oy + i < out_height && ox + j < out_width) {
-                res = round(res * in_scale / out_scale);
+                res = round(res * in_scale * out_scale );
                 if(res > 127) res = 127;
                 else if( res < -128) res = -128;
                 output[outOff + (oy + i) * out_width + ox + j] = res;
@@ -805,7 +805,7 @@ __global__ void ppl_cukernel_pooling_max_common(
             // store output
             if (oy + i < out_height && ox + j < out_width) {
                 int64_t out_index = outOff + (oy + i) * out_width + ox + j;
-                res = round(res * in_scale / out_scale);
+                res = round(res * in_scale * out_scale );
                 if(res > 127) res = 127;
                 else if( res < -128) res = -128;
                 output[out_index] = res;
@@ -1172,7 +1172,7 @@ __global__ void ppl_cukernel_pooling_max_common_NHWC(
             if (oy + i < out_height && ox + j < out_width) {
                 int out_off_h                           = (oy + i) * out_width * pad_channels;
                 int out_off_w                           = (ox + j) * pad_channels;
-                res = round(res * in_scale / out_scale);
+                res = round(res * in_scale * out_scale );
                 if(res > 127) res = 127;
                 else if( res < -128) res = -128;
                 output[out_off + out_off_h + out_off_w] = res;
@@ -1236,7 +1236,7 @@ __global__ void ppl_cukernel_pooling_max_common_NHWC(
             if (oy + i < out_height && ox + j < out_width) {
                 int out_off_h                           = (oy + i) * out_width * pad_channels;
                 int out_off_w                           = (ox + j) * pad_channels;
-                res = round(res * in_scale / out_scale);
+                res = round(res * in_scale * out_scale );
                 if(res > 127) res = 127;
                 else if( res < -128) res = -128;
                 output[out_off + out_off_h + out_off_w] = res;
@@ -1244,6 +1244,58 @@ __global__ void ppl_cukernel_pooling_max_common_NHWC(
             }
         }
     }
+}
+
+template <int TILE_H, int TILE_W, typename T>
+__global__ void ppl_cukernel_pooling_max_intpacked_NHWC(
+    const T* input,
+    T* output,
+    int batch,
+    int pad_channels,
+    int in_height,
+    int in_width,
+    int out_height,
+    int out_width,
+    int kernel_height,
+    int kernel_width,
+    int stride_height,
+    int stride_width,
+    int padding_height,
+    int padding_width,
+    float in_scale,
+    float out_scale)
+{
+    int t_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (t_idx >= batch * pad_channels * out_width * out_height) return;
+    int c_idx = t_idx % pad_channels;
+    int hw_idx = t_idx / pad_channels;
+
+    int h_idx = (hw_idx / out_width) % out_height;
+    int w_idx = hw_idx % out_width;
+    int b_idx = hw_idx / (out_height * out_width);
+
+    int in_h = h_idx * stride_height - padding_height;
+    int in_w = w_idx * stride_width - padding_width;
+
+    int in_off = b_idx * in_height * in_width * pad_channels + h_idx * in_width * pad_channels + w_idx * pad_channels + c_idx;
+    char4 val = {-128, -128, -128, -128};
+    char4 *int_input = (char4*)input;
+    for(int i = 0; i < kernel_height; i++) {
+        for (int j = 0; j < kernel_width; j++) {
+            int h = in_h + kernel_height;
+            int w = in_w + kernel_width;
+            bool pred = (w >= 0 && w < in_width) && (h >= 0 && h < in_height);
+            if (pred) {
+                char4 src = int_input[in_off + i * in_width * pad_channels + j * pad_channels];
+                val.x = src.x > val.x ? src.x : val.x;
+                val.y = src.y > val.y ? src.y : val.y;
+                val.z = src.z > val.z ? src.z : val.z;
+                val.w = src.w > val.w ? src.w : val.w;
+
+            }
+        }
+    }
+    output[t_idx] = val;
 }
 
 template <int TILE_H, int TILE_W, typename T>
@@ -1308,7 +1360,7 @@ __global__ void ppl_cukernel_pooling_max_f3s2_NHWC(
             if (oy + i < out_height && ox + j < out_width) {
                 int out_off_h                           = (oy + i) * out_width * pad_channels;
                 int out_off_w                           = (ox + j) * pad_channels;
-                int res = round(val * in_scale / out_scale);
+                int res = round(val * in_scale * out_scale );
                 if(res > 127) res = 127;
                 else if( res < -128) res = -128;
                 output[out_off + out_off_h + out_off_w] = res;
@@ -1377,7 +1429,7 @@ __global__ void ppl_cukernel_pooling_max_f3s1_NHWC(
             if (oy + i < out_height && ox < out_width) {
                 int out_off_h                           = (oy + i) * out_width * pad_channels;
                 int out_off_w                           = (ox + j) * pad_channels;
-                int res = round(val * in_scale / out_scale);
+                int res = round(val * in_scale * out_scale );
                 if(res > 127) res = 127;
                 else if( res < -128) res = -128;
                 output[out_off + out_off_h + out_off_w] = res;
@@ -1696,17 +1748,16 @@ ppl::common::RetCode PPLCUDAMaxPoolingForwardImpInt8(
                                                               0,
                                                               stream>>>((const int8_t*)input, (int8_t*)output, batch, pad_channels, in_height, in_width, out_height, out_width, kernel_height, kernel_width, stride_height, stride_width, pad_height, pad_width, in_scale, out_scale);
         } else if (f2 && s2) {
-            int partH             = out_height;
-            int partW             = out_width;
-            dim3 dim_block(32, 8, 1);
+            // int partH             = out_height;
+            // int partW             = out_width;
+            dim3 dim_block(128, 1, 1);
             dim3 dim_grid;
-            dim_grid.x = (pad_channels + dim_block.x - 1) / dim_block.x;
-            dim_grid.y = (partH * partW + dim_block.y - 1) / dim_block.y;
-            dim_grid.z = batch;
-            ppl_cukernel_pooling_max_common_NHWC<1, 1, int8_t><<<dim_grid,
-                                                                dim_block,
+            dim_grid.x = ((pad_channels >> 2) * out_height * out_width * batch + dim_block.x - 1) / dim_block.x;
+            dim_grid.y = 1;
+            dim_grid.z = 1;
+            ppl_cukernel_pooling_max_intpacked_NHWC<1,1,char4><<<dim_grid,dim_block,
                                                                 0,
-                                                                stream>>>((const int8_t*)input, (int8_t*)output, batch, pad_channels, in_height, in_width, out_height, out_width, kernel_height, kernel_width, stride_height, stride_width, pad_height, pad_width, in_scale, out_scale);
+                                                                stream>>>((const char4*)input, (char4*)output, batch, pad_channels >> 2, in_height, in_width, out_height, out_width, kernel_height, kernel_width, stride_height, stride_width, pad_height, pad_width, in_scale, out_scale);
         } else {
             ppl_cukernel_pooling_max_common_NHWC<4, 1, int8_t><<<dim_grid,
                                                                 dim_block,
@@ -1802,6 +1853,7 @@ ppl::common::RetCode PPLCUDAMaxPoolingForwardImp(
             kernel_height, kernel_width, stride_height, stride_width,
             padding_height, padding_width);
     } else if (output_shape->GetDataType() == ppl::common::DATATYPE_INT8) {
+        out_scale = 1.0f / out_scale;
         return PPLCUDAMaxPoolingForwardImpInt8(
             stream, input_shape, (const int8_t*)input, output_shape, (int8_t*)output,
             kernel_height, kernel_width, stride_height, stride_width,
@@ -1841,6 +1893,7 @@ ppl::common::RetCode PPLCUDAMaxPoolingForwardImp(
             kernel_height, kernel_width, stride_height, stride_width,
             padding_height, padding_width);
     } else if (output_shape->GetDataType() == ppl::common::DATATYPE_INT8) {
+        out_scale = 1.0f / out_scale;
         return PPLCUDAMaxPoolingForwardImpInt8(
             stream, input_shape, (const int8_t*)input, output_shape, (int8_t*)output,
             indices_shape, indices,

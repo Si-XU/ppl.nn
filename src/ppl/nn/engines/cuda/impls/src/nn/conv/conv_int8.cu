@@ -258,13 +258,13 @@ double PPLCUDAConvolutionSelectKernelInt8(
 
     const int SPLITK_OPTIONS[] = {1, 2, 4, 8};
 
-    for(unsigned int spk = 0; spk < 4; spk++) {
+    for(unsigned int spk = 0; spk < 1; spk++) {
         unsigned int splitk = SPLITK_OPTIONS[spk];
 
         for(unsigned int kid = 0; kid < g_int8_kernel_container.size(); kid++) {
 
             unsigned int splitf = (g_int8_kernel_container[kid].ktype == CONV_2SPK_FS) ? flt_hw : 1;
-        
+            if (g_int8_kernel_container[kid].ktype == CONV_2SPK_FS) continue;
             if(!g_int8_kernel_container[kid].CheckKernelTypeFeasibleInt8(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk)) continue;
 
             if(!g_int8_kernel_container[kid].CheckSplitkFeasible(num_chl_per_grp, splitk)) continue;
@@ -361,14 +361,16 @@ double PPLCUDAConvolutionSelectKernelInt8(
 	        cudaEventRecord(end, stream);
 	        cudaEventSynchronize(end);
 	        cudaEventElapsedTime(&elapsed, begin, end);
-
+            // printf("conv %s , time = %f \n", g_int8_kernel_container[kid].kname.c_str(), elapsed);
 	        if(elapsed < minTime){
                 algo_param.kid = kid;
                 algo_param.splitk = splitk;
                 algo_param.splitf = splitf;
 	            minTime = elapsed;
-	        }
+            }
         }
+        // printf("fast conv %s , time = %f \n", g_int8_kernel_container[algo_param.kid].kname.c_str(), minTime);
+
     }
 
     if(is_out_grp_pad) {
@@ -552,7 +554,6 @@ void PPLCUDAConvolutionForwardImpInt8(
         if(splitk == 1) {
             (g_int8_kernel_container[kid].int8_lut_kptr)<<<grid_size, block_size, 0, stream>>>(INT8_LUT_KPARAM_LIST);
         }
-#if 1
 	    else {
             //int chl_lut_size, kloop_lut_size;
             //struct chl_lut_t chl_lut;
@@ -567,10 +568,8 @@ void PPLCUDAConvolutionForwardImpInt8(
 
             (g_int8_kernel_container[kid].int8_spk_kptr)<<<grid_size, block_size, 0, stream>>>(INT8_SPK_KPARAM_LIST);
         }
-#endif
     }
     
-#if 1
     if(splitk > 1 || splitf > 1) {
         int spk_width_v4   = num_flt_per_grp_pad * conv_param.num_grp / __INT4__;
         int spk_height_v1  = out_hw * conv_param.in_num;
@@ -586,7 +585,6 @@ void PPLCUDAConvolutionForwardImpInt8(
 
         MergeConvSplitResultsFp32<<<merge_grid_size, merge_block_size, 0, stream>>>(INT8_MERGE_KPARAM_LIST);
     }
-#endif
 
     if(is_out_grp_pad) {
         PPLCUDAConvolutionCvtOutput(stream, d_output, final_out, type, conv_param);
@@ -603,6 +601,75 @@ __inline__ std::string ToString(int v)
     std::stringstream ss;
     ss << v;
     return ss.str();
+}
+
+ppl::common::RetCode PPLCUDAConvolutionPredictKernelInt8(
+    ppl::common::datatype_t type,
+    algo_param_t &algo_param,
+    conv_param_t &conv_param)
+{
+    int out_hw      = conv_param.in_num * conv_param.out_height * conv_param.out_width;
+    int flt_hw      = conv_param.flt_height * conv_param.flt_width;
+    int chl_per_grp = conv_param.num_chl / conv_param.num_grp;
+
+    if (out_hw < 32) {
+        algo_param.tiles.m_cta = 16;
+    } else if (out_hw < 1024) {
+        algo_param.tiles.m_cta = 32;
+    } else {
+        algo_param.tiles.m_cta = 64;
+    }
+
+    if (conv_param.num_flt < 16) {
+        algo_param.tiles.n_cta = 8;
+    } else if (conv_param.num_flt < 64) {
+        algo_param.tiles.n_cta = 16;
+    } else if (conv_param.num_flt < 2048) {
+        algo_param.tiles.n_cta = 32;
+    } else {
+        algo_param.tiles.n_cta =64;
+    }
+        
+    if (chl_per_grp < 32) {
+        algo_param.tiles.k_cta = 16;
+    } else if (chl_per_grp == 32) {
+        algo_param.tiles.k_cta = 32;
+    } else if (chl_per_grp < 200) {
+        algo_param.tiles.k_cta = 64;
+    } else if (chl_per_grp < 1024) {
+        algo_param.tiles.k_cta = 128;
+    } else {
+        algo_param.tiles.k_cta = 256;
+    }
+
+    algo_param.tiles.m_warp = algo_param.tiles.m_cta;
+    algo_param.tiles.n_warp = algo_param.tiles.n_cta;
+    algo_param.tiles.k_per_set = algo_param.tiles.k_cta;
+
+    if (algo_param.tiles.k_cta > 128) {
+        algo_param.tiles.k_per_set /= 4;
+    } else if (algo_param.tiles.k_cta > 64) {
+        algo_param.tiles.n_warp /= 2;
+        algo_param.tiles.k_per_set /= 2;
+    } else if (algo_param.tiles.n_cta > 32) {
+        algo_param.tiles.n_warp /= 4;
+    } else {
+        algo_param.tiles.m_warp /= 2;
+        algo_param.tiles.n_warp /= 2;
+    }
+
+    int cta_size_in_thd = (algo_param.tiles.m_cta / algo_param.tiles.m_warp) * (algo_param.tiles.n_cta / algo_param.tiles.n_warp) * WARP_SIZE;
+    int chl_per_grp_pad = Align(chl_per_grp, 4);
+    int kloop_num  = DivUp(flt_hw * chl_per_grp_pad, algo_param.tiles.k_cta);
+    algo_param.tiles.k_per_step = (kloop_num * algo_param.tiles.k_cta * 4) / cta_size_in_thd;
+    for (int32_t i = 32; i <= 128; i *= 2) {
+        if (i == 128 || i > algo_param.tiles.k_per_step) {
+            algo_param.tiles.k_per_step = i >> 1;
+            break;
+        }
+    }
+
+    return ppl::common::RC_SUCCESS;
 }
 
 float AlgoForwardTimeInt8(
@@ -712,10 +779,10 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
             if ((spf >= 1 || spk >= 1) && num_chl_per_grp <= 32)
                 continue;
 
-            for (unsigned int index = 0; index < MAX_KERNEL_SIZE; index++) {
+            for (unsigned int index = 0; index < MAX_KERNEL_SIZE * 2; index++) {
                 conv_ktype_t ktype;
                 algo_param = pre_algo_param;
-                PPLCUDAConvolutionModifyAlgoParam(algo_param, index); // change algo_param
+                PPLCUDAConvolutionModifyAlgoParam(algo_param, index % MAX_KERNEL_SIZE); // change algo_param
                 algo_param.splitk = splitk;
                 algo_param.splitf = splitf;
 
@@ -723,11 +790,11 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
                 int size_y    = DivUp(num_flt_per_grp_pad, algo_param.tiles.n_cta);
                 int grid_size = size_x * size_y * conv_param.num_grp;
 
-                if (num_chl_per_grp <= 32) { // Use non-shared memory algo for small channel
+                if (index < MAX_KERNEL_SIZE) { // Use non-shared memory algo for small channel
                     algo_param.tiles.flt_pad_size = algo_param.tiles.k_per_step / 4;
-                    if (num_chl_per_grp <= 2) {
+                    if (num_chl_per_grp <= 4) {
                         ktype = CONV_IDXN_C2;
-                    } else if (num_chl_per_grp <= 4) {
+                    } else if (num_chl_per_grp <= 8) {
                         ktype = CONV_IDXN_C4;
                     } else {
                         ktype = CONV_IDXN_C32;
@@ -766,11 +833,10 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
                         algo_param.algo_name = algo_param.algo_name + "_splitk";
                     }
                 }
-
                 kernel_info_t temp_kernel(-1, ktype, algo_param.algo_name.c_str());
                 if (!temp_kernel.CheckKernelTilesFeasible(type, device_id))
                     continue;
-                if (!temp_kernel.CheckKernelTypeFeasible(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk))
+                if (!temp_kernel.CheckKernelTypeFeasibleInt8(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk))
                     continue;
                 if (!temp_kernel.CheckSplitkFeasible(num_chl_per_grp, splitk))
                     continue;
@@ -782,11 +848,14 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
                 auto mgr = CodeGeneFactorManager::Instance();
                 auto gene_factor = mgr->FindKernel(type);
                 std::string source = "";
+                fuse_info_t empty_fuse_info;
                 if (algo_param.algo_name.find("Idxn") != std::string::npos) {
                     gene_factor->GeneIdxnKernel(source, algo_param.algo_name, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_step, declare_times);
+                    gene_factor->ReplaceFusionForIdxn(source, empty_fuse_info);
                     declare_times++;
                 } else if (algo_param.algo_name.find("2spk") != std::string::npos) {
                     gene_factor->Gene2spkKernel(source, algo_param.algo_name, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_set, algo_param.splitk, algo_param.splitf, algo_param.tiles.buf, declare_times);
+                    gene_factor->ReplaceFusionFor2spk(source, empty_fuse_info);
                     declare_times++;
                 }
 
@@ -799,7 +868,6 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
         }
     }
     int index = 0;
-    printf("%d \n", knames.size());
     std::vector<const char *> compile_params;
     elapsed = AlgoForwardTimeInt8(stream, knames, total_source, index, compile_params, device_id, true, type, d_input, d_flt, d_output, bias, d_temp_buf, params, conv_param, quant_param, fuse_param, workspace);
 

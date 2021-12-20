@@ -15,27 +15,20 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef _ST_HPC_PPL_NN_ENGINES_CUDA_OPTIMIZER_OPS_ONNX_BATCH_NORMALIZATION_OP_H_
-#define _ST_HPC_PPL_NN_ENGINES_CUDA_OPTIMIZER_OPS_ONNX_BATCH_NORMALIZATION_OP_H_
+#ifndef _ST_HPC_PPL_NN_ENGINES_CUDA_PARAMS_BATCH_NORMALIZATION_EXTRA_PARAM_H_
+#define _ST_HPC_PPL_NN_ENGINES_CUDA_PARAMS_BATCH_NORMALIZATION_EXTRA_PARAM_H_
 
-#include "ppl/nn/engines/cuda/optimizer/opt_kernel.h"
-
-#include "ppl/nn/engines/cuda/params/batch_normalization_extra_param.h"
+#include "ppl/nn/oputils/onnx/reshape_batch_normalization.h"
 
 namespace ppl { namespace nn { namespace cuda {
 
-class BatchNormalizationOp final : public CudaOptKernel {
-public:
-    BatchNormalizationOp(const ir::Node* node) : CudaOptKernel(node) {}
-    KernelImpl* CreateKernelImpl() const override;
-    ppl::common::RetCode Init(const OptKernelOptions&) override;
-    ppl::common::RetCode Finalize(const OptKernelOptions& options) override;
-    void* GetParam() override {
-        return (void*)&param_;
-    };
+struct BatchNormalizationExtraParam {
+    bool has_relu = false;
+};
 
-private:
-    CudaBatchNormalizationParam param_;
+struct CudaBatchNormalizationParam {
+    ppl::nn::common::BatchNormalizationParam param;
+    BatchNormalizationExtraParam extra_param;
 };
 
 }}} // namespace ppl::nn::cuda

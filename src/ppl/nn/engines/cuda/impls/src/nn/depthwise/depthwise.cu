@@ -71,7 +71,7 @@ int PPLCUDADepthwiseSelectKernel(
     void* output,
     ppl::common::datatype_t type,
     float pic_scale,
-    std::vector<float> flt_scale,
+    float* flt_scale,
     float out_scale)
 {
     GETPARAM
@@ -86,13 +86,10 @@ int PPLCUDADepthwiseSelectKernel(
         if (!CanSupport(func_vec[id], conv_param))
             continue;
         cudaEventRecord(begin, stream);
-        for (int i = 0; i < times; i++) {
+        for (int i = 0; i < 10; i++) {
             int tile_height, tile_width, elems;
             GenConfigure(func_vec[id], conv_param, &tile_height, &tile_width, &elems);
             dim3 dim_block(BLOCK_SIZE,1,1), dim_grid(DivUp(elems,BLOCK_SIZE), 1, 1);
-            float* f = nullptr;
-            cudaMalloc((void**)&f, paddingc*sizeof(float));
-            cudaMemcpy(f, flt_scale.data(), paddingc*sizeof(float), cudaMemcpyHostToDevice);
             DivModFast padc_fast(paddingc);
             DivModFast hw_fast(tile_height * tile_width);
             DivModFast width_fast(tile_width);
@@ -109,11 +106,16 @@ int PPLCUDADepthwiseSelectKernel(
                 tile_height, tile_width, channels, paddingc, out_height, out_width, 
                 in_batch_stride, in_height_stride, in_width_stride, elems, (float*)output, fuse_param);
             } else if(type == ppl::common::DATATYPE_INT8) {
+                if(func_vec[id].algo_type == SP_DEPTHWISE_KERNEL)
+                {
+                    dim_grid.x  = DivUp(DivUp(out_height,4) * out_width * DivUp(channels, 4), 128);
+                    dim_grid.y = conv_param.in_num;
+                }
                 func_vec[id].kernel_ptr_int8<<<dim_grid, dim_block, 0, stream>>>((const int8_t*)input, (const int8_t*)filter, (const float*)bias, 
                 padc_fast, hw_fast, width_fast,
                 in_height, in_width, kernel_h, kernel_w, pad_h, pad_w, stride_h, stride_w, hole_h, hole_w,
                 tile_height, tile_width, channels, paddingc, out_height, out_width, 
-                in_batch_stride, in_height_stride, in_width_stride, elems, (int8_t*)output, fuse_param, pic_scale, f, out_scale);
+                in_batch_stride, in_height_stride, in_width_stride, elems, (int8_t*)output, fuse_param, pic_scale, flt_scale, out_scale);
             }
         }
         cudaEventRecord(end, stream);
@@ -137,9 +139,10 @@ void PPLCUDADepthwiseForwardCudaImp(
     void* output,
     ppl::common::datatype_t type,
     float pic_scale,
-    std::vector<float> flt_scale,
+    float* flt_scale,
     float out_scale)
 {
+
     GETPARAM
     if (func_vec.empty()) InitKernelList(func_vec, type);
     int tile_height, tile_width, elems;
@@ -148,9 +151,6 @@ void PPLCUDADepthwiseForwardCudaImp(
     DivModFast hw_fast(tile_height * tile_width);
     DivModFast width_fast(tile_width);
     dim3 dim_block(BLOCK_SIZE,1,1), dim_grid(DivUp(elems, BLOCK_SIZE), 1, 1);
-    float* f = nullptr;
-    cudaMalloc((void**)&f, paddingc*sizeof(float));
-    cudaMemcpy(f, flt_scale.data(), paddingc*sizeof(float), cudaMemcpyHostToDevice);
     if(type == ppl::common::DATATYPE_FLOAT16) {
         func_vec[kernel_id].kernel_ptr_half<<<dim_grid, dim_block, 0, stream>>>((const half*)input, (const half*)filter, (const half*)bias, 
         padc_fast, hw_fast, width_fast,
@@ -164,10 +164,18 @@ void PPLCUDADepthwiseForwardCudaImp(
         tile_height, tile_width, channels, paddingc, out_height, out_width, 
         in_batch_stride, in_height_stride, in_width_stride, elems, (float*)output, fuse_param);
     } else if(type == ppl::common::DATATYPE_INT8) {
+        out_scale = 1.0f / out_scale;
+        if(func_vec[kernel_id].algo_type == SP_DEPTHWISE_KERNEL)
+        {   
+            dim_grid.x  = DivUp(DivUp(out_height,4) * out_width * DivUp(channels, 4), 128);
+            dim_grid.y =  conv_param.in_num;
+        }
         func_vec[kernel_id].kernel_ptr_int8<<<dim_grid, dim_block, 0, stream>>>((const int8_t*)input, (const int8_t*)filter, (const float*)bias, 
         padc_fast, hw_fast, width_fast,
         in_height, in_width, kernel_h, kernel_w, pad_h, pad_w, stride_h, stride_w, hole_h, hole_w,
         tile_height, tile_width, channels, paddingc, out_height, out_width, 
-        in_batch_stride, in_height_stride, in_width_stride, elems, (int8_t*)output, fuse_param, pic_scale, f, out_scale);
+        in_batch_stride, in_height_stride, in_width_stride, elems, (int8_t*)output, fuse_param, pic_scale, flt_scale, out_scale);
     }
 }
+
+
