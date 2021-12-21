@@ -375,36 +375,6 @@ __forceinline__ __device__ void fuse_process_float(
 }
 
 
-template<int TILE_H, int TILE_W>
-__forceinline__ __device__ void simple_fuse_process_float(
-    float *out_val,
-    int h_idx,
-    int w_idx,
-    int c_idx,
-    int out_height, 
-    int out_width,
-    int channels,
-    int paddingc,
-    int base_offset,
-    fuse_param_t fuse_params
-)
-{
-#if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
-#pragma unroll
-    for (int i = 0; i < TILE_H * TILE_W; i++) {
-            if (fuse_params.has_activation){
-                if (fuse_params.has_activation == 1){
-                    out_val[i] =  out_val[i] >= 0.0 ? out_val[i] : 0.0;
-		        }
-            } else if (fuse_params.has_clip) {
-                 out_val[i] =  out_val[i] >= fuse_params.clip_max ? 
-                        fuse_params.clip_max :  out_val[i] <= fuse_params.clip_min ? 
-                        fuse_params.clip_min :  out_val[i];
-            }
-    }
-#endif  
-}
-
 
 template<int TILE_H, int TILE_W, typename T>
 __forceinline__ __device__ void write_global(
