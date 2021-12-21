@@ -776,7 +776,7 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
                 continue;
             if (spf >= 1 && spk >= 1)
                 continue;
-            if ((spf >= 1 || spk >= 1) && num_chl_per_grp <= 32)
+            if ((spf >= 1 || spk >= 1) && num_chl_per_grp <= 64)
                 continue;
 
             for (unsigned int index = 0; index < MAX_KERNEL_SIZE * 2; index++) {
@@ -792,9 +792,9 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
 
                 if (index < MAX_KERNEL_SIZE) { // Use non-shared memory algo for small channel
                     algo_param.tiles.flt_pad_size = algo_param.tiles.k_per_step / 4;
-                    if (num_chl_per_grp <= 4) {
+                    if (algo_param.tiles.k_per_step <= 16) {
                         ktype = CONV_IDXN_C2;
-                    } else if (num_chl_per_grp <= 8) {
+                    } else if (algo_param.tiles.k_per_step <= 32) {
                         ktype = CONV_IDXN_C4;
                     } else {
                         ktype = CONV_IDXN_C32;

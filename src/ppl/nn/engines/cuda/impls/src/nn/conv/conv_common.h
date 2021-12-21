@@ -345,17 +345,17 @@ struct kernel_info_t {
     bool CheckKernelTypeFeasibleInt8(int flt_height, int flt_width, int num_chl_per_grp, int splitk)
     {
         if (ktype == CONV_IDXN_C2 || ktype == CONV_IDXN_C4 || ktype == CONV_IDXN_C32) {
-        if (num_chl_per_grp > 0 && num_chl_per_grp <= 4) {
-            if (ktype == CONV_IDXN_C2 && splitk == 1) {
-                int num_chl_per_grp_pad = Align(num_chl_per_grp, 4);
+            if (num_chl_per_grp > 0 && num_chl_per_grp <= 4) {
+                if (ktype == CONV_IDXN_C2 && splitk == 1) {
+                    int num_chl_per_grp_pad = Align(num_chl_per_grp, 4);
 
-                int kloop_num  = DivUp(flt_height * flt_width * num_chl_per_grp_pad, tile_k_per_cta);
-                int kloop_time = DivUp(kloop_num * (tile_k_per_cta / flt_pad_size), cta_size_in_thd);
+                    int kloop_num  = DivUp(flt_height * flt_width * num_chl_per_grp_pad, tile_k_per_cta);
+                    int kloop_time = DivUp(kloop_num * (tile_k_per_cta / flt_pad_size), cta_size_in_thd);
 
-                return (kloop_time == 1);
-            } else
-                return false;
-        }
+                    return (kloop_time == 1);
+                } else
+                    return false;
+            }
         else if (num_chl_per_grp > 4 && num_chl_per_grp <= 8) {
             if (ktype == CONV_IDXN_C4 && splitk == 1) {
                 int num_chl_per_grp_pad = Align(num_chl_per_grp, 8);
