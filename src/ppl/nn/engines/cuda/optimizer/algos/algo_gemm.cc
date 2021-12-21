@@ -110,7 +110,7 @@ double GemmAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& option
         if (shape_in0.GetDataType() == DATATYPE_FLOAT16) {
             attr_param_.extra_param.algo_info.algo_name = "nv2spkConv_hmma1688_nhwc_f1_b128x128_w64x64_k32_s32_buf1";    
         } else if (shape_in0.GetDataType() == DATATYPE_INT8) {
-            attr_param_.extra_param.algo_info.algo_name = "nv2spkConv_imma8816_nhwc_f1_b128x128_w64x64_k32_s32_buf1";    
+            attr_param_.extra_param.algo_info.algo_name = "nv2spkConv_imma8816_nhwc_f1_b64x64_w64x32_k32_s16_buf1";    
         } else {
             return ALGO_MAX_TIME;
         }
