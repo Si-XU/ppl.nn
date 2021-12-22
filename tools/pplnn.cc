@@ -245,7 +245,6 @@ static inline bool RegisterCudaEngine(vector<unique_ptr<Engine>>* engines) {
     LOG(INFO) << "***** register CudaEngine *****";
     return true;
 }
-
 #endif
 
 #ifdef PPLNN_USE_X86
@@ -831,76 +830,125 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    vector<vector<int64_t>> input_shapes;
-    if (!g_flag_input_shapes.empty()) {
-        if (!ParseInputShapes(g_flag_input_shapes, &input_shapes)) {
-            LOG(ERROR) << "ParseInputShapes failed.";
-            return -1;
-        }
-        if (input_shapes.size() != runtime->GetInputCount()) {
-            LOG(ERROR) << "the number of input shapes [" << input_shapes.size() << "] != required input count ["
-                       << runtime->GetInputCount() << "]";
-            return -1;
-        }
-    }
+    // vector<vector<int64_t>> input_shapes;
+    // if (!g_flag_input_shapes.empty()) {
+    //     if (!ParseInputShapes(g_flag_input_shapes, &input_shapes)) {
+    //         LOG(ERROR) << "ParseInputShapes failed.";
+    //         return -1;
+    //     }
+    //     if (input_shapes.size() != runtime->GetInputCount()) {
+    //         LOG(ERROR) << "the number of input shapes [" << input_shapes.size() << "] != required input count ["
+    //                    << runtime->GetInputCount() << "]";
+    //         return -1;
+    //     }
+    // }
 
-    if (!g_flag_input.empty()) {
-        if (!SetInputsAllInOne(g_flag_input, input_shapes, runtime.get())) {
-            LOG(ERROR) << "SetInputsAllInOne failed.";
-            return -1;
-        }
-    } else if (!g_flag_inputs.empty()) {
-        if (!SetInputsOneByOne(g_flag_inputs, input_shapes, runtime.get())) {
-            LOG(ERROR) << "SetInputsOneByOne failed.";
-            return -1;
-        }
-    } else if (!g_flag_reshaped_inputs.empty()) {
-        if (!SetReshapedInputsOneByOne(g_flag_reshaped_inputs, runtime.get())) {
-            LOG(ERROR) << "SetReshapedInputsOneByOne failed.";
-            return -1;
-        }
-    } else {
-        if (!SetRandomInputs(input_shapes, runtime.get())) {
-            LOG(ERROR) << "SetRandomInputs failed.";
-            return -1;
-        }
-    }
+    // if (!g_flag_input.empty()) {
+    //     if (!SetInputsAllInOne(g_flag_input, input_shapes, runtime.get())) {
+    //         LOG(ERROR) << "SetInputsAllInOne failed.";
+    //         return -1;
+    //     }
+    // } else if (!g_flag_inputs.empty()) {
+    //     if (!SetInputsOneByOne(g_flag_inputs, input_shapes, runtime.get())) {
+    //         LOG(ERROR) << "SetInputsOneByOne failed.";
+    //         return -1;
+    //     }
+    // } else if (!g_flag_reshaped_inputs.empty()) {
+    //     if (!SetReshapedInputsOneByOne(g_flag_reshaped_inputs, runtime.get())) {
+    //         LOG(ERROR) << "SetReshapedInputsOneByOne failed.";
+    //         return -1;
+    //     }
+    // } else {
+    //     if (!SetRandomInputs(input_shapes, runtime.get())) {
+    //         LOG(ERROR) << "SetRandomInputs failed.";
+    //         return -1;
+    //     }
+    // }
 
-    if (g_flag_save_input) {
-        if (!SaveInputsAllInOne(runtime.get())) {
-            return -1;
-        }
-    } else if (g_flag_save_inputs) {
-        if (!SaveInputsOneByOne(runtime.get())) {
-            return -1;
-        }
-    }
+    // if (g_flag_save_input) {
+    //     if (!SaveInputsAllInOne(runtime.get())) {
+    //         return -1;
+    //     }
+    // } else if (g_flag_save_inputs) {
+    //     if (!SaveInputsOneByOne(runtime.get())) {
+    //         return -1;
+    //     }
+    // }
 
-    for (uint32_t i = 0; i < runtime->GetInputCount(); ++i) {
-        auto in = runtime->GetInputTensor(i);
-        auto& shape = in->GetShape();
-        if (shape.GetElementsIncludingPadding() == 0) {
-            LOG(ERROR) << "input tensor[" << in->GetName() << "] is empty.";
-            return -1;
-        }
-    }
+    // for (uint32_t i = 0; i < runtime->GetInputCount(); ++i) {
+    //     auto in = runtime->GetInputTensor(i);
+    //     auto& shape = in->GetShape();
+    //     if (shape.GetElementsIncludingPadding() == 0) {
+    //         LOG(ERROR) << "input tensor[" << in->GetName() << "] is empty.";
+    //         return -1;
+    //     }
+    // }
 
     auto prepare_end_ts = std::chrono::system_clock::now();
     auto prepare_diff = std::chrono::duration_cast<std::chrono::microseconds>(prepare_end_ts - prepare_begin_ts);
     LOG(INFO) << "Prepare costs: " << (float)prepare_diff.count() / 1000 << " ms.";
 
     auto run_begin_ts = std::chrono::system_clock::now();
+
+#ifdef PPLNN_USE_CUDA
+
+    std::ifstream infile(g_flag_save_data_dir + "/image.txt");
+    std::string line;
+    while (std::getline(infile, line))
+    {
+        vector<vector<int64_t>> input_shapes;
+        auto space = line.find(" ");
+        std::string file_path = line.substr(0, space);
+        std::string in_shapes = line.substr(space + 1);
+        if (!ParseInputShapes(in_shapes, &input_shapes)) {
+            LOG(ERROR) << "ParseInputShapes failed.";
+            return -1;
+        }
+        if (!SetInputsAllInOne(file_path, input_shapes, runtime.get())) {
+            LOG(ERROR) << "SetInputsAllInOne failed.";
+            return -1;
+        }
+        runtime->Run();
+        runtime->Sync();
+        for (uint32_t c = 0; c < runtime->GetOutputCount(); ++c) {
+            auto t = runtime->GetOutputTensor(c);
+
+            TensorShape dst_desc = t->GetShape();
+            dst_desc.SetDataFormat(DATAFORMAT_NDARRAY);
+            auto bytes = dst_desc.GetBytesIncludingPadding();
+            vector<char> buffer(bytes);
+
+            auto status = t->ConvertToHost(buffer.data(), dst_desc);
+            if (status != RC_SUCCESS) {
+                LOG(ERROR) << "convert data of tensor[" << t->GetName() << "] failed: " << GetRetCodeStr(status);
+                return false;
+            }
+            auto left = file_path.rfind("/");
+            auto right = file_path.rfind(".");
+            const string out_file_name = g_flag_save_data_dir + "/" + file_path.substr(left, right - left) + "_" + t->GetName() + ".dat";
+            ofstream ofs(out_file_name, ios_base::out | ios_base::binary | ios_base::trunc);
+            if (!ofs.is_open()) {
+                LOG(ERROR) << "open output file[" << out_file_name << "]";
+                return false;
+            }
+
+            ofs.write(buffer.data(), bytes);
+        }
+
+    }
+#elif
     auto status = runtime->Run();
     if (status == RC_SUCCESS) {
         status = runtime->Sync();
-    }
+    }    
+#endif
     auto run_end_ts = std::chrono::system_clock::now();
-    if (status != RC_SUCCESS) {
-        LOG(ERROR) << "Run() failed: " << GetRetCodeStr(status);
-        return -1;
-    }
+    // if (status != RC_SUCCESS) {
+    //     LOG(ERROR) << "Run() failed: " << GetRetCodeStr(status);
+    //     return -1;
+    // }
 
-    PrintInputOutputInfo(runtime.get());
+    // PrintInputOutputInfo(runtime.get());
 
     auto diff = std::chrono::duration_cast<std::chrono::microseconds>(run_end_ts - run_begin_ts);
     LOG(INFO) << "Run() costs: " << (float)diff.count() / 1000 << " ms.";
@@ -913,55 +961,55 @@ int main(int argc, char* argv[]) {
 
     LOG(INFO) << "Run ok";
 
-    if (g_flag_enable_profiling) {
-        if (g_flag_warmup_times > 0) {
-            LOG(INFO) << "Warm up start for " << g_flag_warmup_times << " times.";
-            for (uint32_t i = 0; i < g_flag_warmup_times; ++i) {
-                auto status = runtime->Run();
-                if (status == RC_SUCCESS) {
-                    status = runtime->Sync();
-                }
-            }
-            LOG(INFO) << "Warm up end.";
-        }
-#ifdef PPLNN_ENABLE_KERNEL_PROFILING
-        auto status = runtime->Configure(RUNTIME_CONF_SET_KERNEL_PROFILING_FLAG, true);
-        if (status != RC_SUCCESS) {
-            LOG(WARNING) << "enable profiling failed: " << GetRetCodeStr(status);
-        }
-#endif
-        LOG(INFO) << "Profiling start";
+//     if (g_flag_enable_profiling) {
+//         if (g_flag_warmup_times > 0) {
+//             LOG(INFO) << "Warm up start for " << g_flag_warmup_times << " times.";
+//             for (uint32_t i = 0; i < g_flag_warmup_times; ++i) {
+//                 auto status = runtime->Run();
+//                 if (status == RC_SUCCESS) {
+//                     status = runtime->Sync();
+//                 }
+//             }
+//             LOG(INFO) << "Warm up end.";
+//         }
+// #ifdef PPLNN_ENABLE_KERNEL_PROFILING
+//         auto status = runtime->Configure(RUNTIME_CONF_SET_KERNEL_PROFILING_FLAG, true);
+//         if (status != RC_SUCCESS) {
+//             LOG(WARNING) << "enable profiling failed: " << GetRetCodeStr(status);
+//         }
+// #endif
+//         LOG(INFO) << "Profiling start";
 
-        double run_dur = 0;
-        uint32_t run_count = 0;
-        while (run_dur < g_flag_min_profiling_time * 1000 ||
-               run_count < g_flag_min_profiling_number) {
-            run_begin_ts = std::chrono::system_clock::now();
-            auto status = runtime->Run();
-            if (status == RC_SUCCESS) {
-                status = runtime->Sync();
-            }
-            run_end_ts = std::chrono::system_clock::now();
-            diff = std::chrono::duration_cast<std::chrono::microseconds>(run_end_ts - run_begin_ts);
-            run_dur += (double)diff.count() / 1000;
-            run_count += 1;
-        }
+//         double run_dur = 0;
+//         uint32_t run_count = 0;
+//         while (run_dur < g_flag_min_profiling_time * 1000 ||
+//                run_count < g_flag_min_profiling_number) {
+//             run_begin_ts = std::chrono::system_clock::now();
+//             auto status = runtime->Run();
+//             if (status == RC_SUCCESS) {
+//                 status = runtime->Sync();
+//             }
+//             run_end_ts = std::chrono::system_clock::now();
+//             diff = std::chrono::duration_cast<std::chrono::microseconds>(run_end_ts - run_begin_ts);
+//             run_dur += (double)diff.count() / 1000;
+//             run_count += 1;
+//         }
 
-        LOG(INFO) << "Duration: " << run_dur << " ms";
+//         LOG(INFO) << "Duration: " << run_dur << " ms";
 
-#ifdef PPLNN_ENABLE_KERNEL_PROFILING
-        ProfilingStatistics stat;
-        status = runtime->GetProfilingStatistics(&stat);
-        if (status != RC_SUCCESS) {
-            LOG(WARNING) << "Get profiling statistics failed: " << GetRetCodeStr(status);
-        }
-        PrintProfilingStatistics(stat, run_dur, run_count);
-#else
-        LOG(INFO) << "Average run cost: " << (run_dur / run_count) << " ms.";
-#endif
+// #ifdef PPLNN_ENABLE_KERNEL_PROFILING
+//         ProfilingStatistics stat;
+//         status = runtime->GetProfilingStatistics(&stat);
+//         if (status != RC_SUCCESS) {
+//             LOG(WARNING) << "Get profiling statistics failed: " << GetRetCodeStr(status);
+//         }
+//         PrintProfilingStatistics(stat, run_dur, run_count);
+// #else
+//         LOG(INFO) << "Average run cost: " << (run_dur / run_count) << " ms.";
+// #endif
 
-        LOG(INFO) << "Profiling End";
-    }
+//         LOG(INFO) << "Profiling End";
+//     }
 
     return 0;
 }
