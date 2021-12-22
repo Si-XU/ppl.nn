@@ -55,14 +55,14 @@ endif()
 #                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/init*.cu
 #                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/gene_header.cc)
 
-file(GLOB_RECURSE CUDA_SRC ${CUDA_SRC} ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_2spk/f*_kernels.cu
+file(GLOB_RECURSE CUDA_SRC ${CUDA_SRC} ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_2spk/int8_f*_kernels.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_2spk/init*.cu
-                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_idxn/idxn_kernels*.cu
+                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_idxn/int8_idxn_kernels*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_idxn/init*.cu)
 
-file(GLOB_RECURSE CUDA_SRC ${CUDA_SRC} ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_2spk/f*_kernels.cu
+file(GLOB_RECURSE CUDA_SRC ${CUDA_SRC} ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_2spk/int8_f*_kernels.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_2spk/init*.cu
-                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_idxn/idxn_kernels*.cu
+                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_idxn/int8_idxn_kernels*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_idxn/init*.cu)
 
 file(GLOB_RECURSE CUDA_SRC ${CUDA_SRC} src/arithmetic/*.cu

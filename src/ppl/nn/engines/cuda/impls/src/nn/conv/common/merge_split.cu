@@ -88,13 +88,15 @@ __global__ void MergeConvSplitResults(
 
     if (has_relu) {
         if (has_relu == 1) {
+#pragma unroll
             for (int i = 0; i < _4HALF2_; i++)
                 merge_v1[i] = __vmaxs2(merge_v1[i], 0);
         } else {
-            __half2 h2ONE((__half)1.f, (__half)1.f);
-
-            for (int i = 0; i < _4HALF2_; i++)
-                h2_merge[i] = __h2div(h2exp(h2_merge[i]), __hadd2(h2ONE, h2exp(h2_merge[i])));
+            __half *h_merge = (__half*)merge_v1;
+#pragma unroll
+            for (int i = 0; i < _INT4_TO_8HALF_; i++) {
+                h_merge[i] = __expf((float)h_merge[i]) / (1.f + __expf((float)h_merge[i]));
+            }
         }
     } else if (has_clip) {
 #pragma unroll
@@ -144,10 +146,11 @@ __global__ void MergeConvSplitResults(
             for (int i = 0; i < _4HALF2_; i++)
                 merge_v1[i] = __vmaxs2(merge_v1[i], 0);
         } else {
-            __half2 h2ONE((__half)1.f, (__half)1.f);
-
-            for (int i = 0; i < _4HALF2_; i++)
-                h2_merge[i] = __h2div(h2exp(h2_merge[i]), __hadd2(h2ONE, h2exp(h2_merge[i])));
+            __half *h_merge = (__half*)merge_v1;
+#pragma unroll
+            for (int i = 0; i < _INT4_TO_8HALF_; i++) {
+                h_merge[i] = __expf((float)h_merge[i]) / (1.f + __expf((float)h_merge[i]));
+            }
         }
     } else if (has_elt_clip) {
         for (int i = 0; i < _4HALF2_; i++) {
@@ -223,9 +226,9 @@ __global__ void MergeConvSplitResultsFp32(
 
     int4 merge_v4, split_v4, bias_v4;
 
-    float * h2_merge = (float *) &merge_v4;
-    float * h2_split = (float *) &split_v4;
-    float * h2_bias  = (float *) &bias_v4;
+    float * f_merge = (float *) &merge_v4;
+    float * f_split = (float *) &split_v4;
+    float * f_bias  = (float *) &bias_v4;
 
     merge_v4 = is_in_range ? input[off] : ZEROv4;
 
@@ -233,38 +236,38 @@ __global__ void MergeConvSplitResultsFp32(
     {
         split_v4 = is_in_range ? input[off + i * split_height_v1 * split_width_v8] : ZEROv4;
 
-	    for(int j = 0; j < _4HALF2_; j++)
-	        h2_merge[j] = h2_merge[j] + h2_split[j];
+	    for(int j = 0; j < _INT4_TO_4FLOAT_; j++)
+	        f_merge[j] = f_merge[j] + f_split[j];
     }
     if(has_bias)
     {
         bias_v4 = is_in_range ? ((int4 *) bias) [k_id] : ZEROv4;
 
 #pragma unroll
-	    for(int j = 0; j < _4HALF2_; j++)
-	        h2_merge[j] = h2_merge[j] + h2_bias[j];
+	    for(int j = 0; j < _INT4_TO_4FLOAT_; j++)
+	        f_merge[j] = f_merge[j] + f_bias[j];
     }
 
     int *    merge_v1  = (int *)    &merge_v4;
-    float * h_merge = (float *) &merge_v4;
+    //float * h_merge = (float *) &merge_v4;
 
     if(has_relu)
     {
         if(has_relu == 1){
-            for(int i = 0; i < _4HALF2_; i++)
+            for(int i = 0; i < _INT4_TO_4FLOAT_; i++)
                 merge_v1[i] = merge_v1[i] >= 0? merge_v1[i] : 0.f;
 	    } else {
 
-            for(int i = 0; i < _4HALF2_; i++)
-	            h2_merge[i]  = __expf(h2_merge[i]) / (1.f + __expf(h2_merge[i]));
+            for(int i = 0; i < _INT4_TO_4FLOAT_; i++)
+	            f_merge[i]  = __expf(f_merge[i]) / (1.f + __expf(f_merge[i]));
 	    }
     }
     else if(has_clip) {
 #pragma unroll
-        for(int i = 0; i < _4HALF2_; i++)
+        for(int i = 0; i < _INT4_TO_4FLOAT_; i++)
         {
-	        h2_merge[i] = (h2_merge[i] > clip_max) ? clip_max : h2_merge[i];
-	        h2_merge[i] = (h2_merge[i] < clip_min) ? clip_min : h2_merge[i];
+	        f_merge[i] = (f_merge[i] > clip_max) ? clip_max : f_merge[i];
+	        f_merge[i] = (f_merge[i] < clip_min) ? clip_min : f_merge[i];
         }
     }
     else if(has_prelu) {
@@ -272,8 +275,8 @@ __global__ void MergeConvSplitResultsFp32(
         {
 #pragma unroll
             for(int i = 0; i < _INT4_TO_4FLOAT_; i++)
-        	    if(h_merge[i] < 0)
-                    h_merge[i] = h_merge[i] * leaky;
+        	    if(f_merge[i] < 0)
+                    f_merge[i] = f_merge[i] * leaky;
         }
         if(has_prelu == 2)
         {
@@ -282,8 +285,8 @@ __global__ void MergeConvSplitResultsFp32(
 
 #pragma unroll
             for(int i = 0; i < _INT4_TO_4FLOAT_; i++)
-        	    if(h_merge[i] < 0)
-                    h_merge[i] = h_merge[i] * h_scale[i];
+        	    if(f_merge[i] < 0)
+                    f_merge[i] = f_merge[i] * h_scale[i];
         }
         if(has_prelu == 3)
         {
@@ -292,8 +295,8 @@ __global__ void MergeConvSplitResultsFp32(
 
 #pragma unroll
             for(int i = 0; i < _INT4_TO_4FLOAT_; i++)
-        	    if(h_merge[i] < 0)
-                    h_merge[i] = h_merge[i] * h_elt[i];
+        	    if(f_merge[i] < 0)
+                    f_merge[i] = f_merge[i] * h_elt[i];
         }
     }
 
@@ -303,30 +306,30 @@ __global__ void MergeConvSplitResultsFp32(
 
 #pragma unroll
 	    for(int i = 0; i < _INT4_TO_4INT_; i++)
-			h2_merge[i] += (int)elt[i] * pre_scale;
+			f_merge[i] += (int)elt[i] * pre_scale;
     }
 
     if(has_elt_relu) {
         if(has_elt_relu == 1) {
-            for(int i = 0; i < _4HALF2_; i++)
+            for(int i = 0; i < _INT4_TO_4FLOAT_; i++)
                 merge_v1[i] = (merge_v1[i] >= 0)? merge_v1[i] : 0;
 	    } else{
 
-            for(int i = 0; i < _4HALF2_; i++)
-	            h2_merge[i]  = __expf(h2_merge[i]) / (1.f + __expf(h2_merge[i]));
+            for(int i = 0; i < _INT4_TO_4FLOAT_; i++)
+	            f_merge[i]  = __expf(f_merge[i]) / (1.f + __expf(f_merge[i]));
 	        
 	    }
     } else if(has_elt_clip) {
-        for(int i = 0; i < _4HALF2_; i++) {
-	        h2_merge[i] = (h2_merge[i] > elt_clip_max) ? elt_clip_max : h2_merge[i];
-	        h2_merge[i] = (h2_merge[i] < elt_clip_min) ? elt_clip_min : h2_merge[i];
+        for(int i = 0; i < _INT4_TO_4FLOAT_; i++) {
+	        f_merge[i] = (f_merge[i] > elt_clip_max) ? elt_clip_max : f_merge[i];
+	        f_merge[i] = (f_merge[i] < elt_clip_min) ? elt_clip_min : f_merge[i];
         }
     }
     else if(has_elt_prelu) {
         if(has_prelu == 1) {
             for(int i = 0; i < _INT4_TO_4FLOAT_; i++)
-        	    if((h_merge[i] < 0))
-                    h_merge[i] = (h_merge[i] * elt_leaky);
+        	    if((f_merge[i] < 0))
+                    f_merge[i] = (f_merge[i] * elt_leaky);
         }
 
         if(has_elt_prelu == 2) {
@@ -334,8 +337,8 @@ __global__ void MergeConvSplitResultsFp32(
             float* h_scale  = (float *) &scale_v4;
 
             for(int i = 0; i < _INT4_TO_4FLOAT_; i++)
-        	    if((h_merge[i] < 0))
-                    h_merge[i] = (h_merge[i] * h_scale[i]);
+        	    if((f_merge[i] < 0))
+                    f_merge[i] = (f_merge[i] * h_scale[i]);
         }
 
         if(has_elt_prelu == 3) {
@@ -343,8 +346,8 @@ __global__ void MergeConvSplitResultsFp32(
             float* h_elt  = (float *) &elt_v4;
 
             for(int i = 0; i < _INT4_TO_4FLOAT_; i++)
-        	    if((h_merge[i] < 0))
-                    h_merge[i] = (h_merge[i] * h_elt[i]);
+        	    if((f_merge[i] < 0))
+                    f_merge[i] = (f_merge[i] * h_elt[i]);
         }
     }
 #define packchar4(_outData, x, y, z, w){ \
@@ -363,7 +366,7 @@ __global__ void MergeConvSplitResultsFp32(
     _outData = w | z | y | x;/*(x,y,z,w)*/\
 }
     for(int i = 0; i < _INT4_TO_4FLOAT_; i++)
-	    merge_v1[i] = __float2int_rn(h_merge[i]*out_scale);
+	    merge_v1[i] = __float2int_rn(f_merge[i]*out_scale);
     int outData;
     packchar4(outData, merge_v1[0], merge_v1[1], merge_v1[2], merge_v1[3]);
 #undef packchar4

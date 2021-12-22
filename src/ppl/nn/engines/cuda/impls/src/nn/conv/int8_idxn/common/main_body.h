@@ -22,8 +22,6 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #if (__CUDA_ARCH__ >= 750) && (__CUDACC_VER_MAJOR__  * 1000  + __CUDACC_VER_MINOR__ * 10  >= 10020)
     int C[C_ITEMS_PER_THD];
 
-    //__half  * hC  = (__half  *) C;
-    //__half2 * h2C = (__half2 *) C;
     int2 *Cv2 = (int2 *) C;
 
 #if TILE_K_PER_STEP == 16
@@ -36,8 +34,6 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     int4 * dAv4 = (int4 *) dA;
     int4 * dBv4 = (int4 *) dB;
 #endif
-    //int  * dCv1 = (int  *) dC;
-    //int2 * dCv2 = (int2 *) dC;
     int16_t * dCv2 = (int16_t *) dC;
 
 #pragma unroll
@@ -195,11 +191,10 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     for(int i = 0; i < NUM_M_STEPS; i++)
     {
 #pragma unroll
-	for(int b = 0; b < BLK_M_PER_MMA; b++)
+        for(int b = 0; b < BLK_M_PER_MMA; b++)
         {
-            in_id[i * BLK_M_PER_MMA + b]     = sm_base_v4[in_id_read + TILE_M_PER_STEP * i + b*TILE_M_PER_SUB_MMA];
-	}
-        //in_id[i * BLK_M_PER_MMA + 1] = sm_base_v4[in_id_read + TILE_M_PER_STEP * i + TILE_M_PER_MMA_HALF];
+            in_id[i * BLK_M_PER_MMA + b] = sm_base_v4[in_id_read + TILE_M_PER_STEP * i + b*TILE_M_PER_SUB_MMA];
+        }
     }
 
     for(uint i = 0; i < kloop_num; i++)
@@ -212,14 +207,12 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #elif TILE_K_PER_STEP == 32
         LOAD_dBv2(reg_dBv2, dBv2, dBv2_off);
         LOAD_dAv2(reg_dAv2, dAv2, in_id, in_off);
-	//if(blockIdx.x+threadIdx.y==0 && threadIdx.x==2){printf("%d load A:%d, %d,%d, %d\n", i, reg_dAv2[0].x, in_id[0].x, in_off.x, (in_id[0].x+in_off.x)*2);}
 #elif TILE_K_PER_STEP == 64
         LOAD_dBv4(reg_dBv4, dBv4, dBv4_off);
         LOAD_dAv4(reg_dAv4, dAv4, in_id, in_off);
 #endif
 
         MMA_INSTS(C, reg_dAv1, reg_dBv1);
-	//if(blockIdx.x+threadIdx.y==0 && threadIdx.x==0){printf("C:%d\n",C[0]);}
 
 #if 2 * TILE_K_PER_STEP == TILE_K_PER_CTA
 
@@ -266,7 +259,6 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 	for(int b = 0; b < BLK_M_PER_MMA; b++)
         {
             dCv1_y_valid[b] = (dCv1_idy[b] < out_nhw);
-            //dCv1_y_valid[1] = (dCv1_idy[1] < out_nhw);
 	}
 
         uint Cv1_off  = step * TILE_N_V2_PER_THD * BLK_M_PER_MMA;

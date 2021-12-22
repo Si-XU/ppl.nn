@@ -186,7 +186,7 @@ class LutSourceFile:
         self.path = path
         self.flt_size = flt_size
 
-        self.fname = flt_size + "_lut_kernels.cu"
+        self.fname = "int8_" + flt_size + "_lut_kernels.cu"
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
@@ -209,7 +209,7 @@ class SpkSourceFile:
         self.path = path
         self.flt_size = flt_size
 
-        self.fname = flt_size + "_spk_kernels.cu"
+        self.fname = "int8_" + flt_size + "_spk_kernels.cu"
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
