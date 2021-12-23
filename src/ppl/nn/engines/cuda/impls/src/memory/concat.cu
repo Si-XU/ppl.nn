@@ -200,10 +200,10 @@ ppl::common::RetCode PPLCUDAConcatNoPaddingForwardImp(
     int64_t output_axis_width = output_shape->GetDim(axis);
     int64_t axis_offset       = 0;
     if (output_shape->GetDataType() == ppl::common::DATATYPE_INT8 && output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC16) {
+        output_axis_width = output_axis_width >> 4;                                                    
         for (int j = 0; j < num_inputs; ++j) {                                                                       
             int input_axis_width = (input_dims[j][axis] >> 4);                                                              
             int num_in_elems     = num_elems * input_axis_width;
-            output_axis_width = output_axis_width >> 4;                                                    
             if (!(mask & (1 << j))) {                                                                                
                 if (num_in_elems > 0) {                                                                              
                     DivModFast num_elems_inner_fast = DivModFast(input_axis_width);                                  

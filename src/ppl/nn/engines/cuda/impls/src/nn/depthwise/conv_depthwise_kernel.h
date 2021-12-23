@@ -325,7 +325,7 @@ __forceinline__ __device__ void fuse_process_float(
         for (int j = 0; j < TILE_W; j++) {
             if (fuse_params.has_activation){
                 if (fuse_params.has_activation == 1){
-                    out_val[i][j] = out_val[i][j] >= 0.0 ? out_val[i][j] : 0.0;
+                    out_val[i][j] = out_val[i][j] >= 0.0f ? out_val[i][j] : 0.0f;
 		        }else{// if (fuse_params.has_activation == 2){
                     float tmp = exp(out_val[i][j]);
                     out_val[i][j] = tmp / (tmp + 1);
@@ -349,7 +349,7 @@ __forceinline__ __device__ void fuse_process_float(
                 if (in_padding) out_val[i][j] = out_val[i][j] + ((float*)fuse_params.pre_data)[base_offset + i * out_width * paddingc + j * paddingc];
                 if (fuse_params.has_elt_activation){
                     if (fuse_params.has_elt_activation == 1){
-                        out_val[i][j] = out_val[i][j] >= 0.0 ? out_val[i][j] : 0.0;
+                        out_val[i][j] = out_val[i][j] >= 0.0f ? out_val[i][j] : 0.0f;
                     }else{// if (fuse_params.has_activation == 2){
                         float tmp = exp(out_val[i][j]);
                         out_val[i][j] = tmp / (tmp + 1);
@@ -740,7 +740,7 @@ __global__ void ppl_cuda_depthwise_fmma<-1,-1,-1,-1,-1,-1,-1,-1>(
     width_fast.divmod(tile_hw_idx, h_idx, w_idx);
 
     int n_idx = tid / (paddingc * tile_height * tile_width);
-    float out_val = 0.0;
+    float out_val = 0.0f;
     float flt_val;
     float pic_val;
     
@@ -762,12 +762,12 @@ __global__ void ppl_cuda_depthwise_fmma<-1,-1,-1,-1,-1,-1,-1,-1>(
     base_offset = n_idx * out_height * out_width * paddingc + h_idx * out_width * paddingc + w_idx * paddingc + c_idx;
 
     if (bias) {
-        float bias_val = c_idx < channels ? bias[c_idx] : 0.0; 
+        float bias_val = c_idx < channels ? bias[c_idx] : 0.0f; 
         out_val = out_val + bias_val;
     }
     if (fuse_params.has_activation){
         if (fuse_params.has_activation == 1 ){
-            out_val = out_val >= 0.0 ? out_val : 0.0;
+            out_val = out_val >= 0.0f ? out_val : 0.0f;
         } else{// if (fuse_params.has_activation == 2 ){
             float tmp = exp(out_val);
             out_val = tmp / (tmp + 1);
@@ -783,7 +783,7 @@ __global__ void ppl_cuda_depthwise_fmma<-1,-1,-1,-1,-1,-1,-1,-1>(
         out_val = out_val + ((float*)fuse_params.pre_data)[base_offset];
         if (fuse_params.has_elt_activation){
             if (fuse_params.has_elt_activation == 1){
-                out_val = out_val >= 0.0 ? out_val : 0.0;
+                out_val = out_val >= 0.0f ? out_val : 0.0f;
             } else{// if (fuse_params.has_activation == 2 ){
                 float tmp = exp(out_val);
                 out_val = tmp / (tmp + 1);
@@ -990,14 +990,14 @@ __global__ void ppl_cuda_depthwise_int8mma<-1,-1,-1,-1,-1,-1,-1,-1>(
     }
 
     base_offset = n_idx * out_height * out_width * paddingc + h_idx * out_width * paddingc + w_idx * paddingc + c_idx;
-    float out_val = out_val0 * pic_scale * (c_idx < channels ? flt_scale[c_idx] : 0.0);
+    float out_val = out_val0 * pic_scale * (c_idx < channels ? flt_scale[c_idx] : 0.0f);
     if (bias) {
-        float bias_val = c_idx < channels ? bias[c_idx] : 0.0; 
+        float bias_val = c_idx < channels ? bias[c_idx] : 0.0f; 
         out_val = out_val + bias_val;
     }
     if (fuse_params.has_activation){
         if (fuse_params.has_activation == 1 ){
-            out_val = out_val >= 0.0 ? out_val : 0.0;
+            out_val = out_val >= 0.0f ? out_val : 0.0f;
         } else{// if (fuse_params.has_activation == 2 ){
             float tmp = exp(out_val);
             out_val = tmp / (tmp + 1);
@@ -1013,7 +1013,7 @@ __global__ void ppl_cuda_depthwise_int8mma<-1,-1,-1,-1,-1,-1,-1,-1>(
         out_val = out_val + ((float*)fuse_params.pre_data)[base_offset];
         if (fuse_params.has_elt_activation){
             if (fuse_params.has_elt_activation == 1){
-                out_val = out_val >= 0.0 ? out_val : 0.0;
+                out_val = out_val >= 0.0f ? out_val : 0.0f;
             } else{// if (fuse_params.has_activation == 2 ){
                 float tmp = exp(out_val);
                 out_val = tmp / (tmp + 1);

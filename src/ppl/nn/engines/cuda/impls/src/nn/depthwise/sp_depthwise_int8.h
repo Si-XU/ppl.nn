@@ -39,7 +39,7 @@
 //             if (fuse_params.has_activation){
 //                 if (fuse_params.has_activation == 1)
 //                 {
-//                     out_val[i] =  out_val[i] >= 0.0 ? out_val[i] : 0.0;
+//                     out_val[i] =  out_val[i] >= 0.0f ? out_val[i] : 0.0f;
 // 		        }
 //             } else if (fuse_params.has_clip) {
 //                  out_val[i] =  out_val[i] >= fuse_params.clip_max ? 
