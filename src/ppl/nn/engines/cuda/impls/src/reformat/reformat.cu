@@ -16,7 +16,7 @@
 // under the License.
 
 #include <float.h>
-
+#include <iostream>
 #include "cudakernel/reformat/reformat.h"
 #include "cudakernel/common/common.h"
 #include "cudakernel/common/divmod_fast.h"
@@ -757,9 +757,13 @@ ppl::common::RetCode SetReLayoutParam(
     SetReLayoutParam(param, input, output);
     param->same_scale = IsFloatEqual(input_quant.scale, output_quant.scale);
     if (input_quant.per_chnnal) {
+        param->per_channel = true;
         param->quant_stride = input.GetDataFormat() == DATAFORMAT_NDARRAY? param->n_inner : 1;
         param->quant_dim_size = param->n_outer;
         param->quant_stride *= param->channel;
+    } else {
+        param->i_step = input_quant.scale[0];
+        param->o_step = output_quant.scale[0];
     }
     param->i_zero_point = input_quant.zero_point[0];
     param->o_zero_point = output_quant.zero_point[0];
@@ -777,14 +781,22 @@ void PPLCUDADataConvert(
     ReFormatParam& param)
 {
     if (param.in_format != param.out_format && (param.in_type != param.out_type || !param.same_scale)) {
-        PPLCUDACVTTypePerTensor(stream, input, tempBuf, param);
+        if (param.per_channel) {
+            PPLCUDACVTTypePerChannel(stream, input, tempBuf, param);
+        } else {
+            PPLCUDACVTTypePerTensor(stream, input, tempBuf, param);
+        }
         PPLCUDACVTFormat(stream, tempBuf, output, param);
         return;
     } else if (param.in_format != param.out_format && (param.in_type = param.out_type && param.same_scale)) {
         PPLCUDACVTFormat(stream, input, output, param);
         return;
     } else if (param.in_type != param.out_type || !param.same_scale) {
-        PPLCUDACVTTypePerTensor(stream, input, output, param);
+        if (param.per_channel) {
+            PPLCUDACVTTypePerChannel(stream, input, output, param);
+        } else {
+            PPLCUDACVTTypePerTensor(stream, input, output, param);
+        }
         return;
     } else {
         return;

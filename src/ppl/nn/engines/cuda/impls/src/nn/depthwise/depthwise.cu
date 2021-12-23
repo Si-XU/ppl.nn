@@ -108,6 +108,7 @@ int PPLCUDADepthwiseSelectKernel(
             } else if(type == ppl::common::DATATYPE_INT8) {
                 if(func_vec[id].algo_type == SP_DEPTHWISE_KERNEL)
                 {
+                    dim_block.x = 128;
                     dim_grid.x  = DivUp(DivUp(out_height,4) * out_width * DivUp(channels, 4), 128);
                     dim_grid.y = conv_param.in_num;
                 }
@@ -167,6 +168,7 @@ void PPLCUDADepthwiseForwardCudaImp(
         out_scale = 1.0f / out_scale;
         if(func_vec[kernel_id].algo_type == SP_DEPTHWISE_KERNEL)
         {   
+            dim_block.x = 128;
             dim_grid.x  = DivUp(DivUp(out_height,4) * out_width * DivUp(channels, 4), 128);
             dim_grid.y =  conv_param.in_num;
         }

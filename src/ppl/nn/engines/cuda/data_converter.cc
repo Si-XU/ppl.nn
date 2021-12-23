@@ -251,7 +251,7 @@ RetCode CudaDataConverter::Convert(BufferDesc* dst, const TensorShape& dst_desc,
             }
         }
         device_->CopyFromHost(&in_scale_buf, &(in_scale[0]), ((int)param.quant_dim_size)*sizeof(float));
-        param.i_step = (float*)in_scale_buf.addr;
+        param.i_step_ptr = (float*)in_scale_buf.addr;
 
         vector<float> out_scale(dst_quant.scale);
         if (out_scale.size()==1) {
@@ -263,7 +263,7 @@ RetCode CudaDataConverter::Convert(BufferDesc* dst, const TensorShape& dst_desc,
             }
         }
         device_->CopyFromHost(&out_scale_buf, &(out_scale[0]), ((int)param.quant_dim_size)*sizeof(float));
-        param.o_step = (float*)out_scale_buf.addr;
+        param.o_step_ptr = (float*)out_scale_buf.addr;
     }
 
     // auto src_align_size = ppl::common::cuda::GetDataFormatChannelAlignment(src_desc.GetDataFormat());

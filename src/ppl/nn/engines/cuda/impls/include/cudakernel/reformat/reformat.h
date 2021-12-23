@@ -67,8 +67,13 @@ struct ReFormatParam {
     int quant_dim_size = 1;//output channel size
     int i_zero_point = 0;
     int o_zero_point = 0;
-    float *i_step = nullptr;
-    float *o_step = nullptr;
+    float *i_step_ptr = nullptr;
+    float *o_step_ptr = nullptr;
+    
+    bool per_channel = false;
+
+    float i_step = 1.0f;
+    float o_step = 1.0f;
 
     ppl::common::dataformat_t in_format;
     ppl::common::dataformat_t out_format;
@@ -119,6 +124,8 @@ CVTTypeMode GetCVTTypeMode(ReFormatParam param);
 
 void PPLCUDACVTFormat(cudaStream_t stream, const void* input, void* output, ReFormatParam param);
 void PPLCUDACVTTypePerTensor(cudaStream_t stream, const void* input, void* output, ReFormatParam param);
+void PPLCUDACVTTypePerChannel(cudaStream_t stream, const void* input, void* output, ReFormatParam param);
+
 ppl::common::RetCode SetReLayoutParam(ReFormatParam* param, const ppl::nn::TensorShape& input, const ppl::nn::TensorShape& output);
 ppl::common::RetCode SetReLayoutParam(ReFormatParam* param, const ppl::nn::TensorShape& input, const ppl::nn::cuda::CudaTensorQuant& input_quant, const ppl::nn::TensorShape& output, const ppl::nn::cuda::CudaTensorQuant& output_quant);
 
