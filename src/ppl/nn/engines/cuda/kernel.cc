@@ -153,30 +153,30 @@ RetCode CudaKernel::Execute(KernelExecContext* ctx) {
         status = DoExecute(ctx);
     }
 
-// for (uint32_t i = 0; i < ctx->GetOutputCount(); i++) {
-//     auto output = ctx->GetOutput<TensorImpl>(i);
-//     int save_bytes = output->GetShape().GetDataType() == ppl::common::DATATYPE_FLOAT16 ||
-//                         output->GetShape().GetDataType() == ppl::common::DATATYPE_INT8 ?
-//                     sizeof(float) * output->GetShape().GetElementsExcludingPadding() :
-//                     output->GetShape().GetBytesExcludingPadding();
-//     std::unique_ptr<char[]> out_data(new char[save_bytes]);
-//     // memset(out_data.get(), 0, save_bytes);
-//     TensorShape tmp_shape(output->GetShape());
-//     if(output->GetShape().GetDataType() == ppl::common::DATATYPE_FLOAT16) {
-//         tmp_shape.SetDataType(ppl::common::DATATYPE_FLOAT32);
-//     } else if(output->GetShape().GetDataType() == ppl::common::DATATYPE_INT8) {
-//         tmp_shape.SetDataType(ppl::common::DATATYPE_FLOAT32);
-//     } else {
-//         tmp_shape.SetDataType(output->GetShape().GetDataType());
-//     }
-//     tmp_shape.SetDataFormat(ppl::common::DATAFORMAT_NDARRAY);
-//     auto output_quant = common_param_->cuda_tensor_info->at(output->GetEdge()->GetId());
-//     CudaTensorQuant convert_quant;
-//     ((CudaDataConverter*)GetDevice()->GetDataConverter())->ConvertToHost((void*)out_data.get(), tmp_shape, convert_quant, output->GetBufferDesc(), output->GetShape(), output_quant);
-//     std::string outputname = output->GetName();
-//     std::ofstream out_fs(outputname + ".dat");
-//     out_fs.write((char*)out_data.get(), save_bytes);
-// }
+for (uint32_t i = 0; i < ctx->GetOutputCount(); i++) {
+    auto output = ctx->GetOutput<TensorImpl>(i);
+    int save_bytes = output->GetShape().GetDataType() == ppl::common::DATATYPE_FLOAT16 ||
+                        output->GetShape().GetDataType() == ppl::common::DATATYPE_INT8 ?
+                    sizeof(float) * output->GetShape().GetElementsExcludingPadding() :
+                    output->GetShape().GetBytesExcludingPadding();
+    std::unique_ptr<char[]> out_data(new char[save_bytes]);
+    // memset(out_data.get(), 0, save_bytes);
+    TensorShape tmp_shape(output->GetShape());
+    if(output->GetShape().GetDataType() == ppl::common::DATATYPE_FLOAT16) {
+        tmp_shape.SetDataType(ppl::common::DATATYPE_FLOAT32);
+    } else if(output->GetShape().GetDataType() == ppl::common::DATATYPE_INT8) {
+        tmp_shape.SetDataType(ppl::common::DATATYPE_FLOAT32);
+    } else {
+        tmp_shape.SetDataType(output->GetShape().GetDataType());
+    }
+    tmp_shape.SetDataFormat(ppl::common::DATAFORMAT_NDARRAY);
+    auto output_quant = common_param_->cuda_tensor_info->at(output->GetEdge()->GetId());
+    CudaTensorQuant convert_quant;
+    ((CudaDataConverter*)GetDevice()->GetDataConverter())->ConvertToHost((void*)out_data.get(), tmp_shape, convert_quant, output->GetBufferDesc(), output->GetShape(), output_quant);
+    std::string outputname = output->GetName();
+    std::ofstream out_fs(outputname + ".dat");
+    out_fs.write((char*)out_data.get(), save_bytes);
+}
 #ifndef NDEBUG
 
     auto run_end_ts = std::chrono::system_clock::now();
