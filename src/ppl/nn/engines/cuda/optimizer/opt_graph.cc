@@ -468,7 +468,6 @@ RetCode OptGraph::UpdateType() {
                 output_quant.type = kernel_type;
             }
         }
-
         auto status = kernel->InferType(&IOinfo, &graph_quants, kernel_type);
         if (status != RC_SUCCESS) {
             LOG(ERROR) << "Set type for node[" << node->GetName() << "] failed: " << GetRetCodeStr(status);
