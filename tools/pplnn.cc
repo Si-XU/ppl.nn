@@ -245,6 +245,7 @@ static inline bool RegisterCudaEngine(vector<unique_ptr<Engine>>* engines) {
     LOG(INFO) << "***** register CudaEngine *****";
     return true;
 }
+
 #endif
 
 #ifdef PPLNN_USE_X86
@@ -889,56 +890,15 @@ int main(int argc, char* argv[]) {
     LOG(INFO) << "Prepare costs: " << (float)prepare_diff.count() / 1000 << " ms.";
 
     auto run_begin_ts = std::chrono::system_clock::now();
-
-#ifdef PPLNN_USE_CUDA
-
-    std::ifstream infile(g_flag_save_data_dir + "/image.txt");
-    std::string line;
-    while (std::getline(infile, line))
-    {
-        if (!SetInputsAllInOne(line, input_shapes, runtime.get())) {
-            LOG(ERROR) << "SetInputsAllInOne failed.";
-            return -1;
-        }
-        runtime->Run();
-        runtime->Sync();
-        for (uint32_t c = 0; c < runtime->GetOutputCount(); ++c) {
-            auto t = runtime->GetOutputTensor(c);
-
-            TensorShape dst_desc = t->GetShape();
-            dst_desc.SetDataFormat(DATAFORMAT_NDARRAY);
-            auto bytes = dst_desc.GetBytesIncludingPadding();
-            vector<char> buffer(bytes);
-
-            auto status = t->ConvertToHost(buffer.data(), dst_desc);
-            if (status != RC_SUCCESS) {
-                LOG(ERROR) << "convert data of tensor[" << t->GetName() << "] failed: " << GetRetCodeStr(status);
-                return false;
-            }
-            auto left = line.rfind("/");
-            auto right = line.rfind(".");
-            const string out_file_name = g_flag_save_data_dir + "/" + line.substr(left, right - left) + "_" + t->GetName() + ".dat";
-            ofstream ofs(out_file_name, ios_base::out | ios_base::binary | ios_base::trunc);
-            if (!ofs.is_open()) {
-                LOG(ERROR) << "open output file[" << out_file_name << "]";
-                return false;
-            }
-
-            ofs.write(buffer.data(), bytes);
-        }
-
-    }
-#elif
     auto status = runtime->Run();
     if (status == RC_SUCCESS) {
         status = runtime->Sync();
-    }    
-#endif
+    }
     auto run_end_ts = std::chrono::system_clock::now();
-    // if (status != RC_SUCCESS) {
-    //     LOG(ERROR) << "Run() failed: " << GetRetCodeStr(status);
-    //     return -1;
-    // }
+    if (status != RC_SUCCESS) {
+        LOG(ERROR) << "Run() failed: " << GetRetCodeStr(status);
+        return -1;
+    }
 
     PrintInputOutputInfo(runtime.get());
 
