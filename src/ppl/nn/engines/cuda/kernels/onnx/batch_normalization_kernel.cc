@@ -26,10 +26,13 @@ ppl::common::RetCode BatchNormalizationKernel::DoExecute(KernelExecContext* ctx)
     auto scale = ctx->GetInput<TensorImpl>(1);
     auto output = ctx->GetOutput<TensorImpl>(0);
 
+    // How to use:
+    auto has_relu = param_->extra_param.has_relu;
+
     ppl::common::RetCode status = PPLCUDABatchNormalizationForwardImp(
         GetStream(), &input->GetShape(), input->GetBufferPtr(), &scale->GetShape(), scale->GetBufferPtr(),
         ctx->GetInput<TensorImpl>(2)->GetBufferPtr(), ctx->GetInput<TensorImpl>(3)->GetBufferPtr(),
-        ctx->GetInput<TensorImpl>(4)->GetBufferPtr(), &output->GetShape(), output->GetBufferPtr(), param_->epsilon);
+        ctx->GetInput<TensorImpl>(4)->GetBufferPtr(), &output->GetShape(), output->GetBufferPtr(), param_->param.epsilon);
     return status;
 }
 

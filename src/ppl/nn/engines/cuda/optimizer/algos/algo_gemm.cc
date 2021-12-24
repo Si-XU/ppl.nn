@@ -42,6 +42,18 @@ void GemmAlgorithm::GetAttrParam(void*& param) const {
     return;
 }
 
+bool GemmAlgorithm::IsSupported(const ir::Node* node, const OptKernelOptions& options, dataformat_t input_format) const {
+    // check if conv is quantization
+    auto quant0 = options.quants->at(node->GetInput(0));
+    if (quant0.type != DATATYPE_INT8) {
+        return false;
+    }
+    if (input_format != DATAFORMAT_NHWC16) {
+        return false;
+    }
+    return true;
+}
+
 double GemmAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& options) {
     this->attr_param_ = *(reinterpret_cast<CudaGemmParam*>(options.param));
     options.compile_set->emplace(node->GetId());
@@ -125,6 +137,12 @@ double GemmAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& option
 
     auto stream = options.device->GetStream();
 
+    ALLOC_BUFFERF_FOR_ALGO_SELECT(wegiht_quant, shape_in1.GetDim(1) * sizeof(float), ALGO_MAX_TIME)
+    quant_param_t temp_quant_param;
+    temp_quant_param.in_scale = options.quants->at(node->GetId()).scale[0];
+    temp_quant_param.out_scale = 1.0f / options.quants->at(node->GetId()).scale[0];
+    temp_quant_param.d_flt_scale = wegiht_quant.addr;
+    temp_quant_param.pre_scale = 0.0f;
 #ifdef PPLNN_ENABLE_CUDA_JIT
     // Do select
     LOG(INFO) << "Compiling " << node->GetName();
@@ -136,9 +154,16 @@ double GemmAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& option
                                             attr_param_.extra_param.algo_info);
 #else
     // Do Select
-    auto timer = PPLCUDAGemmSelectKernel(stream, &shape_in0, input_buffer.addr, &shape_in1, weight_buffer.addr,
-                                         bias_buffer.addr, &shape_out, output_buffer.addr, temp_buffer.addr,
-                                         attr_param_.param, temp_fuse_param, attr_param_.extra_param.algo_info);
+    double timer = -1.f;
+    if (shape_in0.GetDataType()==ppl::common::DATATYPE_FLOAT16) {
+        timer = PPLCUDAGemmSelectKernel(stream, &shape_in0, input_buffer.addr, &shape_in1, weight_buffer.addr,
+                                        bias_buffer.addr, &shape_out, output_buffer.addr, temp_buffer.addr,
+                                        attr_param_.param, temp_fuse_param, attr_param_.extra_param.algo_info);
+    } else if (shape_in0.GetDataType()==ppl::common::DATATYPE_INT8) {
+        timer = PPLCUDAGemmSelectKernelInt8(stream, &shape_in0, input_buffer.addr, &shape_in1, weight_buffer.addr,
+                                        bias_buffer.addr, &shape_out, output_buffer.addr, temp_buffer.addr,
+                                        attr_param_.param, temp_quant_param, temp_fuse_param, attr_param_.extra_param.algo_info);
+    }
 #endif
     CudaArgs::AlgoSelects algo_select;
     algo_select.kname  = attr_param_.extra_param.algo_info.algo_name;
@@ -161,6 +186,62 @@ RetCode GemmAlgorithm::ModifyParam(ir::Node* node, OptKernelOptions& options) {
     auto shape_in1 = options.tensors->find(node->GetInput(1))->second->GetShape();
     auto shape_out = options.tensors->find(node->GetOutput(0))->second->GetShape();
     auto align_size = ppl::common::cuda::GetDataFormatChannelAlignment(shape_in0.GetDataFormat());
+
+    // Add quant to conv inputs
+    //auto group = ((CudaConvParam*)options.param)->param.group;
+    //auto channel_per_grp = shape_in1.GetDim(0) / group;
+    auto channel = shape_in1.GetDim(0);
+    auto channel_pad = (channel + align_size - 1) / align_size * align_size;
+    auto total_size = channel_pad;
+    auto& weight_quant = options.quants->at(node->GetInput(1));
+
+    if (!weight_quant.per_chnnal) {
+        weight_quant.scale.insert(weight_quant.scale.begin(), total_size, weight_quant.scale[0]);
+    }
+
+    float scales[total_size];
+    for (int i = 0; i < channel_pad; i++) {
+        if (i % channel_pad >= channel) {
+            scales[i] = 0.0f;
+        } else {
+            scales[i] = weight_quant.scale[i / channel_pad * channel + i % channel_pad];
+        }
+    }
+
+    auto quant_shape = TensorShape();
+    quant_shape.SetDimCount(1);
+    quant_shape.SetDim(0, total_size);
+    quant_shape.SetDataFormat(DATAFORMAT_NDARRAY);
+    quant_shape.SetDataType(DATATYPE_FLOAT32);
+
+    RuntimeConstantInfo quant_constat_info;
+    {
+        BufferDesc buffer;
+        auto status = options.device->Realloc(quant_shape, &buffer);
+        if (status != RC_SUCCESS) {
+            LOG(ERROR) << "alloc buffer for constant failed: " << GetRetCodeStr(status);
+            return status;
+        }
+
+        quant_constat_info.Reshape(quant_shape);
+        quant_constat_info.SetBuffer(buffer, options.device, true);
+    }
+
+    auto ret_pair = topo->AddEdge("Quant_" + node->GetName());
+    auto quant_edge = ret_pair.first;
+    auto quant_edge_id = quant_edge->GetId();
+    node->AddInput(quant_edge_id);
+    quant_edge->AddConsumer(node->GetId());
+
+    options.tensors->insert(make_pair(quant_edge_id, unique_ptr<TensorImpl>(new TensorImpl(quant_edge, TENSORTYPE_NORMAL))));
+    options.tensors->find(quant_edge_id)->second->GetShape() = quant_shape;
+    options.quants->resize(topo->GetMaxEdgeId());
+    options.quants->at(quant_edge_id).format = quant_shape.GetDataFormat();
+    options.quants->at(quant_edge_id).type = quant_shape.GetDataType();
+
+    options.device->CopyFromHost(&quant_constat_info.GetBufferDesc(), scales, quant_shape);
+    options.info->constants.emplace(quant_edge_id, std::move(quant_constat_info));
+
 
     // Transpose weight if needed
     auto stream = options.device->GetStream();
@@ -206,15 +287,31 @@ RetCode GemmAlgorithm::ModifyParam(ir::Node* node, OptKernelOptions& options) {
             options.device->Free(buffer);
         });
 
-        status = options.device->GetDataConverter()->ConvertFromHost(&weight_constat_info.GetBufferDesc(), postshape,
-                                                                     weight_iter->second.data.data(), preshape);
+        if (shape_in0.GetDataType() == ppl::common::DATATYPE_FLOAT16) {
+            status = options.device->GetDataConverter()->ConvertFromHost(
+                              &weight_constat_info.GetBufferDesc(), postshape,
+                              weight_iter->second.data.data(), preshape);
+        } else if (shape_in0.GetDataType() == ppl::common::DATATYPE_INT8) {
+            auto quants = options.quants;
+            status = ((CudaDataConverter*)options.device->GetDataConverter())->
+                         ConvertFromHost(
+                              &weight_constat_info.GetBufferDesc(), postshape,
+                              (*quants)[postedge_id],
+                              weight_iter->second.data.data(),
+                              preshape, (*quants)[preedge_id]);
+        }
         if (status != RC_SUCCESS) {
             LOG(ERROR) << node->GetName() << " copy constant failed: " << GetRetCodeStr(status);
             return status;
         }
 
-        status = PPLCUDAGemmModifyWeights(stream, &newshape, weight_constat_info.GetBufferPtr(),
+        if (shape_in0.GetDataType() == ppl::common::DATATYPE_FLOAT16) {
+            status = PPLCUDAGemmModifyWeights(stream, &newshape, weight_constat_info.GetBufferPtr(),
                                           temp_weight_buffer.addr, &attr_param_.param);
+        } else if (shape_in0.GetDataType() == ppl::common::DATATYPE_INT8) {
+            status = PPLCUDAGemmModifyWeightsInt8(stream, &newshape, weight_constat_info.GetBufferPtr(),
+                                          temp_weight_buffer.addr, &attr_param_.param);
+        }
 
         reinterpret_cast<CudaGemmParam*>(options.param)->param.transB = 1;
         options.info->constants.emplace(preedge_id, std::move(weight_constat_info));
@@ -265,7 +362,7 @@ RetCode GemmAlgorithm::ModifyParam(ir::Node* node, OptKernelOptions& options) {
             return status;
         }
 
-        status = PPLCUDAGemmModifyBias(stream, &newshape, bias_constat_info.GetBufferDesc().addr, &attr_param_.param);
+        status = PPLCUDAGemmModifyBias(stream, shape_in0.GetDataType(), &newshape, bias_constat_info.GetBufferDesc().addr, &attr_param_.param);
 
         options.info->constants.emplace(preedge_id, std::move(bias_constat_info));
         options.tensors->find(preedge_id)->second->GetShape() = postshape;
