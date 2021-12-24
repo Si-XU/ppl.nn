@@ -36,11 +36,10 @@ RetCode AveragePoolOp::Init(const OptKernelOptions& options) {
 
     infer_type_func_ = [](InputOutputInfo* info, std::vector<CudaTensorQuant>* quant, datatype_t type) -> RetCode {
         ppl::common::RetCode status;
-        type = DATATYPE_FLOAT16;
         if (type == DATATYPE_UNKNOWN) {
             status = InferInheritedType(info);
         } else if (type == DATATYPE_INT8) {
-            status = UnifyToOutputQuant(info, quant);
+            status = CopyQuantType(info, quant);
         } else {
             status = InferDefaultType(info, type);
         }

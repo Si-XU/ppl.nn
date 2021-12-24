@@ -182,9 +182,6 @@ RetCode CudaEngine::SetQuantization(CudaEngine* engine, va_list args) {
     }
 
     string json_buffer;
-    // if (json_buffer == "") {
-    //     return RC_SUCCESS;
-    // }
     auto status = ReadFileContent(json_file, &json_buffer);
     if (status != RC_SUCCESS) {
         LOG(ERROR) << "read quant info from file[" << json_file << "] failed.";
