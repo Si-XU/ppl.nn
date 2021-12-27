@@ -266,19 +266,6 @@ RetCode CudaDataConverter::Convert(BufferDesc* dst, const TensorShape& dst_desc,
         param.o_step = (float*)out_scale_buf.addr;
     }
 
-    // auto src_align_size = ppl::common::cuda::GetDataFormatChannelAlignment(src_desc.GetDataFormat());
-    // auto dst_align_size = ppl::common::cuda::GetDataFormatChannelAlignment(dst_desc.GetDataFormat());
-    // if (src_desc.GetDim(1) % src_align_size == 0 && dst_desc.GetDim(1) % dst_align_size == 0) {
-    //     if (src_desc.GetDimCount() == 2 && dst_desc.GetDimCount() == 2) {
-    //         param.in_format = param.out_format;
-    //         param.mix_format = 0;
-    //     }
-    //     if (src_desc.GetDimCount() == 4 && dst_desc.GetDimCount() == 2 && src_desc.GetDim(2) == 1 && src_desc.GetDim(3) == 1) {
-    //         param.in_format = param.out_format;
-    //         param.mix_format = 0;
-    //     }        
-    // }
-
     if (!param.mix_format && !param.mix_type) {
         device_->Copy(dst, src, dst_desc);
     } else if ( !param.mix_format || !param.mix_type) {

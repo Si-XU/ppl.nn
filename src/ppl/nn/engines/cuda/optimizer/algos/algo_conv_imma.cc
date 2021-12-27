@@ -66,22 +66,6 @@ double TuringIMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
 
     auto shape_in0 = options.tensors->find(node->GetInput(0))->second->GetShape();
     auto shape_in1 = options.tensors->find(node->GetInput(1))->second->GetShape();
-    //if (shape_in1.GetDim(2) == 1) {
-    //    attr_param_.extra_param.algo_info.kid = 1000;
-    //} else if (shape_in1.GetDim(2) == 3 && shape_in1.GetDim(1)!=1) {
-    //    attr_param_.extra_param.algo_info.kid = 4000;
-    //} else {
-    //    auto group = attr_param_.param.group;
-    //    if(shape_in1.GetDim(1)/group <= 4) {
-    //        attr_param_.extra_param.algo_info.kid = 6006;
-    //    }
-    //    else if(shape_in1.GetDim(1)/group <= 8){
-    //        attr_param_.extra_param.algo_info.kid = 6006 + 96;
-    //    }
-    //    else if(shape_in1.GetDim(1)/group <= 64){
-    //        attr_param_.extra_param.algo_info.kid = 6006 + 96 + 96;
-    //    }
-    //}
     auto shape_in2 = TensorShape();
     auto shape_out = options.tensors->find(node->GetOutput(0))->second->GetShape();
     auto align_size = ppl::common::cuda::GetDataFormatChannelAlignment(shape_in0.GetDataFormat());
@@ -277,8 +261,6 @@ RetCode TuringIMMAImpgemm::ModifyParam(ir::Node* node, OptKernelOptions& options
             return status;
         }
         cudaMemcpy(weight_constat_info.GetBufferDesc().addr, temp_buffer.addr, shape_in1.GetElementsIncludingPadding()*sizeof(int8_t), cudaMemcpyDeviceToDevice);
-        //PPLCUDAConvolutionCvtFlt(stream, weight_constat_info.GetBufferDesc().addr, temp_buffer.addr,
-        //                         shape_in0.GetDataType(), temp_conv_param);
 
         options.info->constants.emplace(preedge_id, std::move(weight_constat_info));
         options.tensors->find(preedge_id)->second->GetShape() = postshape;
@@ -327,7 +309,6 @@ RetCode TuringIMMAImpgemm::ModifyParam(ir::Node* node, OptKernelOptions& options
             return status;
         }
 
-//cudaMemcpy(bias_constat_info.GetBufferDesc().addr, temp_buffer.addr, preshape.GetElementsIncludingPadding()*sizeof(float), cudaMemcpyDeviceToDevice);
         PPLCUDAConvolutionCvtBias(stream, bias_constat_info.GetBufferDesc().addr, temp_buffer.addr,
                                   shape_in0.GetDataType(), temp_conv_param);
 
