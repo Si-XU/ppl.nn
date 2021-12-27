@@ -79,18 +79,6 @@ ppl::common::RetCode ConvImmaKernel::DoExecute(KernelExecContext* ctx) {
     auto input_scale = input_quant.scale[0];
     auto output_scale = output_quant.scale[0];
     auto d_weight_scale = ctx->GetInput<TensorImpl>(ctx->GetInputCount() - 1)->GetBufferPtr();
-    // {
-    //     auto intput = ctx->GetInput<TensorImpl>(ctx->GetInputCount() - 1);
-    //     int qw_size = ((shape_in1.GetDim(0) / param_->param.group + 15) / 16*16) * param_->param.group;
-    //     float* a = new float[qw_size];
-    //     // cudaMemcpy(a, intput->GetBufferPtr(), qw_size*sizeof(float), cudaMemcpyDeviceToHost);
-    //     intput->CopyToHost(a);
-    //     LOG(ERROR) << GetName() << " begin print " << input->GetShape().GetBytesIncludingPadding();
-    //     for(int i = 0; i < 5; i++) {
-    //         printf("%d, %f\n", i, a[i]);
-    //     }
-    //     free(a);
-    // }
 
     ConvertToForwardConvParam(shape_in0, shape_in1, shape_out, param_->param, temp_conv_param);
     ConvertToForwardFuseParam(ctx, GetCudaDevice(), param_->extra_param.fuse_info, temp_fuse_param);
@@ -149,16 +137,6 @@ ppl::common::RetCode ConvImmaKernel::DoExecute(KernelExecContext* ctx) {
 #endif
     LOG(DEBUG) << "Excute IMMA conv with kernel id:" << param_->extra_param.algo_info.kid
                << " and temp buffer size: " << size;
-
-    // {
-    //     auto output = ctx->GetOutput<TensorImpl>(0);
-    //     int8_t* a = new int8_t[1*128*28*28];
-    //     output->CopyToHost(a);
-    //     for(int i = 0; i < 100; i++) {
-    //         printf("%d, %d %f \n", i, a[i * 128], a[i * 128] * output_scale);
-    //         // printf("%d, %d %f \n", i, a[i], a[i] * output_scale);
-    //     }
-    // }
 
     return ppl::common::RC_SUCCESS;
 }

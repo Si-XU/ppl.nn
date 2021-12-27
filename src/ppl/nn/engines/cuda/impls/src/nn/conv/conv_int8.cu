@@ -258,13 +258,12 @@ double PPLCUDAConvolutionSelectKernelInt8(
 
     const int SPLITK_OPTIONS[] = {1, 2, 4, 8};
 
-    for(unsigned int spk = 0; spk < 1; spk++) {
+    for(unsigned int spk = 0; spk < 4; spk++) {
         unsigned int splitk = SPLITK_OPTIONS[spk];
 
         for(unsigned int kid = 0; kid < g_int8_kernel_container.size(); kid++) {
 
             unsigned int splitf = (g_int8_kernel_container[kid].ktype == CONV_2SPK_FS) ? flt_hw : 1;
-            if (g_int8_kernel_container[kid].ktype == CONV_2SPK_FS) continue;
             if(!g_int8_kernel_container[kid].CheckKernelTypeFeasibleInt8(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk)) continue;
 
             if(!g_int8_kernel_container[kid].CheckSplitkFeasible(num_chl_per_grp, splitk)) continue;
@@ -434,64 +433,8 @@ void PPLCUDAConvolutionForwardImpInt8(
 	    buf_off_v4 += GetCvtInputSize(type, conv_param, num_chl_per_grp_pad) / (_4INT_TO_INT4_ * _INT_TO_4BYTE_);
 
         PPLCUDAConvolutionCvtInput(stream, pad_input, d_input, type, conv_param);
-//if(conv_param.num_flt==96 && conv_param.num_grp==96 && conv_param.flt_height==3 && conv_param.num_chl==96){
-//   float *t = (float*)malloc(2*112*112*32*sizeof(float));
-//   cudaMemcpy(t, quant_param.d_flt_scale, 96*16*sizeof(float), cudaMemcpyDeviceToHost);
-//   printf("in conv weight_scale: %x\n", quant_param.d_flt_scale);
-//   for(int i = 0; i < 96; i++){
-//   printf("%f\t", t[i*16]);
-//   }
-//   free(t);
-//}
-
-//if(conv_param.num_flt==24 && conv_param.num_grp==24 && conv_param.flt_height==3 && conv_param.num_chl==24){
-//int8_t *t = (int8_t*)malloc(2*56*56*32*16*sizeof(int8_t));
-//int8_t *t1 = (int8_t*)malloc(2*56*56*32*sizeof(int8_t));
-//int8_t *t2 = (int8_t*)malloc(2*56*56*32*16*sizeof(int8_t));
-//cudaMemcpy(t1, d_input, 2*56*56*32*sizeof(int8_t), cudaMemcpyDeviceToHost);
-//cudaMemcpy(t2, pad_input, 2*56*56*24*16*sizeof(int8_t), cudaMemcpyDeviceToHost);
-//printf("convinput\n");
-//    for(int i = 0; i < 2*56*56*24*16; i++){
-//        //t[i] = i%16==0? t1[i/16] : (int8_t)0;
-//        //t[i] = i%16==0? (int8_t)1 : (int8_t)0;
-//        //t[i] = i%16==0? (int8_t)(i/16/24%4) : (int8_t)0;
-//        int cout = i/16%24;
-//        int w = i/16/24%56;
-//        int h = i/16/24/56;
-//        if(i%16==0)  if(cout==0 && w<=3 && h<=3)  printf("(%d,%d,%d):%4d,%d\t", h,w,cout, (int)t2[i], t[i]);
-//        //if(i%16==15) printf("\n");
-//    }
-//    for(int i = 0; i < 2*56*56*32; i++){
-//        //t[i] = i%16==0? t1[i/16] : (int8_t)0;
-//        //t[i] = i%16==0? (int8_t)1 : (int8_t)0;
-//        //t[i] = i%16==0? (int8_t)(i/16/24%4) : (int8_t)0;
-//        int cout = i%32;
-//        int w = i/32%56;
-//        int h = i/32/56;
-//        if(i%16==0)  if(cout==0 && w<=3 && h<=3)  printf("pre_in:(%d,%d,%d):%4d\t", h,w,cout, (int)t1[i]);
-//        //if(i%16==15) printf("\n");
-//    }
-//
-//    //for(int i = 0; i < 2*112*112*32*16; i++){
-//    //    if(t[i] != t2[i])    printf("error cvtinput\t");
-//    //}
-////cudaMemcpy(pad_input, t, 2*56*56*24*16*sizeof(int8_t), cudaMemcpyHostToDevice);
-//free(t);
-//free(t1);
-//free(t2);
-//printf("convinput done\n");
-//}
 
     }
-//if(conv_param.num_flt==96 && conv_param.num_grp==96 && conv_param.flt_height==3 && conv_param.num_chl==96){
-//   float *t = (float*)malloc(2*112*112*32*sizeof(float));
-//   cudaMemcpy(t, quant_param.d_flt_scale, 96*16*sizeof(float), cudaMemcpyDeviceToHost);
-//   printf("in conv weight_scale: %x\n", quant_param.d_flt_scale);
-//   for(int i = 0; i < 96; i++){
-//   printf("%f\t", t[i*16]);
-//   }
-//   free(t);
-//}
 
     if(is_out_grp_pad) {
 	    pad_output = d_temp_buf + buf_off_v4;
@@ -555,14 +498,6 @@ void PPLCUDAConvolutionForwardImpInt8(
             (g_int8_kernel_container[kid].int8_lut_kptr)<<<grid_size, block_size, 0, stream>>>(INT8_LUT_KPARAM_LIST);
         }
 	    else {
-            //int chl_lut_size, kloop_lut_size;
-            //struct chl_lut_t chl_lut;
-            //struct kloop_lut_t kloop_lut;
-
-            //InitializeChlLut(chl_lut_size, chl_lut.idx, conv_param.num_chl, conv_param.num_grp, pad_size,
-            //        g_int8_kernel_container[kid].tile_k_per_cta, splitk);
-            //InitializeKloopLut(kloop_lut_size, kloop_lut.idx, conv_param.num_chl, conv_param.num_grp, pad_size,
-            //        g_int8_kernel_container[kid].tile_k_per_cta, splitk, splitf, flt_hw);
             int num_chl_per_spk_head, num_chl_per_spk_tail;
             InitializeNumChlPerSpk(num_chl_per_spk_head, num_chl_per_spk_tail, conv_param.num_chl, conv_param.num_grp, pad_size, g_int8_kernel_container[kid].tile_k_per_cta, splitk);
 

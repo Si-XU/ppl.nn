@@ -95,7 +95,7 @@ class KernelInfo:
 class IdxSourceFile:
     def __init__(self, path):
         self.path = path
-        self.fname = "idxn_kernels.cu"
+        self.fname = "int8_idxn_kernels.cu"
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
