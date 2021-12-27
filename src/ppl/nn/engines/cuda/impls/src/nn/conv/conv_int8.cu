@@ -767,16 +767,14 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
     float elapsed;
 
     const int SPLITK_OPTIONS[] = {1, 2, 4, 8};
-    for (unsigned int spf = 0; spf < 1; spf++) {
-        for (unsigned int spk = 0; spk < 1; spk++) {
+    for (unsigned int spf = 0; spf < 2; spf++) {
+        for (unsigned int spk = 0; spk < 4; spk++) {
             unsigned int splitk = SPLITK_OPTIONS[spk];
             unsigned int splitf = spf ? flt_hw : 1;
 
             if (spf == 1 && flt_hw == 1)
                 continue;
             if (spf >= 1 && spk >= 1)
-                continue;
-            if ((spf >= 1 || spk >= 1) && num_chl_per_grp <= 64)
                 continue;
 
             for (unsigned int index = 0; index < MAX_KERNEL_SIZE * 2; index++) {
@@ -785,6 +783,9 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
                 PPLCUDAConvolutionModifyAlgoParam(algo_param, index % MAX_KERNEL_SIZE); // change algo_param
                 algo_param.splitk = splitk;
                 algo_param.splitf = splitf;
+
+                if ((spf >= 1 || spk >= 1) && index < MAX_KERNEL_SIZE) // jump idnx kernel when use splitk and splitf
+                    continue;
 
                 int size_x    = DivUp(conv_param.in_num * conv_param.out_height * conv_param.out_width, algo_param.tiles.m_cta);
                 int size_y    = DivUp(num_flt_per_grp_pad, algo_param.tiles.n_cta);
@@ -986,33 +987,28 @@ void PPLCUDAConvolutionForwardJitImpInt8(
             void *args[] = {&pad_input, &d_flt, &conv_out, &kloop_num, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &in_hw, &out_hw, &flt_hw, &splitk, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias, &quant_param.in_scale, &quant_param.d_flt_scale, &quant_param.out_scale, &quant_param.pre_scale, &fuse_param.has_activation, &clip_min, &fuse_param.has_clip, &clip_max, &fuse_param.has_prelu, &prelu, &fuse_param.has_elt, &(pre_data), &fuse_param.has_elt_activation, &elt_clip_min, &fuse_param.has_elt_clip, &elt_clip_max, &fuse_param.has_elt_prelu, &(elt_prelu), &leaky, &elt_leaky, &fuse_param.has_concat, &concat_offset_v8, &concat_stride_v8};
             CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
         } else {
-            // int num_chl_per_spk_head, num_chl_per_spk_tail;
-
-            // InitializeNumChlPerSpk(num_chl_per_spk_head, num_chl_per_spk_tail, conv_param.num_chl, conv_param.num_grp, pad_size, cta_k, splitk);
-
-            // void *args[] = {&pad_input, &d_flt, &conv_out, &kloop_num, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &num_chl_per_spk_head, &num_chl_per_spk_tail, &in_hw, &out_hw, &flt_hw, &splitk, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias};
-            // CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
+            int num_chl_per_spk_head, num_chl_per_spk_tail;
+            InitializeNumChlPerSpk(num_chl_per_spk_head, num_chl_per_spk_tail, conv_param.num_chl, conv_param.num_grp, pad_size, cta_k, splitk);
+            void *args[] = {&pad_input, &d_flt, &conv_out, &kloop_num, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &num_chl_per_spk_head, &num_chl_per_spk_tail, &in_hw, &out_hw, &flt_hw, &splitk, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias, &quant_param.in_scale, &quant_param.d_flt_scale};
+            CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
         }
-    } else {
     }
 
-#if 0
-    if (splitk > 1 || splitf > 1) {
-        int spk_width_v4  = num_flt_per_grp_pad * conv_param.num_grp / __INT4__;
-        int spk_height_v1 = out_hw * conv_param.in_num;
+    if(splitk > 1 || splitf > 1) {
+        int spk_width_v4   = num_flt_per_grp_pad * conv_param.num_grp / __INT4__;
+        int spk_height_v1  = out_hw * conv_param.in_num;
 
         dim3 merge_grid_size, merge_block_size;
         merge_block_size.x = 64;
         merge_block_size.y = 1;
         merge_block_size.z = 1;
 
-        merge_grid_size.x = spk_height_v1;
-        merge_grid_size.y = DivUp(spk_width_v4, merge_block_size.x);
-        merge_grid_size.z = 1;
+        merge_grid_size.x  = spk_height_v1;
+        merge_grid_size.y  = DivUp(spk_width_v4, merge_block_size.x);
+        merge_grid_size.z  = 1;
 
-        MergeConvSplitResultsFP32<<<merge_grid_size, merge_block_size, 0, stream>>>(INT8_MERGE_KPARAM_LIST);
+        MergeConvSplitResultsFp32<<<merge_grid_size, merge_block_size, 0, stream>>>(INT8_MERGE_KPARAM_LIST);
     }
-#endif
 
     if (is_out_grp_pad) {
         PPLCUDAConvolutionCvtOutput(stream, d_output, final_out, type, conv_param);
