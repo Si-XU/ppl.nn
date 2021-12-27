@@ -65,7 +65,6 @@ void WriteIncludeFile(std::stringstream& file_str, std::string path)
     if (header_str == "")
         LOG(ERROR) << "Can not find " << path;
     file_str << header_str << "\n\n";
-    // file_str << "#include \"" << path.substr(1) << "\"\n\n";
 #endif
     return;
 }
@@ -653,7 +652,6 @@ ppl::common::RetCode Int8CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
 
     file_str << "#define USE_" << buf_size << "BUF\n\n";
 
-    // file_str << "#include <cuda_fp16.h>\n\n";
     if (splitk == 1 && splitf == 1)
         file_str << "#define ENABLE_FUSE 1\n\n";
     if (splitk > 1)

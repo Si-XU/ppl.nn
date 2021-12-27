@@ -346,7 +346,6 @@ ppl::common::RetCode PPLCUDAConcatForwardImp(
     } else if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8 ||
                output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC16) {
 
-
         // nhwc, axis == 1 means last dim
         if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT16 && num_inputs == 2 &&
             axis == 1) {

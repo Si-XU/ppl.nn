@@ -24,7 +24,6 @@
 #include "ppl/nn/common/logger.h"
 #include "ppl/nn/utils/utils.h"
 
-//#include "cudakernel/gemm/gemm.h"
 using namespace ppl::common;
 
 namespace ppl { namespace nn { namespace cuda {

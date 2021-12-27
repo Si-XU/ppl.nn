@@ -360,7 +360,6 @@ double PPLCUDAConvolutionSelectKernelInt8(
 	        cudaEventRecord(end, stream);
 	        cudaEventSynchronize(end);
 	        cudaEventElapsedTime(&elapsed, begin, end);
-            // printf("conv %s , time = %f \n", g_int8_kernel_container[kid].kname.c_str(), elapsed);
 	        if(elapsed < minTime){
                 algo_param.kid = kid;
                 algo_param.splitk = splitk;
@@ -368,7 +367,6 @@ double PPLCUDAConvolutionSelectKernelInt8(
 	            minTime = elapsed;
             }
         }
-        // printf("fast conv %s , time = %f \n", g_int8_kernel_container[algo_param.kid].kname.c_str(), minTime);
 
     }
 
@@ -892,7 +890,6 @@ void PPLCUDAConvolutionForwardJitImpInt8(
     grid_size.x = DivUp(conv_param.in_num * conv_param.out_height * conv_param.out_width, tile_m);
     grid_size.y = DivUp(num_flt_per_grp_pad, tile_n);
     grid_size.z = conv_param.num_grp * splitk * splitf;
-    // printf("%s\n",algo_param.algo_name.c_str());
     if (algo_param.algo_name.find("Idxn") != std::string::npos) {
         int img_pad_size = pad_size;
         int flt_pad_size = algo_param.tiles.flt_pad_size;

@@ -1187,8 +1187,6 @@ void PPLCUDAConvolutionForwardJitImp(
     }
     grid_size.z = conv_param.num_grp * splitk * splitf;
 
-    // int has_relu = fuse_param.has_activation == 1? 1:0;
-    // int has_elt_relu = fuse_param.has_elt_activation == 1 ? 1 : 0;
     const int4 *pre_data  = (const int4 *)fuse_param.pre_data;
     const void *prelu     = (const void *)fuse_param.prelu;
     const void *elt_prelu = (const void *)fuse_param.elt_prelu;

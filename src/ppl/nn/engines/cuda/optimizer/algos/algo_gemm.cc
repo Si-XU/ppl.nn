@@ -149,7 +149,7 @@ double GemmAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& option
     temp_quant_param.out_scale = 1.0f / options.quants->at(node->GetId()).scale[0];
     temp_quant_param.d_flt_scale = wegiht_quant.addr;
     temp_quant_param.pre_scale = 0.0f;
-    double timer = -1.f;
+    double timer = ALGO_MAX_TIME;
 #ifdef PPLNN_ENABLE_CUDA_JIT
     // Do select
     LOG(INFO) << "Compiling " << node->GetName();
@@ -202,8 +202,6 @@ RetCode GemmAlgorithm::ModifyParam(ir::Node* node, OptKernelOptions& options) {
     auto align_size = ppl::common::cuda::GetDataFormatChannelAlignment(shape_in0.GetDataFormat());
 
     // Add quant to conv inputs
-    //auto group = ((CudaConvParam*)options.param)->param.group;
-    //auto channel_per_grp = shape_in1.GetDim(0) / group;
     auto channel = shape_in1.GetDim(0);
     auto channel_pad = (channel + align_size - 1) / align_size * align_size;
     auto total_size = channel_pad;

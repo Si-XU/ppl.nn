@@ -119,7 +119,6 @@ double TuringIMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
     uint64_t size = PPLCUDAConvolutionGetCompilationBufSize(shape_in0.GetDataType(), temp_conv_param);
     ALLOC_BUFFERF_FOR_ALGO_SELECT(temp_buffer, size, ALGO_MAX_TIME)
 
-    // Set quant TODO : Decide if use float to save quant info
     auto group = ((CudaConvParam*)options.param)->param.group;
     auto channel_per_grp = shape_in1.GetDim(0) / group;
     auto channel_per_grp_pad = (channel_per_grp + align_size - 1) / align_size * align_size;
@@ -265,8 +264,6 @@ RetCode TuringIMMAImpgemm::ModifyParam(ir::Node* node, OptKernelOptions& options
             return status;
         }
         cudaMemcpy(weight_constat_info.GetBufferDesc().addr, temp_buffer.addr, shape_in1.GetElementsIncludingPadding()*sizeof(int8_t), cudaMemcpyDeviceToDevice);
-        //PPLCUDAConvolutionCvtFlt(stream, weight_constat_info.GetBufferDesc().addr, temp_buffer.addr,
-        //                         shape_in0.GetDataType(), temp_conv_param);
 
         options.info->constants.emplace(preedge_id, std::move(weight_constat_info));
         options.tensors->find(preedge_id)->second->GetShape() = postshape;
@@ -315,7 +312,6 @@ RetCode TuringIMMAImpgemm::ModifyParam(ir::Node* node, OptKernelOptions& options
             return status;
         }
 
-//cudaMemcpy(bias_constat_info.GetBufferDesc().addr, temp_buffer.addr, preshape.GetElementsIncludingPadding()*sizeof(float), cudaMemcpyDeviceToDevice);
         PPLCUDAConvolutionCvtBias(stream, bias_constat_info.GetBufferDesc().addr, temp_buffer.addr,
                                   shape_in0.GetDataType(), temp_conv_param);
 

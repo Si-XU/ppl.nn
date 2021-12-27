@@ -207,7 +207,7 @@ RetCode ConvertToForwardFuseParam(InputOutputInfo* info, CudaDevice* device, Con
     }
 
     fuse_param.has_concat = fuse_info.channel_offset >= 0;
-    if (fuse_param.has_concat) { // TODO Xusi fix this
+    if (fuse_param.has_concat) {
         fuse_param.concat_offset = fuse_info.channel_offset;
         fuse_param.concat_stride = fuse_info.channel_size;
         fuse_param.post_concat = info->GetOutput<TensorImpl>(0)->GetBufferPtr();

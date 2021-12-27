@@ -409,7 +409,6 @@ struct kernel_info_t {
             return true;
     }
 
-    // TODO: need to fix by xusi
     __inline__ bool CheckQuickSelectFeasible(algo_param_t algo_param, int num_chl_per_grp, int grid_size, int flt_hw, int splitk, int splitf, int device_id)
     {
         cudaDeviceProp device_prop;

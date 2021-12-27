@@ -50,7 +50,7 @@ __global__ void cuda_kernel_fast_trans(
         for (int t = blockIdx.y; t < DivUp(param.n_height, 32); t += gridDim.y) {
             int64_t idx_w = blockIdx.x * blockDim.x + threadIdx.x;
             int64_t idx_h = t * blockDim.y + threadIdx.y;
-            // idx_h += 
+            
             if (idx_w < param.n_width && idx_h < param.n_height) {
                 int64_t offset                      = n * param.n_height * param.n_width + idx_h * param.n_width + idx_w;
                 share_val[threadIdx.y][threadIdx.x] = input[offset];

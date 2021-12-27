@@ -266,24 +266,7 @@ __global__ void cuda_kernel_small_channel_cvtformat(
     ReFormatParam param)
 {
 }
-/*
-// #define cvtSMCHANNELNCTONHWC8(type)                                                                      \
-// template<>                                                                                              \
-// __global__ void cuda_kernel_small_channel_cvtformat<type, NDARRAY_NHWC8>(                                \
-//     type* input,                                                                                        \
-//     int64_t num_elems,                                                                                  \
-//     type* output,                                                                                       \
-//     ReFormatParam param)                                                                                \
-// {                                                                                                       \
-//     int64_t tid = blockIdx.x * blockDim.x + threadIdx.x;                                                \
-//     if (tid >= num_elems) return;                                                                       \
-//     int c_idx = tid % param.dst_pad;                                                                    \
-//     int inner_idx = (tid / param.dst_pad) % param.n_inner;                                              \
-//     int outer_idx = tid / (param.dst_pad * param.n_inner);                                              \
-//     int64_t offset = outer_idx * param.src_pad * param.n_inner + c_idx * param.n_inner + inner_idx;     \
-//     output[tid] = c_idx > param.channel ? input[offset] : (type)0;                                      \
-// }
-*/
+
 #define cvtSMCHANNELNCTONHWC8(type)                                                                      \
 template<>                                                                                              \
 __global__ void cuda_kernel_small_channel_cvtformat<type, NDARRAY_NHWC>(                                \
