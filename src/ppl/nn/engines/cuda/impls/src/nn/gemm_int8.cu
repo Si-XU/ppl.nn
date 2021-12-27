@@ -131,7 +131,6 @@ ppl::common::RetCode PPLCUDAGemmModifyWeightsInt8(
     const ppl::nn::common::GemmParam *param)
 {
     int transB   = param->transB;
-    //float alpha  = param->alpha;
     auto type    = weight_shape->GetDataType();
     int pad_size = GetPadSize(type);
 
@@ -595,10 +594,9 @@ __device__ __inline__ void clip(int4 &v, float clip_min, float clip_max)
     }
 }
 
-#if 1
 // partition workload according to input matrix
 // matrix: NxK
-// FIXME N should not be paded in matrix:(N, padK), but output is (1, N_int4_pad)
+// N should not be paded in matrix:(N, padK), but output is (1, N_int4_pad)
 //  N: pad int4
 //  K: pad int4
 //  layout and fuse pattern  consistent with gemm
@@ -672,11 +670,6 @@ __global__ void int8_gemv(void *output,
                 fma_v4<T>(reg_a, reg_b[i * T_NUMS_PER_INT + j], reg_c[i * T_NUMS_PER_INT + j]);
             }
         }
-        //for (int i = 0; i < THD_TILE_N; i++) {
-        //    reg_b[i] = in_n_range[i] && in_range ? matrix_base_v4[(i * BLK_SIZE_Y) * pad_k_v4 + off]
-        //    fma_v4<T>(reg_a, reg_b[i], reg_c[i]);
-        //}
-
     }
     // int4 reduce to half
 #pragma unroll
@@ -770,11 +763,6 @@ __global__ void int8_gemv(void *output,
 
     //FIXME ld can be placed in the begining
     //dequant
-    //float4 flt_scale_v4[THD_TILE_N_V4];
-    //float *flt_scale = (float*)flt_scale_v4;
-    //for (int i = 0; i < THD_TILE_N_V4; i++) {
-    //    flt_scale_v4[i] = ((float4*)quant_param.d_flt_scale)[blockIdx.x * BLK_TILE_N_V4 + i * BLK_SIZE_Y + threadIdx.y];
-    //}
     float *fc = (float*)c;
     for (int i = 0; i < THD_TILE_N; i++){
         fc[i] = quant_param.in_scale * flt_scale[i] * c[i];
@@ -789,11 +777,6 @@ __global__ void int8_gemv(void *output,
         }
     }
     __syncthreads();
-    //if(blockIdx.x==0 && threadIdx.y == 0 &&threadIdx.x==0){
-    //    for(int i = 0; i < THD_TILE_N*BLK_SIZE_Y; i++){
-    //        printf("(%d, %f)\t", i, ((float*)smem)[i]);
-    //    }
-    //}
 
     int tid = threadIdx.y * BLK_SIZE_X + threadIdx.x;
     for (int thd_off = tid; thd_off < BLK_TILE_N_V4; thd_off += BLK_SIZE) {
@@ -872,8 +855,6 @@ ppl::common::RetCode PPLCUDAGemvForwardImpInt8(
 
     constexpr int ELEM_NUM_PR_ST = sizeof(int) / sizeof(T);
     constexpr int expect_blocks  = 64;
-    // constexpr int MAX_BLK_SIZE = 256;
-    // constexpr int MAX_THD_TILE_N_V4 = 4;
     int n_v4                     = padN / ELEM_NUM_PR_ST;
     int blk_tile_n_v4            = DivUp(n_v4, expect_blocks / M);
 #define LAUNCH_KERNEL()                                                                                                                  \
@@ -889,9 +870,6 @@ ppl::common::RetCode PPLCUDAGemvForwardImpInt8(
     }
 #define CONFIG_KERNEL(_blk_tile_n_v4)                  \
     {                                                  \
-        /*\
-        if (BLK_SIZE_X <= 64 && _blk_tile_n_v4 >= 16) { \
-        */\
         if (BLK_SIZE_X <= 32 && _blk_tile_n_v4 >= 16) { \
             constexpr int THD_TILE_N_V4 = 4;           \
             constexpr int BLK_SIZE_Y    = 4;           \
@@ -919,15 +897,11 @@ ppl::common::RetCode PPLCUDAGemvForwardImpInt8(
         CONFIG_KERNEL(blk_tile_n_v4);
     } else if (padK >= 1024) {
         constexpr int BLK_SIZE_X = 64;
-    //if (padK >= 512) {
-        //constexpr int BLK_SIZE_X = 32;
         CONFIG_KERNEL(blk_tile_n_v4);
     } else {
         constexpr int BLK_SIZE_X = 32;
-        //constexpr int BLK_SIZE_X = 16;
         CONFIG_KERNEL(blk_tile_n_v4);
     }
 
     return ppl::common::RC_SUCCESS;
 }
-#endif

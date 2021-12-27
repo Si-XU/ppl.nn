@@ -100,7 +100,6 @@ ppl::common::RetCode GemmKernel::DoExecute(KernelExecContext* ctx) {
     } else if (shape_in0.GetDataType()==ppl::common::DATATYPE_INT8) {
         quant_param_t temp_quant_param;
         auto input_quant = GetCommonParam()->cuda_tensor_info->at(input->GetEdge()->GetId());
-        //auto weight_quant = GetCommonParam()->cuda_tensor_info->at(weight->GetEdge()->GetId());
         auto output_quant = GetCommonParam()->cuda_tensor_info->at(output->GetEdge()->GetId());
         auto input_scale = input_quant.scale[0];
         auto output_scale = output_quant.scale[0];
