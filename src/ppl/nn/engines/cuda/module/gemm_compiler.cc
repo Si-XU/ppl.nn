@@ -40,8 +40,6 @@ const ppl::common::RetCode GemmCompiler::Compile(ir::Node* node, const OptKernel
     auto mgr = CodeGeneFactorManager::Instance();
     auto gene_factor = mgr->FindKernel(input_type);
 
-    printf("%s\n", algo_param.algo_name.c_str());
-
     std::string source = "";
     gene_factor->Gene2spkKernel(source, algo_param.algo_name, algo_param.tiles.m_cta, algo_param.tiles.n_cta,
                        algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta,

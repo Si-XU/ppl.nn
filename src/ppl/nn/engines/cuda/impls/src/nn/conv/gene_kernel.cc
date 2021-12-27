@@ -770,7 +770,7 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
     file_str << "#define uint unsigned int\n\n";
     file_str << "#define uint32_t unsigned int\n\n";
     file_str << "#define int16_t short\n\n";
-    file_str << "#define int8_t int\n\n";
+    file_str << "#define int8_t char\n\n";
 
     if (declare_times == 0) {
         file_str << "#define MAX_LUT_SIZE 128\n\n";

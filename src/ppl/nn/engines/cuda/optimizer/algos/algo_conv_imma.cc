@@ -66,22 +66,6 @@ double TuringIMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
 
     auto shape_in0 = options.tensors->find(node->GetInput(0))->second->GetShape();
     auto shape_in1 = options.tensors->find(node->GetInput(1))->second->GetShape();
-    //if (shape_in1.GetDim(2) == 1) {
-    //    attr_param_.extra_param.algo_info.kid = 1000;
-    //} else if (shape_in1.GetDim(2) == 3 && shape_in1.GetDim(1)!=1) {
-    //    attr_param_.extra_param.algo_info.kid = 4000;
-    //} else {
-    //    auto group = attr_param_.param.group;
-    //    if(shape_in1.GetDim(1)/group <= 4) {
-    //        attr_param_.extra_param.algo_info.kid = 6006;
-    //    }
-    //    else if(shape_in1.GetDim(1)/group <= 8){
-    //        attr_param_.extra_param.algo_info.kid = 6006 + 96;
-    //    }
-    //    else if(shape_in1.GetDim(1)/group <= 64){
-    //        attr_param_.extra_param.algo_info.kid = 6006 + 96 + 96;
-    //    }
-    //}
     auto shape_in2 = TensorShape();
     auto shape_out = options.tensors->find(node->GetOutput(0))->second->GetShape();
     auto align_size = ppl::common::cuda::GetDataFormatChannelAlignment(shape_in0.GetDataFormat());
@@ -136,7 +120,11 @@ double TuringIMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
     ALLOC_BUFFERF_FOR_ALGO_SELECT(temp_buffer, size, ALGO_MAX_TIME)
 
     // Set quant TODO : Decide if use float to save quant info
-    ALLOC_BUFFERF_FOR_ALGO_SELECT(wegiht_quant, shape_in1.GetDim(1) * sizeof(float), ALGO_MAX_TIME)
+    auto group = ((CudaConvParam*)options.param)->param.group;
+    auto channel_per_grp = shape_in1.GetDim(0) / group;
+    auto channel_per_grp_pad = (channel_per_grp + align_size - 1) / align_size * align_size;
+    auto total_size = channel_per_grp_pad * group;
+    ALLOC_BUFFERF_FOR_ALGO_SELECT(wegiht_quant, total_size * sizeof(float), ALGO_MAX_TIME)
     quant_param_t temp_quant_param;
     temp_quant_param.in_scale = options.quants->at(node->GetId()).scale[0];
     temp_quant_param.out_scale = 1.0f / options.quants->at(node->GetId()).scale[0];
