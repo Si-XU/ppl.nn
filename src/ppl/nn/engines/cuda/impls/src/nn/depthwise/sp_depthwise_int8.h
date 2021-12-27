@@ -19,41 +19,12 @@
 #define PPL_CUKERNEL_CONV_SP_DEPTHWISE_KERNEL_H_
 #include <cuda_fp16.h>
 
-// template<int TILE_H, int TILE_W>
-// __forceinline__ __device__ void simple_fuse_process_float(
-//     float *out_val,
-//     int h_idx,
-//     int w_idx,
-//     int c_idx,
-//     int out_height, 
-//     int out_width,
-//     int channels,
-//     int paddingc,
-//     int base_offset,
-//     fuse_param_t fuse_params
-// )
-// {
-// #if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
-// #pragma unroll
-//     for (int i = 0; i < TILE_H * TILE_W; i++) {
-//             if (fuse_params.has_activation){
-//                 if (fuse_params.has_activation == 1)
-//                 {
-//                     out_val[i] =  out_val[i] >= 0.0f ? out_val[i] : 0.0f;
-// 		        }
-//             } else if (fuse_params.has_clip) {
-//                  out_val[i] =  out_val[i] >= fuse_params.clip_max ? 
-//                         fuse_params.clip_max :  out_val[i] <= fuse_params.clip_min ? 
-//                         fuse_params.clip_min :  out_val[i];
-//             }
-//     }
-// #endif  
-// }
+
 #define PREDEFINEIF #if
 #define PREDEFINEENDIF #endif
 #define PRAGMAUNROLL #pragma
 
-#define FUSE_PROCESS_FLOAT(out_val, fuse_params, TILE_H, TILE_W) \
+#define FUSE_PROCESS_FLOAT(out_val, fuse_params, TILE_H, TILE_W, base_offset) \
 { \
     if (fuse_params.has_activation){ \
         if (fuse_params.has_activation == 1) \
@@ -70,9 +41,19 @@
                         fuse_params.clip_max :  out_val[i] <= fuse_params.clip_min ? \
                         fuse_params.clip_min :  out_val[i];\
             }\
-        }\
+    } else if (fuse_params.has_prelu) { \
+        _Pragma("unroll") \
+        for(int i = 0; i < TILE_H * TILE_W; i++) { \
+            if (fuse_params.has_prelu == 1) { \
+                out_val[i] = out_val[i] > 0 ? out_val[i] : out_val[i] * fuse_params.leaky; \
+            } else if (fuse_params.has_prelu == 2) { \
+                 out_val[i] = out_val[i] > 0 ? out_val[i] : out_val[i] * ((float*)fuse_params.prelu)[channel_idx + i]; \
+            } else if (fuse_params.has_prelu == 2) { \
+                 out_val[i] = out_val[i] > 0 ? out_val[i] : out_val[i] * ((float*)fuse_params.prelu)[base_offset + i]; \
+            }\
+        } \
+    } \
 }
-
 
 #define PACK4INT(data, x, y, z, w) \
     x = (0xffu & x); \
@@ -371,70 +352,6 @@ __global__ void ppl_cuda_depthwise_int8_nhwc_f3s1(
     regScale.z *= pic_scale;
     regScale.w *= pic_scale;
 
-//     fC[ 0] = C[ 0]*regScale.x;
-//     fC[ 1] = C[ 1]*regScale.y;
-//     fC[ 2] = C[ 2]*regScale.z;
-//     fC[ 3] = C[ 3]*regScale.w;
-//     fC[ 4] = C[ 4]*regScale.x;
-//     fC[ 5] = C[ 5]*regScale.y;
-//     fC[ 6] = C[ 6]*regScale.z;
-//     fC[ 7] = C[ 7]*regScale.w;
-//     fC[ 8] = C[ 8]*regScale.x;
-//     fC[ 9] = C[ 9]*regScale.y;
-//     fC[10] = C[10]*regScale.z;
-//     fC[11] = C[11]*regScale.w;
-//     fC[12] = C[12]*regScale.x;
-//     fC[13] = C[13]*regScale.y;
-//     fC[14] = C[14]*regScale.z;
-//     fC[15] = C[15]*regScale.w;
-//     if (bias) {
-//         regBias.x  = pred[0] ? bias[channel_idx + 0] : 0.0f;
-//         regBias.y  = pred[1] ? bias[channel_idx + 1] : 0.0f;
-//         regBias.z  = pred[2] ? bias[channel_idx + 2] : 0.0f;
-//         regBias.w  = pred[3] ? bias[channel_idx + 3] : 0.0f;
-//         fC[ 0] +=  regBias.x;
-//         fC[ 1] +=  regBias.y;
-//         fC[ 2] +=  regBias.z;
-//         fC[ 3] +=  regBias.w;
-//         fC[ 4] +=  regBias.x;
-//         fC[ 5] +=  regBias.y;
-//         fC[ 6] +=  regBias.z;
-//         fC[ 7] +=  regBias.w;
-//         fC[ 8] +=  regBias.x;
-//         fC[ 9] +=  regBias.y;
-//         fC[10] +=  regBias.z;
-//         fC[11] +=  regBias.w;
-//         fC[12] +=  regBias.x;
-//         fC[13] +=  regBias.y;
-//         fC[14] +=  regBias.z;
-//         fC[15] +=  regBias.w;
-//     }
-
-//     // int64_t base_offset = out_idx * 4;
-//     // simple_fuse_process_float<16, 1>(fC, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
-//     FUSE_PROCESS_FLOAT(fC, fuse_params, 16, 1)
-
-// #pragma unroll
-//     for(int i = 0; i < 16; i++)
-//     {
-//         C[i] = __float2int_rn(fC[i] * out_scale);
-//         C[i] = C[i] > 127 ? 127 : C[i] < -128 ? -128 : C[i];
-//     }
-//     if (fuse_params.has_concat) {
-//         output = (int8_t*)fuse_params.post_concat;
-//         paddingc = fuse_params.concat_stride;
-//         out_idx = fuse_params.concat_offset + n_idx * out_height * out_width * paddingc + h_idx * out_width * paddingc + w_idx * paddingc + c_idx;
-//     }
-//     int outData;
-//     int* dout = (int*)output;
-//     PACK4INT(outData, C[0], C[1], C[2], C[3])
-//     if(h_idx*4+0<out_height) dout[out_idx] = outData; out_idx += out_width * c_stride;
-//     PACK4INT(outData, C[4], C[5], C[6], C[7])
-//     if(h_idx*4+1<out_height) dout[out_idx] = outData; out_idx += out_width * c_stride;
-//     PACK4INT(outData, C[8], C[9], C[10], C[11])
-//     if(h_idx*4+2<out_height) dout[out_idx] = outData; out_idx += out_width * c_stride;
-//     PACK4INT(outData, C[12], C[13], C[14], C[15])
-//     if(h_idx*4+3<out_height) dout[out_idx] = outData; 
     if (bias) {
         regBias.x  = pred[0] ? bias[channel_idx + 0] : 0.0f;
         regBias.y  = pred[1] ? bias[channel_idx + 1] : 0.0f;
@@ -443,6 +360,12 @@ __global__ void ppl_cuda_depthwise_int8_nhwc_f3s1(
     }
     int outData;
     int* dout = (int*)output;
+
+    int64_t base_offset = n_idx * out_height * out_width * paddingc;
+    base_offset += (h_idx * 4) * out_width * paddingc;
+    base_offset += w_idx * paddingc;
+    base_offset += c_idx * 4;
+
     if(h_idx*4+0<out_height) {
         fC[ 0] = C[ 0]*regScale.x;
         fC[ 1] = C[ 1]*regScale.y;
@@ -454,7 +377,7 @@ __global__ void ppl_cuda_depthwise_int8_nhwc_f3s1(
             fC[ 2] +=  regBias.z;
             fC[ 3] +=  regBias.w;        
         }
-        FUSE_PROCESS_FLOAT(fC, fuse_params, 4, 1)
+        FUSE_PROCESS_FLOAT(fC, fuse_params, 4, 1, base_offset)
         #pragma unroll
         for(int i = 0; i < 4; i++)
         {
@@ -465,6 +388,7 @@ __global__ void ppl_cuda_depthwise_int8_nhwc_f3s1(
         dout[out_idx] = outData;
     }
     out_idx += out_width * c_stride;
+    base_offset += out_width + paddingc;
 
     if(h_idx*4+1<out_height) {
         fC[ 4] = C[ 4]*regScale.x;
@@ -477,7 +401,7 @@ __global__ void ppl_cuda_depthwise_int8_nhwc_f3s1(
             fC[ 6] +=  regBias.z;
             fC[ 7] +=  regBias.w;        
         }
-        FUSE_PROCESS_FLOAT((fC + 4), fuse_params, 4, 1)
+        FUSE_PROCESS_FLOAT((fC + 4), fuse_params, 4, 1, base_offset)
         #pragma unroll
         for(int i = 4; i < 8; i++)
         {
@@ -488,6 +412,8 @@ __global__ void ppl_cuda_depthwise_int8_nhwc_f3s1(
         dout[out_idx] = outData;
     }
     out_idx += out_width * c_stride;
+    base_offset += out_width + paddingc;
+
     if(h_idx*4+2<out_height) {
         fC[ 8] = C[ 8]*regScale.x;
         fC[ 9] = C[ 9]*regScale.y;
@@ -499,7 +425,7 @@ __global__ void ppl_cuda_depthwise_int8_nhwc_f3s1(
             fC[10] +=  regBias.z;
             fC[11] +=  regBias.w;        
         }
-        FUSE_PROCESS_FLOAT((fC + 8), fuse_params, 4, 1)
+        FUSE_PROCESS_FLOAT((fC + 8), fuse_params, 4, 1, base_offset)
         #pragma unroll
         for(int i = 8; i < 12; i++)
         {
@@ -510,6 +436,8 @@ __global__ void ppl_cuda_depthwise_int8_nhwc_f3s1(
         dout[out_idx] = outData;
     }
     out_idx += out_width * c_stride;
+    base_offset += out_width + paddingc;
+
     if(h_idx*4+3<out_height) {
         fC[12] = C[12]*regScale.x;
         fC[13] = C[13]*regScale.y;
@@ -521,7 +449,7 @@ __global__ void ppl_cuda_depthwise_int8_nhwc_f3s1(
             fC[14] +=  regBias.z;
             fC[15] +=  regBias.w;        
         }
-        FUSE_PROCESS_FLOAT((fC + 12), fuse_params, 4, 1)
+        FUSE_PROCESS_FLOAT((fC + 12), fuse_params, 4, 1, base_offset)
         #pragma unroll
         for(int i = 12; i < 16; i++)
         {
@@ -531,67 +459,6 @@ __global__ void ppl_cuda_depthwise_int8_nhwc_f3s1(
         PACK4INT(outData, C[12], C[13], C[14], C[15])
         dout[out_idx] = outData;
     }
-//     fC[ 4] = C[ 4]*regScale.x;
-//     fC[ 5] = C[ 5]*regScale.y;
-//     fC[ 6] = C[ 6]*regScale.z;
-//     fC[ 7] = C[ 7]*regScale.w;
-//     fC[ 8] = C[ 8]*regScale.x;
-//     fC[ 9] = C[ 9]*regScale.y;
-//     fC[10] = C[10]*regScale.z;
-//     fC[11] = C[11]*regScale.w;
-//     fC[12] = C[12]*regScale.x;
-//     fC[13] = C[13]*regScale.y;
-//     fC[14] = C[14]*regScale.z;
-//     fC[15] = C[15]*regScale.w;
-//     if (bias) {
-//         regBias.x  = pred[0] ? bias[channel_idx + 0] : 0.0f;
-//         regBias.y  = pred[1] ? bias[channel_idx + 1] : 0.0f;
-//         regBias.z  = pred[2] ? bias[channel_idx + 2] : 0.0f;
-//         regBias.w  = pred[3] ? bias[channel_idx + 3] : 0.0f;
-//         fC[ 0] +=  regBias.x;
-//         fC[ 1] +=  regBias.y;
-//         fC[ 2] +=  regBias.z;
-//         fC[ 3] +=  regBias.w;
-//         fC[ 4] +=  regBias.x;
-//         fC[ 5] +=  regBias.y;
-//         fC[ 6] +=  regBias.z;
-//         fC[ 7] +=  regBias.w;
-//         fC[ 8] +=  regBias.x;
-//         fC[ 9] +=  regBias.y;
-//         fC[10] +=  regBias.z;
-//         fC[11] +=  regBias.w;
-//         fC[12] +=  regBias.x;
-//         fC[13] +=  regBias.y;
-//         fC[14] +=  regBias.z;
-//         fC[15] +=  regBias.w;
-//     }
-
-//     // int64_t base_offset = out_idx * 4;
-//     // simple_fuse_process_float<16, 1>(fC, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
-//     FUSE_PROCESS_FLOAT(fC, fuse_params, 16, 1)
-
-// #pragma unroll
-//     for(int i = 0; i < 16; i++)
-//     {
-//         C[i] = __float2int_rn(fC[i] * out_scale);
-//         C[i] = C[i] > 127 ? 127 : C[i] < -128 ? -128 : C[i];
-//     }
-//     if (fuse_params.has_concat) {
-//         output = (int8_t*)fuse_params.post_concat;
-//         paddingc = fuse_params.concat_stride;
-//         out_idx = fuse_params.concat_offset + n_idx * out_height * out_width * paddingc + h_idx * out_width * paddingc + w_idx * paddingc + c_idx;
-//     }
-//     int outData;
-//     int* dout = (int*)output;
-//     PACK4INT(outData, C[0], C[1], C[2], C[3])
-//     if(h_idx*4+0<out_height) dout[out_idx] = outData; out_idx += out_width * c_stride;
-//     PACK4INT(outData, C[4], C[5], C[6], C[7])
-//     if(h_idx*4+1<out_height) dout[out_idx] = outData; out_idx += out_width * c_stride;
-//     PACK4INT(outData, C[8], C[9], C[10], C[11])
-//     if(h_idx*4+2<out_height) dout[out_idx] = outData; out_idx += out_width * c_stride;
-//     PACK4INT(outData, C[12], C[13], C[14], C[15])
-//     if(h_idx*4+3<out_height) dout[out_idx] = outData; 
-
 }
 
 template<int TILE_H, int TILE_W, int SRC_TILE_H, int SRC_TILE_W, int KERNEL_H, int KERNEL_W, int STRIRDE_H, int STRIRDE_W>
@@ -741,73 +608,113 @@ __global__ void ppl_cuda_depthwise_int8_nhwc_f3s2(
     regScale.y *= pic_scale;
     regScale.z *= pic_scale;
     regScale.w *= pic_scale;
-    fC[ 0] = C[ 0]*regScale.x;
-    fC[ 1] = C[ 1]*regScale.y;
-    fC[ 2] = C[ 2]*regScale.z;
-    fC[ 3] = C[ 3]*regScale.w;
-    fC[ 4] = C[ 4]*regScale.x;
-    fC[ 5] = C[ 5]*regScale.y;
-    fC[ 6] = C[ 6]*regScale.z;
-    fC[ 7] = C[ 7]*regScale.w;
-    fC[ 8] = C[ 8]*regScale.x;
-    fC[ 9] = C[ 9]*regScale.y;
-    fC[10] = C[10]*regScale.z;
-    fC[11] = C[11]*regScale.w;
-    fC[12] = C[12]*regScale.x;
-    fC[13] = C[13]*regScale.y;
-    fC[14] = C[14]*regScale.z;
-    fC[15] = C[15]*regScale.w;
-    if (bias) {
+        if (bias) {
         regBias.x  = pred[0] ? bias[channel_idx + 0] : 0.0f;
         regBias.y  = pred[1] ? bias[channel_idx + 1] : 0.0f;
         regBias.z  = pred[2] ? bias[channel_idx + 2] : 0.0f;
         regBias.w  = pred[3] ? bias[channel_idx + 3] : 0.0f;
-        fC[ 0] +=  regBias.x;
-        fC[ 1] +=  regBias.y;
-        fC[ 2] +=  regBias.z;
-        fC[ 3] +=  regBias.w;
-        fC[ 4] +=  regBias.x;
-        fC[ 5] +=  regBias.y;
-        fC[ 6] +=  regBias.z;
-        fC[ 7] +=  regBias.w;
-        fC[ 8] +=  regBias.x;
-        fC[ 9] +=  regBias.y;
-        fC[10] +=  regBias.z;
-        fC[11] +=  regBias.w;
-        fC[12] +=  regBias.x;
-        fC[13] +=  regBias.y;
-        fC[14] +=  regBias.z;
-        fC[15] +=  regBias.w;
-    }
-
-    // int64_t base_offset = out_idx * 4;
-    FUSE_PROCESS_FLOAT(fC, fuse_params, 16, 1)
-    // simple_fuse_process_float<16, 1>(fC, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
-    // fuse_process_float<4, 1>(a + 4, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
-    // fuse_process_float<4, 1>(a + 8, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
-    // fuse_process_float<4, 1>(a + 12, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
-#pragma unroll
-    for(int i = 0; i < 16; i++)
-    {
-        C[i] = __float2int_rn(fC[i] * out_scale);
-        C[i] = C[i] > 127 ? 127 : C[i] < -128 ? -128 : C[i];
-    }
-
-    if (fuse_params.has_concat) {
-        output = (int8_t*)fuse_params.post_concat;
-        paddingc = fuse_params.concat_stride;
-        out_idx = fuse_params.concat_offset + n_idx * out_height * out_width * paddingc + h_idx * out_width * paddingc + w_idx * paddingc + c_idx;
     }
     int outData;
     int* dout = (int*)output;
-    PACK4INT(outData, C[0], C[1], C[2], C[3])
-    if(h_idx*4+0<out_height) dout[out_idx] = outData; out_idx += out_width * c_stride;
-    PACK4INT(outData, C[4], C[5], C[6], C[7])
-    if(h_idx*4+1<out_height) dout[out_idx] = outData; out_idx += out_width * c_stride;
-    PACK4INT(outData, C[8], C[9], C[10], C[11])
-    if(h_idx*4+2<out_height) dout[out_idx] = outData; out_idx += out_width * c_stride;
-    PACK4INT(outData, C[12], C[13], C[14], C[15])
-    if(h_idx*4+3<out_height) dout[out_idx] = outData; 
+
+    int64_t base_offset = n_idx * out_height * out_width * paddingc;
+    base_offset += (h_idx * 4) * out_width * paddingc;
+    base_offset += w_idx * paddingc;
+    base_offset += c_idx * 4;
+
+    if(h_idx*4+0<out_height) {
+        fC[ 0] = C[ 0]*regScale.x;
+        fC[ 1] = C[ 1]*regScale.y;
+        fC[ 2] = C[ 2]*regScale.z;
+        fC[ 3] = C[ 3]*regScale.w;
+        if (bias) {
+            fC[ 0] +=  regBias.x;
+            fC[ 1] +=  regBias.y;
+            fC[ 2] +=  regBias.z;
+            fC[ 3] +=  regBias.w;        
+        }
+        FUSE_PROCESS_FLOAT(fC, fuse_params, 4, 1, base_offset)
+        #pragma unroll
+        for(int i = 0; i < 4; i++)
+        {
+            C[i] = __float2int_rn(fC[i] * out_scale);
+            C[i] = C[i] > 127 ? 127 : C[i] < -128 ? -128 : C[i];
+        }
+        PACK4INT(outData, C[0], C[1], C[2], C[3])
+        dout[out_idx] = outData;
+    }
+    out_idx += out_width * c_stride;
+    base_offset += out_width + paddingc;
+
+    if(h_idx*4+1<out_height) {
+        fC[ 4] = C[ 4]*regScale.x;
+        fC[ 5] = C[ 5]*regScale.y;
+        fC[ 6] = C[ 6]*regScale.z;
+        fC[ 7] = C[ 7]*regScale.w;
+        if (bias) {
+            fC[ 4] +=  regBias.x;
+            fC[ 5] +=  regBias.y;
+            fC[ 6] +=  regBias.z;
+            fC[ 7] +=  regBias.w;        
+        }
+        FUSE_PROCESS_FLOAT((fC + 4), fuse_params, 4, 1, base_offset)
+        #pragma unroll
+        for(int i = 4; i < 8; i++)
+        {
+            C[i] = __float2int_rn(fC[i] * out_scale);
+            C[i] = C[i] > 127 ? 127 : C[i] < -128 ? -128 : C[i];
+        }
+        PACK4INT(outData, C[4], C[5], C[6], C[7])
+        dout[out_idx] = outData;
+    }
+    out_idx += out_width * c_stride;
+    base_offset += out_width + paddingc;
+
+    if(h_idx*4+2<out_height) {
+        fC[ 8] = C[ 8]*regScale.x;
+        fC[ 9] = C[ 9]*regScale.y;
+        fC[10] = C[ 10]*regScale.z;
+        fC[11] = C[ 11]*regScale.w;
+        if (bias) {
+            fC[ 8] +=  regBias.x;
+            fC[ 9] +=  regBias.y;
+            fC[10] +=  regBias.z;
+            fC[11] +=  regBias.w;        
+        }
+        FUSE_PROCESS_FLOAT((fC + 8), fuse_params, 4, 1, base_offset)
+        #pragma unroll
+        for(int i = 8; i < 12; i++)
+        {
+            C[i] = __float2int_rn(fC[i] * out_scale);
+            C[i] = C[i] > 127 ? 127 : C[i] < -128 ? -128 : C[i];
+        }
+        PACK4INT(outData, C[8], C[9], C[10], C[11])
+        dout[out_idx] = outData;
+    }
+    out_idx += out_width * c_stride;
+    base_offset += out_width + paddingc;
+
+    if(h_idx*4+3<out_height) {
+        fC[12] = C[12]*regScale.x;
+        fC[13] = C[13]*regScale.y;
+        fC[14] = C[14]*regScale.z;
+        fC[15] = C[15]*regScale.w;
+        if (bias) {
+            fC[12] +=  regBias.x;
+            fC[13] +=  regBias.y;
+            fC[14] +=  regBias.z;
+            fC[15] +=  regBias.w;        
+        }
+        FUSE_PROCESS_FLOAT((fC + 12), fuse_params, 4, 1, base_offset)
+        #pragma unroll
+        for(int i = 12; i < 16; i++)
+        {
+            C[i] = __float2int_rn(fC[i] * out_scale);
+            C[i] = C[i] > 127 ? 127 : C[i] < -128 ? -128 : C[i];
+        }
+        PACK4INT(outData, C[12], C[13], C[14], C[15])
+        dout[out_idx] = outData;
+    }
 
 }
 
@@ -1233,74 +1140,113 @@ __global__ void ppl_cuda_depthwise_int8_nhwc_f5s1(
     regScale.y *= pic_scale;
     regScale.z *= pic_scale;
     regScale.w *= pic_scale;
-    fC[ 0] = C[ 0]*regScale.x;
-    fC[ 1] = C[ 1]*regScale.y;
-    fC[ 2] = C[ 2]*regScale.z;
-    fC[ 3] = C[ 3]*regScale.w;
-    fC[ 4] = C[ 4]*regScale.x;
-    fC[ 5] = C[ 5]*regScale.y;
-    fC[ 6] = C[ 6]*regScale.z;
-    fC[ 7] = C[ 7]*regScale.w;
-    fC[ 8] = C[ 8]*regScale.x;
-    fC[ 9] = C[ 9]*regScale.y;
-    fC[10] = C[10]*regScale.z;
-    fC[11] = C[11]*regScale.w;
-    fC[12] = C[12]*regScale.x;
-    fC[13] = C[13]*regScale.y;
-    fC[14] = C[14]*regScale.z;
-    fC[15] = C[15]*regScale.w;
-    if (bias) {
+        if (bias) {
         regBias.x  = pred[0] ? bias[channel_idx + 0] : 0.0f;
         regBias.y  = pred[1] ? bias[channel_idx + 1] : 0.0f;
         regBias.z  = pred[2] ? bias[channel_idx + 2] : 0.0f;
         regBias.w  = pred[3] ? bias[channel_idx + 3] : 0.0f;
-        fC[ 0] +=  regBias.x;
-        fC[ 1] +=  regBias.y;
-        fC[ 2] +=  regBias.z;
-        fC[ 3] +=  regBias.w;
-        fC[ 4] +=  regBias.x;
-        fC[ 5] +=  regBias.y;
-        fC[ 6] +=  regBias.z;
-        fC[ 7] +=  regBias.w;
-        fC[ 8] +=  regBias.x;
-        fC[ 9] +=  regBias.y;
-        fC[10] +=  regBias.z;
-        fC[11] +=  regBias.w;
-        fC[12] +=  regBias.x;
-        fC[13] +=  regBias.y;
-        fC[14] +=  regBias.z;
-        fC[15] +=  regBias.w;
     }
-
-    // int64_t base_offset = out_idx * 4;
-    FUSE_PROCESS_FLOAT(fC, fuse_params, 16, 1)
-    // simple_fuse_process_float(fC, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
-    // fuse_process_float<4, 1>(a + 4, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
-    // fuse_process_float<4, 1>(a + 8, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
-    // fuse_process_float<4, 1>(a + 12, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
-#pragma unroll
-    for(int i = 0; i < 16; i++)
-    {
-        C[i] = __float2int_rn(fC[i] * out_scale);
-        C[i] = C[i] > 127 ? 127 : C[i] < -128 ? -128 : C[i];
-    }
-
-    // if (fuse_params.has_concat) {
-    //     output = (int8_t*)fuse_params.post_concat;
-    //     paddingc = fuse_params.concat_stride;
-    //     out_idx = fuse_params.concat_offset + n_idx * out_height * out_width * paddingc + h_idx * out_width * paddingc + w_idx * paddingc + c_idx;
-    // }
     int outData;
     int* dout = (int*)output;
-    PACK4INT(outData, C[0], C[1], C[2], C[3])
-    if(h_idx*4+0<out_height) dout[out_idx] = outData; out_idx += out_width * c_stride;
-    PACK4INT(outData, C[4], C[5], C[6], C[7])
-    if(h_idx*4+1<out_height) dout[out_idx] = outData; out_idx += out_width * c_stride;
-    PACK4INT(outData, C[8], C[9], C[10], C[11])
-    if(h_idx*4+2<out_height) dout[out_idx] = outData; out_idx += out_width * c_stride;
-    PACK4INT(outData, C[12], C[13], C[14], C[15])
-    if(h_idx*4+3<out_height) dout[out_idx] = outData; 
 
+    int64_t base_offset = n_idx * out_height * out_width * paddingc;
+    base_offset += (h_idx * 4) * out_width * paddingc;
+    base_offset += w_idx * paddingc;
+    base_offset += c_idx * 4;
+
+    if(h_idx*4+0<out_height) {
+        fC[ 0] = C[ 0]*regScale.x;
+        fC[ 1] = C[ 1]*regScale.y;
+        fC[ 2] = C[ 2]*regScale.z;
+        fC[ 3] = C[ 3]*regScale.w;
+        if (bias) {
+            fC[ 0] +=  regBias.x;
+            fC[ 1] +=  regBias.y;
+            fC[ 2] +=  regBias.z;
+            fC[ 3] +=  regBias.w;        
+        }
+        FUSE_PROCESS_FLOAT(fC, fuse_params, 4, 1, base_offset)
+        #pragma unroll
+        for(int i = 0; i < 4; i++)
+        {
+            C[i] = __float2int_rn(fC[i] * out_scale);
+            C[i] = C[i] > 127 ? 127 : C[i] < -128 ? -128 : C[i];
+        }
+        PACK4INT(outData, C[0], C[1], C[2], C[3])
+        dout[out_idx] = outData;
+    }
+    out_idx += out_width * c_stride;
+    base_offset += out_width + paddingc;
+
+    if(h_idx*4+1<out_height) {
+        fC[ 4] = C[ 4]*regScale.x;
+        fC[ 5] = C[ 5]*regScale.y;
+        fC[ 6] = C[ 6]*regScale.z;
+        fC[ 7] = C[ 7]*regScale.w;
+        if (bias) {
+            fC[ 4] +=  regBias.x;
+            fC[ 5] +=  regBias.y;
+            fC[ 6] +=  regBias.z;
+            fC[ 7] +=  regBias.w;        
+        }
+        FUSE_PROCESS_FLOAT((fC + 4), fuse_params, 4, 1, base_offset)
+        #pragma unroll
+        for(int i = 4; i < 8; i++)
+        {
+            C[i] = __float2int_rn(fC[i] * out_scale);
+            C[i] = C[i] > 127 ? 127 : C[i] < -128 ? -128 : C[i];
+        }
+        PACK4INT(outData, C[4], C[5], C[6], C[7])
+        dout[out_idx] = outData;
+    }
+    out_idx += out_width * c_stride;
+    base_offset += out_width + paddingc;
+
+    if(h_idx*4+2<out_height) {
+        fC[ 8] = C[ 8]*regScale.x;
+        fC[ 9] = C[ 9]*regScale.y;
+        fC[10] = C[ 10]*regScale.z;
+        fC[11] = C[ 11]*regScale.w;
+        if (bias) {
+            fC[ 8] +=  regBias.x;
+            fC[ 9] +=  regBias.y;
+            fC[10] +=  regBias.z;
+            fC[11] +=  regBias.w;        
+        }
+        FUSE_PROCESS_FLOAT((fC + 8), fuse_params, 4, 1, base_offset)
+        #pragma unroll
+        for(int i = 8; i < 12; i++)
+        {
+            C[i] = __float2int_rn(fC[i] * out_scale);
+            C[i] = C[i] > 127 ? 127 : C[i] < -128 ? -128 : C[i];
+        }
+        PACK4INT(outData, C[8], C[9], C[10], C[11])
+        dout[out_idx] = outData;
+    }
+    out_idx += out_width * c_stride;
+    base_offset += out_width + paddingc;
+
+    if(h_idx*4+3<out_height) {
+        fC[12] = C[12]*regScale.x;
+        fC[13] = C[13]*regScale.y;
+        fC[14] = C[14]*regScale.z;
+        fC[15] = C[15]*regScale.w;
+        if (bias) {
+            fC[12] +=  regBias.x;
+            fC[13] +=  regBias.y;
+            fC[14] +=  regBias.z;
+            fC[15] +=  regBias.w;        
+        }
+        FUSE_PROCESS_FLOAT((fC + 12), fuse_params, 4, 1, base_offset)
+        #pragma unroll
+        for(int i = 12; i < 16; i++)
+        {
+            C[i] = __float2int_rn(fC[i] * out_scale);
+            C[i] = C[i] > 127 ? 127 : C[i] < -128 ? -128 : C[i];
+        }
+        PACK4INT(outData, C[12], C[13], C[14], C[15])
+        dout[out_idx] = outData;
+    }
 }
 
 
@@ -1517,74 +1463,113 @@ __global__ void ppl_cuda_depthwise_int8_nhwc_f5s2(
     regScale.y *= pic_scale;
     regScale.z *= pic_scale;
     regScale.w *= pic_scale;
-    fC[ 0] = C[ 0]*regScale.x;
-    fC[ 1] = C[ 1]*regScale.y;
-    fC[ 2] = C[ 2]*regScale.z;
-    fC[ 3] = C[ 3]*regScale.w;
-    fC[ 4] = C[ 4]*regScale.x;
-    fC[ 5] = C[ 5]*regScale.y;
-    fC[ 6] = C[ 6]*regScale.z;
-    fC[ 7] = C[ 7]*regScale.w;
-    fC[ 8] = C[ 8]*regScale.x;
-    fC[ 9] = C[ 9]*regScale.y;
-    fC[10] = C[10]*regScale.z;
-    fC[11] = C[11]*regScale.w;
-    fC[12] = C[12]*regScale.x;
-    fC[13] = C[13]*regScale.y;
-    fC[14] = C[14]*regScale.z;
-    fC[15] = C[15]*regScale.w;
     if (bias) {
         regBias.x  = pred[0] ? bias[channel_idx + 0] : 0.0f;
         regBias.y  = pred[1] ? bias[channel_idx + 1] : 0.0f;
         regBias.z  = pred[2] ? bias[channel_idx + 2] : 0.0f;
         regBias.w  = pred[3] ? bias[channel_idx + 3] : 0.0f;
-        fC[ 0] +=  regBias.x;
-        fC[ 1] +=  regBias.y;
-        fC[ 2] +=  regBias.z;
-        fC[ 3] +=  regBias.w;
-        fC[ 4] +=  regBias.x;
-        fC[ 5] +=  regBias.y;
-        fC[ 6] +=  regBias.z;
-        fC[ 7] +=  regBias.w;
-        fC[ 8] +=  regBias.x;
-        fC[ 9] +=  regBias.y;
-        fC[10] +=  regBias.z;
-        fC[11] +=  regBias.w;
-        fC[12] +=  regBias.x;
-        fC[13] +=  regBias.y;
-        fC[14] +=  regBias.z;
-        fC[15] +=  regBias.w;
     }
-
-    // int64_t base_offset = out_idx * 4;
-    // simple_fuse_process_float<16, 1>(fC, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
-    // fuse_process_float<4, 1>(a + 4, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
-    // fuse_process_float<4, 1>(a + 8, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
-    // fuse_process_float<4, 1>(a + 12, h_idx, w_idx, c_idx, out_height, out_width, channels, paddingc, base_offset, fuse_params);
-    FUSE_PROCESS_FLOAT(fC, fuse_params, 16, 1)
-
-#pragma unroll
-    for(int i = 0; i < 16; i++)
-    {
-        C[i] = __float2int_rn(fC[i] * out_scale);
-        C[i] = C[i] > 127 ? 127 : C[i] < -128 ? -128 : C[i];
-    }
-
-    // if (fuse_params.has_concat) {
-    //     output = (int8_t*)fuse_params.post_concat;
-    //     paddingc = fuse_params.concat_stride;
-    //     out_idx = fuse_params.concat_offset + n_idx * out_height * out_width * paddingc + h_idx * out_width * paddingc + w_idx * paddingc + c_idx;
-    // }
     int outData;
     int* dout = (int*)output;
-    PACK4INT(outData, C[0], C[1], C[2], C[3])
-    if(h_idx*4+0<out_height) dout[out_idx] = outData; out_idx += out_width * c_stride;
-    PACK4INT(outData, C[4], C[5], C[6], C[7])
-    if(h_idx*4+1<out_height) dout[out_idx] = outData; out_idx += out_width * c_stride;
-    PACK4INT(outData, C[8], C[9], C[10], C[11])
-    if(h_idx*4+2<out_height) dout[out_idx] = outData; out_idx += out_width * c_stride;
-    PACK4INT(outData, C[12], C[13], C[14], C[15])
-    if(h_idx*4+3<out_height) dout[out_idx] = outData; 
+
+    int64_t base_offset = n_idx * out_height * out_width * paddingc;
+    base_offset += (h_idx * 4) * out_width * paddingc;
+    base_offset += w_idx * paddingc;
+    base_offset += c_idx * 4;
+
+    if(h_idx*4+0<out_height) {
+        fC[ 0] = C[ 0]*regScale.x;
+        fC[ 1] = C[ 1]*regScale.y;
+        fC[ 2] = C[ 2]*regScale.z;
+        fC[ 3] = C[ 3]*regScale.w;
+        if (bias) {
+            fC[ 0] +=  regBias.x;
+            fC[ 1] +=  regBias.y;
+            fC[ 2] +=  regBias.z;
+            fC[ 3] +=  regBias.w;        
+        }
+        FUSE_PROCESS_FLOAT(fC, fuse_params, 4, 1, base_offset)
+        #pragma unroll
+        for(int i = 0; i < 4; i++)
+        {
+            C[i] = __float2int_rn(fC[i] * out_scale);
+            C[i] = C[i] > 127 ? 127 : C[i] < -128 ? -128 : C[i];
+        }
+        PACK4INT(outData, C[0], C[1], C[2], C[3])
+        dout[out_idx] = outData;
+    }
+    out_idx += out_width * c_stride;
+    base_offset += out_width + paddingc;
+
+    if(h_idx*4+1<out_height) {
+        fC[ 4] = C[ 4]*regScale.x;
+        fC[ 5] = C[ 5]*regScale.y;
+        fC[ 6] = C[ 6]*regScale.z;
+        fC[ 7] = C[ 7]*regScale.w;
+        if (bias) {
+            fC[ 4] +=  regBias.x;
+            fC[ 5] +=  regBias.y;
+            fC[ 6] +=  regBias.z;
+            fC[ 7] +=  regBias.w;        
+        }
+        FUSE_PROCESS_FLOAT((fC + 4), fuse_params, 4, 1, base_offset)
+        #pragma unroll
+        for(int i = 4; i < 8; i++)
+        {
+            C[i] = __float2int_rn(fC[i] * out_scale);
+            C[i] = C[i] > 127 ? 127 : C[i] < -128 ? -128 : C[i];
+        }
+        PACK4INT(outData, C[4], C[5], C[6], C[7])
+        dout[out_idx] = outData;
+    }
+    out_idx += out_width * c_stride;
+    base_offset += out_width + paddingc;
+
+    if(h_idx*4+2<out_height) {
+        fC[ 8] = C[ 8]*regScale.x;
+        fC[ 9] = C[ 9]*regScale.y;
+        fC[10] = C[ 10]*regScale.z;
+        fC[11] = C[ 11]*regScale.w;
+        if (bias) {
+            fC[ 8] +=  regBias.x;
+            fC[ 9] +=  regBias.y;
+            fC[10] +=  regBias.z;
+            fC[11] +=  regBias.w;        
+        }
+        FUSE_PROCESS_FLOAT((fC + 8), fuse_params, 4, 1, base_offset)
+        #pragma unroll
+        for(int i = 8; i < 12; i++)
+        {
+            C[i] = __float2int_rn(fC[i] * out_scale);
+            C[i] = C[i] > 127 ? 127 : C[i] < -128 ? -128 : C[i];
+        }
+        PACK4INT(outData, C[8], C[9], C[10], C[11])
+        dout[out_idx] = outData;
+    }
+    out_idx += out_width * c_stride;
+    base_offset += out_width + paddingc;
+
+    if(h_idx*4+3<out_height) {
+        fC[12] = C[12]*regScale.x;
+        fC[13] = C[13]*regScale.y;
+        fC[14] = C[14]*regScale.z;
+        fC[15] = C[15]*regScale.w;
+        if (bias) {
+            fC[12] +=  regBias.x;
+            fC[13] +=  regBias.y;
+            fC[14] +=  regBias.z;
+            fC[15] +=  regBias.w;        
+        }
+        FUSE_PROCESS_FLOAT((fC + 12), fuse_params, 4, 1, base_offset)
+        #pragma unroll
+        for(int i = 12; i < 16; i++)
+        {
+            C[i] = __float2int_rn(fC[i] * out_scale);
+            C[i] = C[i] > 127 ? 127 : C[i] < -128 ? -128 : C[i];
+        }
+        PACK4INT(outData, C[12], C[13], C[14], C[15])
+        dout[out_idx] = outData;
+    }
 
 }
 

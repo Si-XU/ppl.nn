@@ -165,6 +165,35 @@ __global__ void cuda_kernel_cvt<FLOAT32_INT64>(size_t num_elems, const void* inp
     ((int64_t*)output)[id] = ((float*)input)[id];
 }
 
+static __device__ inline char4 _float42int8(
+    float4 data_in,
+    float step,
+    signed char zeroPoint)
+{
+    float4 tmp;
+    tmp.x = data_in.x / step + zeroPoint;
+    tmp.y = data_in.y / step + zeroPoint;
+    tmp.z = data_in.z / step + zeroPoint;
+    tmp.w = data_in.w / step + zeroPoint;
+    char4 dst;
+    dst.x = tmp.x > 127 ? 127 : tmp.x < -128 ? -128 : (signed char)((tmp.x));
+    dst.y = tmp.y > 127 ? 127 : tmp.y < -128 ? -128 : (signed char)((tmp.y));
+    dst.z = tmp.z > 127 ? 127 : tmp.z < -128 ? -128 : (signed char)((tmp.z));
+    dst.w = tmp.w > 127 ? 127 : tmp.w < -128 ? -128 : (signed char)((tmp.w));
+    return dst;
+}
+
+template <CVTTypeMode mode>
+__global__ void cuda_kernel_cvt_packed(size_t num_elems, const void* input, ReFormatParam param, void* output)
+{
+}
+template <>
+__global__ void cuda_kernel_cvt_packed<FLOAT32_INT8>(size_t num_elems, const void* input, ReFormatParam param, void* output)
+{
+    JUDGE(num_elems)
+    *((char4*)output + id) = _float42int8(*((float4*)input + id), param.o_step, param.o_zero_point);
+}
+
 void PPLCUDACVTTypePerTensor(
     cudaStream_t stream,
     const void* input,
@@ -177,7 +206,14 @@ void PPLCUDACVTTypePerTensor(
     uint64_t grid_size = (num_elems + block_size - 1) / block_size;
     switch (GetCVTTypeMode(param)) {
         case FLOAT32_INT8:
-            cuda_kernel_cvt<FLOAT32_INT8><<<grid_size, block_size, 0, stream>>>(num_elems, input, param, output);
+            if(num_elems % 4 == 0) {
+                block_size = 128;
+                num_elems = num_elems >> 2;
+                grid_size = (num_elems + block_size - 1) / block_size;
+                cuda_kernel_cvt_packed<FLOAT32_INT8><<<grid_size, block_size, 0, stream>>>(num_elems, input, param, output);
+            } else{
+                cuda_kernel_cvt<FLOAT32_INT8><<<grid_size, block_size, 0, stream>>>(num_elems, input, param, output);
+            }
             break;
         case INT8_FLOAT32:
             cuda_kernel_cvt<INT8_FLOAT32><<<grid_size, block_size, 0, stream>>>(num_elems, input, param, output);

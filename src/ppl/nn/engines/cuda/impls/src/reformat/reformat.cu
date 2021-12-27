@@ -501,8 +501,47 @@ void PPLCUDANormalCVTFormat(cudaStream_t stream, const void *input, void *output
 #undef RUN
 }
 
+__global__ void cuda_kernel_packed_cvtformat(
+    int8_t *input,
+    int8_t *output,
+    DivModFast inner_fast,
+    int num_elems,
+    ReFormatParam param) 
+{
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid >= num_elems) return;
+    char val[16];
+    _Pragma("unroll")
+    for (int i = 0; i < 16; i++) {
+        val[i] = 0;
+    }
+    int b = 0, hw_idx = 0;
+    inner_fast.divmod(tid, b, hw_idx);
+    int offset = b * param.n_inner * param.src_pad + hw_idx;
+    for (int i = 0; i < param.src_pad; i++) {
+        val[i] = input[offset];
+        offset += param.n_inner;
+    }
+    float4* dst = (float4*)val;
+    float4* dst_out = (float4*)output;
+    dst_out[tid] = dst[0];
+}
+void PPLCUDASmallChannelCVTPackedFormat(cudaStream_t stream, const void *input, void *output, ReFormatParam param)
+{
+    dim3 dimBlock(256, 1, 1);
+    int num_elems = param.out_elems / param.dst_pad;
+    dim3 dimGrid(DivUp(num_elems, 256), 1, 1);
+    DivModFast inner_fast(param.n_inner);
+    cuda_kernel_packed_cvtformat<<<dimGrid, dimBlock, 0, stream>>>((int8_t*)input, (int8_t*)output, inner_fast, num_elems, param);
+    
+}
 void PPLCUDASmallChannelCVTFormat(cudaStream_t stream, const void *input, void *output, ReFormatParam param)
 {
+    if (param.out_type == ppl::common::DATATYPE_INT8 && param.out_format == ppl::common::DATAFORMAT_NHWC16
+        && param.in_format == ppl::common::DATAFORMAT_NDARRAY) {
+            PPLCUDASmallChannelCVTPackedFormat(stream, input, output, param);
+            return; 
+        }
 #define RUN(mode)                                                                     \
     do {                                                                              \
         dim3 dimBlock(256, 1, 1);                                                     \
