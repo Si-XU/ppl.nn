@@ -360,11 +360,11 @@ __forceinline__ __device__ void fuse_process_float(
                             fuse_params.elt_clip_min : out_val[i][j];
                 } else if (fuse_params.has_elt_prelu && out_val[i][j] < 0 ) {
                     out_val[i][j] = out_val[i][j] * ((float*)fuse_params.elt_prelu)[c_idx];
-                    if(fuse_params.has_prelu == 1){
+                    if(fuse_params.has_elt_prelu == 1){
                         out_val[i][j] = out_val[i][j] * fuse_params.elt_leaky;
-                    } else if(fuse_params.has_prelu == 2){
+                    } else if(fuse_params.has_elt_prelu == 2){
                         out_val[i][j] = out_val[i][j] * ((float*)fuse_params.elt_prelu)[c_idx];
-                    } else if(fuse_params.has_prelu == 3){
+                    } else if(fuse_params.has_elt_prelu == 3){
                         out_val[i][j] = out_val[i][j] * ((float*)fuse_params.elt_prelu)[base_offset + i * out_width * paddingc + j * paddingc];
                     }
                 }                
