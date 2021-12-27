@@ -179,7 +179,6 @@ ppl::common::RetCode PPLCUDAReduceForwardImp(
                 return ppl::common::RC_UNSUPPORTED;
         }
     } else if (input_shape->GetDataType() == ppl::common::DATATYPE_INT8) {
-        //printf("int8 softmax \n");
         switch (param) {
             CASEINT8(ReduceSum, SumOp, int8_t, int8_t, int8_t)
             CASEINT8(ReduceProd, ProdOp, int8_t, int8_t, int8_t)

@@ -703,14 +703,12 @@ ppl::common::RetCode PPLCUDAArithMeticForwardImp(
                 stream>>>(num_elems, inner_dim, first_shorter, (const T*)input0, (const T*)input1, (T*)output);
         }
     } else if (num_broadcast_dims == 0) {
-        //printf("no broadcast \n");
         ppl_cukernel_arithmetic_nobroadcast<op_type, T><<<grid_size, block_size, 0,
             stream>>>(num_elems, (const T*)input0, (const T*)input1, (T*)output);
     } else {
         ArithmeticParam param;
         int packed_channel = 1;
         if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8) {
-            //printf("NHWC8 \n");
             if (output_shape->GetDataType() == ppl::common::DATATYPE_FLOAT16) {
                 // one broadcast (or last dimensions broadcast)
                 if (ppl_feature_broadcast(input_shape0, input_shape1, &axis)) {
@@ -749,7 +747,6 @@ ppl::common::RetCode PPLCUDAArithMeticForwardImp(
             ppl_cukernel_arithmetic<op_type, T><<<grid_size, block_size, 0,
                 stream>>>(num_elems, dim_count, param, (const T*)input0, (const T*)input1, (T*)output);
          } else if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NDARRAY) {
-            //printf("NDARRAY \n");
             if (num_broadcast_dims == 1) {
                 int inner_dim = 1;
                 for(int it = axis + 1; it < dim_count; inner_dim *= output_shape->GetDim(it), ++it);
