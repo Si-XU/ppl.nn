@@ -240,7 +240,7 @@ RetCode CudaDataConverter::Convert(BufferDesc* dst, const TensorShape& dst_desc,
         device_->Free(buffer);
     });
 
-    if (param.mix_type) {
+    if (param.mix_type && (src_quant.per_channel || dst_quant.per_channel)) {
         vector<float> in_scale(src_quant.scale);
         if (in_scale.size()==1) {
             float t_scale = in_scale[0];

@@ -1359,10 +1359,10 @@ __global__ void ppl_cukernel_pooling_max_f3s2_NHWC(
             if (oy + i < out_height && ox + j < out_width) {
                 int out_off_h                           = (oy + i) * out_width * pad_channels;
                 int out_off_w                           = (ox + j) * pad_channels;
-                int res = round(val * in_scale * out_scale );
-                if(res > 127) res = 127;
-                else if( res < -128) res = -128;
-                output[out_off + out_off_h + out_off_w] = res;
+                // int res = round(val * in_scale * out_scale );
+                // if(res > 127) res = 127;
+                // else if( res < -128) res = -128;
+                output[out_off + out_off_h + out_off_w] = val;
             }
         }
     }
@@ -1428,10 +1428,10 @@ __global__ void ppl_cukernel_pooling_max_f3s1_NHWC(
             if (oy + i < out_height && ox < out_width) {
                 int out_off_h                           = (oy + i) * out_width * pad_channels;
                 int out_off_w                           = (ox + j) * pad_channels;
-                int res = round(val * in_scale * out_scale );
-                if(res > 127) res = 127;
-                else if( res < -128) res = -128;
-                output[out_off + out_off_h + out_off_w] = res;
+                // int res = round(val * in_scale * out_scale );
+                // if(res > 127) res = 127;
+                // else if( res < -128) res = -128;
+                output[out_off + out_off_h + out_off_w] = val;
             }
         }
     }
@@ -1741,19 +1741,21 @@ ppl::common::RetCode PPLCUDAMaxPoolingForwardImpInt8(
                                                               dim_block,
                                                               0,
                                                               stream>>>((const int8_t*)input, (int8_t*)output, batch, pad_channels, in_height, in_width, out_height, out_width, kernel_height, kernel_width, stride_height, stride_width, pad_height, pad_width, in_scale, out_scale);
+            // dim3 dim_block(128, 1, 1);
+            // dim3 dim_grid(1,1,1);
+            // dim_grid.x = ((pad_channels >> 2) * out_height * out_width * batch + dim_block.x - 1) / dim_block.x;
+            // ppl_cukernel_pooling_max_intpacked_NHWC<1,1,char4><<<dim_grid,dim_block,
+            //                                                     0,
+            //                                                     stream>>>((const char4*)input, (char4*)output, batch, pad_channels >> 2, in_height, in_width, out_height, out_width, kernel_height, kernel_width, stride_height, stride_width, pad_height, pad_width, in_scale, out_scale);
         } else if (f3 && s2) {
             ppl_cukernel_pooling_max_f3s2_NHWC<4, 1, int8_t><<<dim_grid,
                                                               dim_block,
                                                               0,
                                                               stream>>>((const int8_t*)input, (int8_t*)output, batch, pad_channels, in_height, in_width, out_height, out_width, kernel_height, kernel_width, stride_height, stride_width, pad_height, pad_width, in_scale, out_scale);
         } else if (f2 && s2) {
-            // int partH             = out_height;
-            // int partW             = out_width;
             dim3 dim_block(128, 1, 1);
-            dim3 dim_grid;
+            dim3 dim_grid(1,1,1);
             dim_grid.x = ((pad_channels >> 2) * out_height * out_width * batch + dim_block.x - 1) / dim_block.x;
-            dim_grid.y = 1;
-            dim_grid.z = 1;
             ppl_cukernel_pooling_max_intpacked_NHWC<1,1,char4><<<dim_grid,dim_block,
                                                                 0,
                                                                 stream>>>((const char4*)input, (char4*)output, batch, pad_channels >> 2, in_height, in_width, out_height, out_width, kernel_height, kernel_width, stride_height, stride_width, pad_height, pad_width, in_scale, out_scale);

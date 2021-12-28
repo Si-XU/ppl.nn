@@ -207,7 +207,7 @@ RetCode GemmAlgorithm::ModifyParam(ir::Node* node, OptKernelOptions& options) {
     auto total_size = channel_pad;
     auto& weight_quant = options.quants->at(node->GetInput(1));
 
-    if (!weight_quant.per_chnnal) {
+    if (!weight_quant.per_channel) {
         weight_quant.scale.insert(weight_quant.scale.begin(), total_size, weight_quant.scale[0]);
     }
 

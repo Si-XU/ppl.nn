@@ -160,7 +160,7 @@ RetCode DepthwiseDirectInt8::ModifyParam(ir::Node* node, OptKernelOptions& optio
     auto channel_pad = (shape_in1.GetDim(0) + align_size - 1) / align_size * align_size;
     auto& weight_quant = options.quants->at(node->GetInput(1));
 
-    if (!weight_quant.per_chnnal) {
+    if (!weight_quant.per_channel) {
         weight_quant.scale.insert(weight_quant.scale.begin(), channel_pad, weight_quant.scale[0]);
     }
 

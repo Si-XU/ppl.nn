@@ -369,10 +369,10 @@ RetCode OptGraph::InitQuantization() {
         }
         auto& temp_tensor_quant = graph_quants[edge->GetId()];
         auto str = pair->second.fields.find("per_channel")->second;
-        temp_tensor_quant.per_chnnal = *(bool*)(str.content.data());
+        temp_tensor_quant.per_channel = *(bool*)(str.content.data());
         auto bit_width = pair->second.fields.find("bit_width")->second;
         temp_tensor_quant.bit_width = *(int*)(bit_width.content.data());
-        if (temp_tensor_quant.per_chnnal) {
+        if (temp_tensor_quant.per_channel) {
             auto max_str = pair->second.fields.find("tensor_max")->second;
             auto min_str = pair->second.fields.find("tensor_min")->second;
             auto scale_str = pair->second.fields.find("scale")->second;

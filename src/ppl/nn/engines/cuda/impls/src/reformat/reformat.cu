@@ -778,7 +778,7 @@ ppl::common::RetCode SetReLayoutParam(
 {
     SetReLayoutParam(param, input, output);
     param->same_scale = IsFloatEqual(input_quant.scale, output_quant.scale);
-    if (input_quant.per_chnnal) {
+    if (input_quant.per_channel) {
         param->per_channel = true;
         param->quant_stride = input.GetDataFormat() == DATAFORMAT_NDARRAY? param->n_inner : 1;
         param->quant_dim_size = param->n_outer;
