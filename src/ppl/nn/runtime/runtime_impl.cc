@@ -204,29 +204,24 @@ static RetCode InitRuntimeGraphConstants(const ir::GraphTopo* topo, const Runtim
     auto constants = &graph->constants;
     auto tensors = &graph->tensors;
 
-    constants->reserve(topo->GetConstantCount());
+    constants->reserve(info.constants.size());
 
-    for (uint32_t i = 0; i < topo->GetConstantCount(); ++i) {
-        auto eid = topo->GetConstant(i);
+    for (auto x = info.constants.begin(); x != info.constants.end(); ++x) {
+        auto eid = x->first;
         auto edge = topo->GetEdgeById(eid);
         if (!edge) {
             LOG(ERROR) << "cannot find edge info of constant[" << eid << "]";
             return RC_NOT_FOUND;
         }
         auto ret_pair = tensors->insert(make_pair(eid, TensorImpl(edge, TENSORTYPE_RESERVED)));
+        auto tensor = &ret_pair.first->second;
 
         if (ret_pair.second) {
-            auto constant_ref = info.constants.find(eid);
-            if (constant_ref == info.constants.end()) {
-                // ignore constants that are not in `RuntimeGraphInfo::constants`
-                tensors->erase(ret_pair.first);
-            } else {
-                auto tensor = &ret_pair.first->second;
-                tensor->SetBuffer(constant_ref->second.GetBufferDesc(), constant_ref->second.GetDevice());
-                tensor->GetShape() = constant_ref->second.GetShape();
-                constants->push_back(tensor);
-            }
+            tensor->GetShape() = x->second.GetShape();
+            tensor->SetBuffer(x->second.GetBufferDesc(), x->second.GetDevice());
         }
+
+        constants->push_back(tensor);
     }
 
     return RC_SUCCESS;

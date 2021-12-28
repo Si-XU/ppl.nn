@@ -96,10 +96,9 @@ RetCode CudaEngine::ProcessGraph(utils::SharedResource* resource, ir::Graph* gra
         return status;
     }
 
-    // load rest of constants that are not used by ops. e.g. `cond` of Loop
     status = utils::LoadConstants(*graph, &device_, &info->constants);
     if (status != RC_SUCCESS) {
-        LOG(ERROR) << "load constants failed: " << GetRetCodeStr(status);
+        LOG(ERROR) << "LoadConstants failed: " << GetRetCodeStr(status);
         return status;
     }
 
@@ -127,6 +126,12 @@ RetCode CudaEngine::SetOutputType(CudaEngine* engine, va_list args) {
     for (uint64_t i = 0; i < size; ++i) {
         engine->cuda_flags_.output_types[i] = base[i];
     }
+    return RC_SUCCESS;
+}
+
+RetCode CudaEngine::SetKernelType(CudaEngine* engine, va_list args) {
+    auto type = va_arg(args, datatype_t);
+    engine->cuda_flags_.default_kernel_type = type;
     return RC_SUCCESS;
 }
 
@@ -270,6 +275,7 @@ RetCode CudaEngine::ImportAlgorithms(CudaEngine* engine, va_list args) {
 CudaEngine::ConfHandlerFunc CudaEngine::conf_handlers_[] = {
     CudaEngine::SetOutputFormat, // CUDA_CONF_SET_OUTPUT_DATA_FORMAT
     CudaEngine::SetOutputType, // CUDA_CONF_SET_OUTPUT_TYPE
+    CudaEngine::SetKernelType, // CUDA_CONF_USE_DEFAULT_KERNEL_TYPE
     CudaEngine::SetInputDims, // CUDA_CONF_SET_INPUT_DIMS
     CudaEngine::SetUseDefaultAlgorithms, // CUDA_CONF_USE_DEFAULT_ALGORITHMS
     CudaEngine::SetQuantization, // CUDA_CONF_SET_QUANTIZATION
