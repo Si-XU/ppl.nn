@@ -19,6 +19,7 @@
 #include "ppl/nn/common/tensor_shape.h"
 #include "ppl/common/retcode.h"
 #include <cuda_runtime.h>
+#include<stdio.h>
 
 ppl::common::RetCode PPLCUDAReshapeForwardImp(
     cudaStream_t stream,

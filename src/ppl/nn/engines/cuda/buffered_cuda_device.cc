@@ -57,7 +57,7 @@ RetCode BufferedCudaDevice::Init(const CudaEngineOptions& options) {
         if (granularity > DEFAULT_BLOCK_SIZE) {
             block_size = granularity;
         }
-        buffer_manager_.reset(new utils::CompactBufferManager(allocator, CUDA_DEFAULT_ALIGNMENT, block_size));
+        buffer_manager_.reset(new utils::CompactBufferManager(allocator, block_size));
     }
 
     return RC_SUCCESS;
@@ -84,7 +84,7 @@ void BufferedCudaDevice::Free(BufferDesc* buffer) {
 }
 
 RetCode BufferedCudaDevice::AllocTmpBuffer(uint64_t bytes, BufferDesc* buffer) {
-    if (bytes > tmp_buffer_size_ || bytes <= tmp_buffer_size_ / 2) {
+    if (bytes > tmp_buffer_size_) {
         auto status = buffer_manager_->Realloc(bytes, &shared_tmp_buffer_);
         if (status == RC_SUCCESS) {
             tmp_buffer_size_ = bytes;

@@ -17,6 +17,7 @@
 
 #include "cudakernel/unary/clip.h"
 #include <cuda_fp16.h>
+#include<stdio.h>
 
 #if __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ >= 9
 template <typename T>
@@ -139,7 +140,8 @@ ppl::common::RetCode PPLCUDAClipForwardImp(
         } else {
             return ppl::common::RC_UNSUPPORTED;
         }
-    } else if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8) {
+    } else if (output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC8 ||
+               output_shape->GetDataFormat() == ppl::common::DATAFORMAT_NHWC16) {
         int block_size = 256;
         dim3 grid_size;
         int chw     = channels * height * width;
