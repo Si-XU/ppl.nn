@@ -33,7 +33,6 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
     int4  Rv4[INTER_SET_REDUCE_RATIO];
 
-
     uint tid       =  threadIdx.x;
 
     uint local_tid =  tid & 0x1f;
@@ -114,11 +113,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     uint mma_idy    =  local_tid >> MMA_SIZE_X_IN_BITS;
 
     uint smem_row_write_id  =  (set_widx * TILE_N_V4_PER_WARP) / SMEM_ROW_V4_SIZE;
-// #if (SET_SIZE_Y_IN_WARP * INTER_SET_REDUCE_RATIO * WARP_SIZE_IN_THD / TILE_N_V4_PER_WARP) == 4
-//     uint smem_row_write_off = ((set_widx * TILE_N_V4_PER_WARP) ^ ((mma_idy % 2) / N_ROWS_PER_SMEM_ROW)
-// #else
     uint smem_row_write_off = ((set_widx * TILE_N_V4_PER_WARP) ^ ((mma_idy % 4) / N_ROWS_PER_SMEM_ROW)
-// #endif
                               ) % SMEM_ROW_V4_SIZE;
 
     uint sRv2_write =  set_id     * TILE_N_V2_PER_CTA    * TILE_M_V1_PER_CTA  +

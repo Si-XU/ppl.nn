@@ -126,48 +126,48 @@
 
 #define WRITE_sRv2_2x1(_sm_base_v2, _sRv2_write, _i2C) \
         { \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _1MMA_ * 0); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _1MMA_ * 1); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _1MMA_ * 0); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _1MMA_ * 1); \
         }
 
 #define WRITE_sRv2_4x1(_sm_base_v2, _sRv2_write, _i2C) \
         { \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _1MMA_ * 0); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _1MMA_ * 1); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 2, _i2C, _1MMA_ * 2); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 3, _i2C, _1MMA_ * 3); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _1MMA_ * 0); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _1MMA_ * 1); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 2, _i2C, _1MMA_ * 2); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 3, _i2C, _1MMA_ * 3); \
         }
 
 #define WRITE_sRv2_8x1(_sm_base_v2, _sRv2_write, _i2C) \
         { \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _1MMA_ * 0); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _1MMA_ * 1); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 2, _i2C, _1MMA_ * 2); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 3, _i2C, _1MMA_ * 3); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 4, _i2C, _1MMA_ * 4); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 5, _i2C, _1MMA_ * 5); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 6, _i2C, _1MMA_ * 6); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 7, _i2C, _1MMA_ * 7); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _1MMA_ * 0); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _1MMA_ * 1); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 2, _i2C, _1MMA_ * 2); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 3, _i2C, _1MMA_ * 3); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 4, _i2C, _1MMA_ * 4); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 5, _i2C, _1MMA_ * 5); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 6, _i2C, _1MMA_ * 6); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 7, _i2C, _1MMA_ * 7); \
         }
 
 #define WRITE_sRv2_16x1(_sm_base_v2, _sRv2_write, _i2C) \
         { \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 0,  _i2C, _1MMA_ * 0); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 1,  _i2C, _1MMA_ * 1); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 2,  _i2C, _1MMA_ * 2); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 3,  _i2C, _1MMA_ * 3); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 4,  _i2C, _1MMA_ * 4); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 5,  _i2C, _1MMA_ * 5); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 6,  _i2C, _1MMA_ * 6); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 7,  _i2C, _1MMA_ * 7); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 8,  _i2C, _1MMA_ * 8); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 9,  _i2C, _1MMA_ * 9); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 10, _i2C, _1MMA_ * 10); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 11, _i2C, _1MMA_ * 11); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 12, _i2C, _1MMA_ * 12); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 13, _i2C, _1MMA_ * 13); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 14, _i2C, _1MMA_ * 14); \
-            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 15, _i2C, _1MMA_ * 15); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 0,  _i2C, _1MMA_ * 0); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 1,  _i2C, _1MMA_ * 1); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 2,  _i2C, _1MMA_ * 2); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 3,  _i2C, _1MMA_ * 3); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 4,  _i2C, _1MMA_ * 4); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 5,  _i2C, _1MMA_ * 5); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 6,  _i2C, _1MMA_ * 6); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 7,  _i2C, _1MMA_ * 7); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 8,  _i2C, _1MMA_ * 8); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 9,  _i2C, _1MMA_ * 9); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 10, _i2C, _1MMA_ * 10); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 11, _i2C, _1MMA_ * 11); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 12, _i2C, _1MMA_ * 12); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 13, _i2C, _1MMA_ * 13); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 14, _i2C, _1MMA_ * 14); \
+            WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 15, _i2C, _1MMA_ * 15); \
         }
 
 /////////////////////////
@@ -181,48 +181,48 @@
 
 #define WRITE_sRv2_2x2(_sm_base_v2, _sRv2_write, _i2C) \
         { \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _2MMA_ * 0); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _2MMA_ * 1); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _2MMA_ * 0); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _2MMA_ * 1); \
         }
 
 #define WRITE_sRv2_4x2(_sm_base_v2, _sRv2_write, _i2C) \
         { \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _2MMA_ * 0); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _2MMA_ * 1); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 2, _i2C, _2MMA_ * 2); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 3, _i2C, _2MMA_ * 3); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _2MMA_ * 0); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _2MMA_ * 1); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 2, _i2C, _2MMA_ * 2); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 3, _i2C, _2MMA_ * 3); \
         }
 
 #define WRITE_sRv2_8x2(_sm_base_v2, _sRv2_write, _i2C) \
         { \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _2MMA_ * 0); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _2MMA_ * 1); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 2, _i2C, _2MMA_ * 2); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 3, _i2C, _2MMA_ * 3); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 4, _i2C, _2MMA_ * 4); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 5, _i2C, _2MMA_ * 5); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 6, _i2C, _2MMA_ * 6); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 7, _i2C, _2MMA_ * 7); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _2MMA_ * 0); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _2MMA_ * 1); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 2, _i2C, _2MMA_ * 2); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 3, _i2C, _2MMA_ * 3); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 4, _i2C, _2MMA_ * 4); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 5, _i2C, _2MMA_ * 5); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 6, _i2C, _2MMA_ * 6); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 7, _i2C, _2MMA_ * 7); \
         }
 
 #define WRITE_sRv2_16x2(_sm_base_v2, _sRv2_write, _i2C) \
         { \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 0,  _i2C, _2MMA_ * 0); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 1,  _i2C, _2MMA_ * 1); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 2,  _i2C, _2MMA_ * 2); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 3,  _i2C, _2MMA_ * 3); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 4,  _i2C, _2MMA_ * 4); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 5,  _i2C, _2MMA_ * 5); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 6,  _i2C, _2MMA_ * 6); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 7,  _i2C, _2MMA_ * 7); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 8,  _i2C, _2MMA_ * 8); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 9,  _i2C, _2MMA_ * 9); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 10, _i2C, _2MMA_ * 10); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 11, _i2C, _2MMA_ * 11); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 12, _i2C, _2MMA_ * 12); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 13, _i2C, _2MMA_ * 13); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 14, _i2C, _2MMA_ * 14); \
-            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 15, _i2C, _2MMA_ * 15); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 0,  _i2C, _2MMA_ * 0); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 1,  _i2C, _2MMA_ * 1); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 2,  _i2C, _2MMA_ * 2); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 3,  _i2C, _2MMA_ * 3); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 4,  _i2C, _2MMA_ * 4); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 5,  _i2C, _2MMA_ * 5); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 6,  _i2C, _2MMA_ * 6); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 7,  _i2C, _2MMA_ * 7); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 8,  _i2C, _2MMA_ * 8); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 9,  _i2C, _2MMA_ * 9); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 10, _i2C, _2MMA_ * 10); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 11, _i2C, _2MMA_ * 11); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 12, _i2C, _2MMA_ * 12); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 13, _i2C, _2MMA_ * 13); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 14, _i2C, _2MMA_ * 14); \
+            WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 15, _i2C, _2MMA_ * 15); \
         }
 
 /////////////////////////
@@ -236,48 +236,48 @@
 
 #define WRITE_sRv2_2x4(_sm_base_v2, _sRv2_write, _i2C) \
         { \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _4MMA_ * 0); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _4MMA_ * 1); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _4MMA_ * 0); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _4MMA_ * 1); \
         }
 
 #define WRITE_sRv2_4x4(_sm_base_v2, _sRv2_write, _i2C) \
         { \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _4MMA_ * 0); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _4MMA_ * 1); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 2, _i2C, _4MMA_ * 2); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 3, _i2C, _4MMA_ * 3); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _4MMA_ * 0); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _4MMA_ * 1); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 2, _i2C, _4MMA_ * 2); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 3, _i2C, _4MMA_ * 3); \
         }
 
 #define WRITE_sRv2_8x4(_sm_base_v2, _sRv2_write, _i2C) \
         { \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _4MMA_ * 0); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _4MMA_ * 1); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 2, _i2C, _4MMA_ * 2); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 3, _i2C, _4MMA_ * 3); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 4, _i2C, _4MMA_ * 4); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 5, _i2C, _4MMA_ * 5); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 6, _i2C, _4MMA_ * 6); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 7, _i2C, _4MMA_ * 7); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _4MMA_ * 0); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _4MMA_ * 1); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 2, _i2C, _4MMA_ * 2); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 3, _i2C, _4MMA_ * 3); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 4, _i2C, _4MMA_ * 4); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 5, _i2C, _4MMA_ * 5); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 6, _i2C, _4MMA_ * 6); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 7, _i2C, _4MMA_ * 7); \
         }
 
 #define WRITE_sRv2_16x4(_sm_base_v2, _sRv2_write, _i2C) \
         { \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 0,  _i2C, _4MMA_ * 0); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 1,  _i2C, _4MMA_ * 1); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 2,  _i2C, _4MMA_ * 2); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 3,  _i2C, _4MMA_ * 3); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 4,  _i2C, _4MMA_ * 4); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 5,  _i2C, _4MMA_ * 5); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 6,  _i2C, _4MMA_ * 6); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 7,  _i2C, _4MMA_ * 7); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 8,  _i2C, _4MMA_ * 8); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 9,  _i2C, _4MMA_ * 9); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 10, _i2C, _4MMA_ * 10); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 11, _i2C, _4MMA_ * 11); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 12, _i2C, _4MMA_ * 12); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 13, _i2C, _4MMA_ * 13); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 14, _i2C, _4MMA_ * 14); \
-            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 15, _i2C, _4MMA_ * 15); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 0,  _i2C, _4MMA_ * 0); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 1,  _i2C, _4MMA_ * 1); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 2,  _i2C, _4MMA_ * 2); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 3,  _i2C, _4MMA_ * 3); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 4,  _i2C, _4MMA_ * 4); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 5,  _i2C, _4MMA_ * 5); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 6,  _i2C, _4MMA_ * 6); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 7,  _i2C, _4MMA_ * 7); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 8,  _i2C, _4MMA_ * 8); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 9,  _i2C, _4MMA_ * 9); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 10, _i2C, _4MMA_ * 10); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 11, _i2C, _4MMA_ * 11); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 12, _i2C, _4MMA_ * 12); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 13, _i2C, _4MMA_ * 13); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 14, _i2C, _4MMA_ * 14); \
+            WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 15, _i2C, _4MMA_ * 15); \
         }
 
 /////////////////////////
@@ -291,27 +291,27 @@
 
 #define WRITE_sRv2_2x8(_sm_base_v2, _sRv2_write, _i2C) \
         { \
-            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _8MMA_ * 0); \
-            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _8MMA_ * 1); \
+            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _8MMA_ * 0); \
+            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _8MMA_ * 1); \
         }
 
 #define WRITE_sRv2_4x8(_sm_base_v2, _sRv2_write, _i2C) \
         { \
-            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _8MMA_ * 0); \
-            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _8MMA_ * 1); \
-            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 2, _i2C, _8MMA_ * 2); \
-            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 3, _i2C, _8MMA_ * 3); \
+            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _8MMA_ * 0); \
+            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _8MMA_ * 1); \
+            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 2, _i2C, _8MMA_ * 2); \
+            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 3, _i2C, _8MMA_ * 3); \
         }
 
 #define WRITE_sRv2_8x8(_sm_base_v2, _sRv2_write, _i2C) \
         { \
-            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _8MMA_ * 0); \
-            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _8MMA_ * 1); \
-            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 2, _i2C, _8MMA_ * 2); \
-            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 3, _i2C, _8MMA_ * 3); \
-            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 4, _i2C, _8MMA_ * 4); \
-            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 5, _i2C, _8MMA_ * 5); \
-            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 6, _i2C, _8MMA_ * 6); \
-            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_SUB_MMA * TILE_N_V2_PER_CTA * 7, _i2C, _8MMA_ * 7); \
+            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 0, _i2C, _8MMA_ * 0); \
+            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 1, _i2C, _8MMA_ * 1); \
+            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 2, _i2C, _8MMA_ * 2); \
+            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 3, _i2C, _8MMA_ * 3); \
+            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 4, _i2C, _8MMA_ * 4); \
+            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 5, _i2C, _8MMA_ * 5); \
+            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 6, _i2C, _8MMA_ * 6); \
+            WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write + TILE_M_PER_MMA * TILE_N_V2_PER_CTA * 7, _i2C, _8MMA_ * 7); \
         }
 
