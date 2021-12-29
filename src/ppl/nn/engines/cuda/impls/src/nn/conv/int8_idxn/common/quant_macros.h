@@ -1,3 +1,20 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 #define cvtOutData(_outData,cvtData0,cvtData1,cvtData2,cvtData3,cvtData4,cvtData5,cvtData6,cvtData7){ \
 	    asm volatile("cvt.pack.sat.s8.s32.b32 %0, %1, %2, 0;\n" : "=r"(cvtData4) : "r"(cvtData6), "r"(cvtData4)); \
 	    asm volatile("cvt.pack.sat.s8.s32.b32 %0, %1, %2, 0;\n" : "=r"(cvtData5) : "r"(cvtData7), "r"(cvtData5)); \
@@ -6,7 +23,6 @@
 	    _outData.x = cvtData0; _outData.y = cvtData1; \
 }
 
-/*,intMin,intMax){ */
 #define quantOutData_x1(_C, _fCv2, _outInt8Scale){ \
 	   if(dCv1_y_valid[0] && dCv1_x_valid[0]) _C[Cv1_off + 0].x = __float2int_rn(_fCv2[Cv1_off + 0].x*_outInt8Scale); \
 	   if(dCv1_y_valid[0] && dCv1_x_valid[0]) _C[Cv1_off + 0].y = __float2int_rn(_fCv2[Cv1_off + 0].y*_outInt8Scale); \
@@ -61,14 +77,7 @@
         _scale[0] = ((float2*)_d_scale)[dCv1_idx[0]]; \
     if( dCv1_x_valid[1] && dCv1_y_valid[0] ) \
         _scale[1] = ((float2*)_d_scale)[dCv1_idx[1]]; \
-/*
-if (dCv1_idy[0] * num_flt_v2 + dCv1_idx[0] == 32/4)    printf("init kernelout inscale: %d, %f %f\t", dCv1_idx[0]*2, _scale[0].x, _scale[0].y); \
-if(tid==0 && blockIdx.z==0 && blockIdx.x==0 && blockIdx.z==0) {\
-    printf("flt scale: %x\n", _d_scale); \
-    for(int i=0; i<96*16; i++) \
-    if(((float*)d_flt_scale)[i]!=0.f)    printf("%d:%f, ", i, ((float*)d_flt_scale)[i]); \
-}\
-*/\
+    \
     if( dCv1_x_valid[0] && dCv1_y_valid[0] ){ \
         _scale[0].x *= in_scale; \
         _scale[0].y *= in_scale; \
@@ -77,9 +86,6 @@ if(tid==0 && blockIdx.z==0 && blockIdx.x==0 && blockIdx.z==0) {\
         _scale[1].x *= in_scale; \
         _scale[1].y *= in_scale; \
     } \
-/*
-if (dCv1_idy[0] * num_flt_v2 + dCv1_idx[0] == 32/4)    printf("kernelout inscale: %f \t", _scale[0].x); \
-*/\
 }
 #define LOAD_SCALE_x4(_scale, _d_scale){ \
     if( dCv1_x_valid[0] && dCv1_y_valid[0] ) \
