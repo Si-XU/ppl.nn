@@ -60,7 +60,7 @@
                     _Pragma("unroll") \
 	                for(int i = 0; i < _INT4_TO_4INT_; i++) \
                     { \
-	                    _fR[i] = MAX(_fR[i], 0); \
+	                    _fR[i] = Max(_fR[i], 0); \
 	                } \
 	            } \
                 else if(_has_relu == 2) \
@@ -81,8 +81,8 @@
                 _Pragma("unroll") \
 	            for(int i = 0; i < _INT4_TO_4INT_; i++) \
                     { \
-			_fR[i] = MIN(_fR[i], _clip_max); \
-			_fR[i] = MAX(_fR[i], _clip_min); \
+			_fR[i] = Min(_fR[i], _clip_max); \
+			_fR[i] = Max(_fR[i], _clip_min); \
 		    } \
 	        } \
         }
@@ -154,7 +154,7 @@
             _Pragma("unroll") \
             for(int i = 0; i < _INT4_TO_4INT_; i++) \
             { \
-                _fR[i] = MAX(_fR[i], 0); \
+                _fR[i] = Max(_fR[i], 0); \
             } \
         }
 
@@ -172,8 +172,8 @@
                 _Pragma("unroll") \
 	            for(int i = 0; i < _INT4_TO_4INT_; i++) \
                     { \
-			_fR[i] = MIN(_fR[i], _clip_max); \
-			_fR[i] = MAX(_fR[i], _clip_min); \
+			_fR[i] = Min(_fR[i], _clip_max); \
+			_fR[i] = Max(_fR[i], _clip_min); \
 		    } \
         }
 
