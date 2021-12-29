@@ -378,6 +378,7 @@ double PPLCUDAConvolutionSelectKernelInt8(
     cudaEventDestroy(end);
 
     g_conv_shape_hash[conv_shape_hash] = algo_param;
+    printf("%s %d %d %f\n", g_int8_kernel_container[algo_param.kid].kname.c_str(), algo_param.splitk, algo_param.splitf, minTime);
 
     return minTime;
 }
@@ -547,7 +548,7 @@ ppl::common::RetCode PPLCUDAConvolutionPredictKernelInt8(
 
     if (out_hw < 32) {
         algo_param.tiles.m_cta = 16;
-    } else if (out_hw < 1024) {
+    } else if (out_hw < 512) {
         algo_param.tiles.m_cta = 32;
     } else {
         algo_param.tiles.m_cta = 64;
@@ -557,7 +558,7 @@ ppl::common::RetCode PPLCUDAConvolutionPredictKernelInt8(
         algo_param.tiles.n_cta = 8;
     } else if (conv_param.num_flt < 64) {
         algo_param.tiles.n_cta = 16;
-    } else if (conv_param.num_flt < 2048) {
+    } else if (conv_param.num_flt < 1024) {
         algo_param.tiles.n_cta = 32;
     } else {
         algo_param.tiles.n_cta =64;
@@ -582,14 +583,16 @@ ppl::common::RetCode PPLCUDAConvolutionPredictKernelInt8(
     if (algo_param.tiles.k_cta > 128) {
         algo_param.tiles.k_per_set /= 4;
     } else if (algo_param.tiles.k_cta > 64) {
-        algo_param.tiles.n_warp /= 2;
         algo_param.tiles.k_per_set /= 2;
-    } else if (algo_param.tiles.n_cta > 32) {
-        algo_param.tiles.n_warp /= 4;
+        algo_param.tiles.m_warp /= 2;
+        algo_param.tiles.n_warp /= 2;
     } else {
         algo_param.tiles.m_warp /= 2;
         algo_param.tiles.n_warp /= 2;
     }
+
+    if (algo_param.tiles.m_warp < 8)  algo_param.tiles.m_warp = 8;
+    if (algo_param.tiles.n_warp < 8)  algo_param.tiles.n_warp = 8;
 
     int cta_size_in_thd = (algo_param.tiles.m_cta / algo_param.tiles.m_warp) * (algo_param.tiles.n_cta / algo_param.tiles.n_warp) * WARP_SIZE;
     int chl_per_grp_pad = Align(chl_per_grp, 4);
@@ -601,7 +604,6 @@ ppl::common::RetCode PPLCUDAConvolutionPredictKernelInt8(
             break;
         }
     }
-
     return ppl::common::RC_SUCCESS;
 }
 
@@ -638,6 +640,12 @@ float AlgoForwardTimeInt8(
     cudaEvent_t begin, end;
     cudaEventCreate(&begin);
     cudaEventCreate(&end);
+
+    for (size_t n = 0; n < 1000; n++) {
+        CUfunction function = cuda_module->GetKernelFunc(name[0]);
+        PPLCUDAConvolutionForwardJitImpInt8(
+            stream, function, type, d_input, d_flt, d_output, bias, d_temp_buf, algo_param[0], conv_param, quant_param, fuse_param);
+    }
 
     for (size_t n = 0; n < name.size(); n++) {
         CUfunction function = cuda_module->GetKernelFunc(name[n]);
@@ -806,7 +814,9 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
     elapsed = AlgoForwardTimeInt8(stream, knames, total_source, index, compile_params, device_id, true, type, d_input, d_flt, d_output, bias, d_temp_buf, params, conv_param, quant_param, fuse_param, workspace);
 
     algo_param                         = params[index];
-    g_conv_shape_hash[conv_shape_hash] = algo_param;
+    // g_conv_shape_hash[conv_shape_hash] = algo_param;
+    printf("kernel size %d\n", knames.size());
+    printf("%s %d %d %f\n", algo_param.algo_name.c_str(), algo_param.splitk, algo_param.splitf, elapsed);
     return elapsed;
 }
 
