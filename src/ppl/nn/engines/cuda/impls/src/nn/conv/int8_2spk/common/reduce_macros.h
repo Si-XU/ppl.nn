@@ -50,7 +50,7 @@
                 _Rv4[0] = _sm_base_v4[_sRv4_read]; \
             } \
             \
-            _sRv4_read += CTA_SIZE_IN_THD * SWIZZLE_GROUP; \
+            _sRv4_read += CTA_SIZE_IN_THD; \
         }
 
 #define READ_sRv4_SIZE2(_Rv4, _sm_base_v4, _sRv4_read) \
@@ -61,7 +61,7 @@
                 _Rv4[1] = _sm_base_v4[_sRv4_read + TILE_M_V1_PER_CTA * TILE_N_V4_PER_CTA * 1]; \
             } \
             \
-            _sRv4_read += CTA_SIZE_IN_THD * SWIZZLE_GROUP; \
+            _sRv4_read += CTA_SIZE_IN_THD; \
         }
 
 #define READ_sRv4_SIZE4(_Rv4, _sm_base_v4, _sRv4_read) \
@@ -74,7 +74,7 @@
                 _Rv4[3] = _sm_base_v4[_sRv4_read + TILE_M_V1_PER_CTA * TILE_N_V4_PER_CTA * 3]; \
             } \
             \
-            _sRv4_read += CTA_SIZE_IN_THD * SWIZZLE_GROUP; \
+            _sRv4_read += CTA_SIZE_IN_THD; \
         }
 
 

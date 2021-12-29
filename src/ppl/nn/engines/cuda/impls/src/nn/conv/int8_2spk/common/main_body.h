@@ -113,56 +113,29 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     uint mma_idx    =  local_tid %  MMA_SIZE_X_IN_THD;
     uint mma_idy    =  local_tid >> MMA_SIZE_X_IN_BITS;
 
-    //可以用宏变量，可扩展的在smem上进行swizzle的原因，是单个mma的一行的size是2的幂，和smem 32 bank size（128B）互为2的幂指的关系
     uint smem_row_write_id  =  (set_widx * TILE_N_V4_PER_WARP) / SMEM_ROW_V4_SIZE;
-//FIXME
-    // inter_mma_x
-    uint smem_row_write_off = ((set_widx * TILE_N_IN_MMA_PER_WARP) ^ (mma_idy  / N_ROWS_PER_SMEM_ROW)
-                       ) % MMAs_PER_REDUCE_ROW;//SMEM_ROW_V8_SIZE;//8 int32 才表示有可以放多少个mma的行
+// #if (SET_SIZE_Y_IN_WARP * INTER_SET_REDUCE_RATIO * WARP_SIZE_IN_THD / TILE_N_V4_PER_WARP) == 4
+//     uint smem_row_write_off = ((set_widx * TILE_N_V4_PER_WARP) ^ ((mma_idy % 2) / N_ROWS_PER_SMEM_ROW)
+// #else
+    uint smem_row_write_off = ((set_widx * TILE_N_V4_PER_WARP) ^ ((mma_idy % 4) / N_ROWS_PER_SMEM_ROW)
+// #endif
+                              ) % SMEM_ROW_V4_SIZE;
 
-    // 2 int32 is v2
     uint sRv2_write =  set_id     * TILE_N_V2_PER_CTA    * TILE_M_V1_PER_CTA  +
                        set_widy   * TILE_N_V2_PER_CTA    * TILE_M_V1_PER_WARP +
                        mma_idy    * TILE_N_V2_PER_CTA    +
-                       //smem_row_write_id  * SMEM_ROW_V1_SIZE     +
                        smem_row_write_id  * SMEM_ROW_V2_SIZE     +
                        mma_idx;
 
-    uint red_read_idx =  tid % TILE_N_V4_PER_CTA;
-    uint red_read_idy =  tid / TILE_N_V4_PER_CTA; 
+    uint mma_read_idx =  tid % TILE_N_V4_PER_CTA;
+    uint mma_read_idy =  tid / TILE_N_V4_PER_CTA; 
 
-    uint smem_row_read_id   =  red_read_idx / SMEM_ROW_V4_SIZE;
-    uint smem_row_read_off  =  red_read_idx % SMEM_ROW_V4_SIZE;
-    uint inner_mma_read_idx =  smem_row_read_off & (TILE_N_PER_MMA/_4INT_TO_INT4_-1);
-    uint inter_mma_read_idx =  smem_row_read_off / (TILE_N_PER_MMA/_4INT_TO_INT4_);
+    uint smem_row_read_id   =  mma_read_idx / SMEM_ROW_V4_SIZE;
+    uint smem_row_read_off  =  mma_read_idx % SMEM_ROW_V4_SIZE;
 
-//#define SWIZZLE_GROUP MAX( 1, 4/(CTA_SIZE_IN_THD / TILE_N_V4_PER_CTA) )
-    uint sRv4_read[SWIZZLE_GROUP];
-    sRv4_read[0]  =   red_read_idy * TILE_N_V4_PER_CTA    +
-                      smem_row_read_id  * SMEM_ROW_V4_SIZE +
-                    //(((red_read_idy % TILE_M_PER_MMA_HALF) / N_ROWS_PER_SMEM_ROW) ^ smem_row_read_off);//这里可以直接用smem_row_read_off的原因是刚好一个mma_seg是int4
-                    //(((red_read_idy / N_ROWS_PER_SMEM_ROW) % (SMEM_ROW_BYTE_SIZE/TILE_N_PER_MMA/sizeof(int))) ^ inter_mma_read_idx) * (TILE_N_PER_MMA/_4INT_TO_INT4_) +
-                    (((red_read_idy / N_ROWS_PER_SMEM_ROW) % MMAs_PER_REDUCE_ROW) ^ inter_mma_read_idx) * (TILE_N_PER_MMA/_4INT_TO_INT4_) +
-		     inner_mma_read_idx;
-#if SWIZZLE_GROUP == 2
-    sRv4_read[1] = (red_read_idy+2) * TILE_N_V4_PER_CTA    +
-                 smem_row_read_id  * SMEM_ROW_V4_SIZE +
-                 ((((red_read_idy+2) / N_ROWS_PER_SMEM_ROW) % MMAs_PER_REDUCE_ROW) ^ inter_mma_read_idx) * (TILE_N_PER_MMA/_4INT_TO_INT4_) +
-    	         inner_mma_read_idx;
-#elif SWIZZLE_GROUP == 4
-    sRv4_read[1] = red_read_idy * TILE_N_V4_PER_CTA    +
-                 smem_row_read_id  * SMEM_ROW_V4_SIZE +
-                 ((((red_read_idy + 1) / N_ROWS_PER_SMEM_ROW) % MMAs_PER_REDUCE_ROW) ^ inter_mma_read_idx) * (TILE_N_PER_MMA/_4INT_TO_INT4_) +
-    	         inner_mma_read_idx;
-    sRv4_read[2] = red_read_idy * TILE_N_V4_PER_CTA    +
-                 smem_row_read_id  * SMEM_ROW_V4_SIZE +
-                 ((((red_read_idy + 2) / N_ROWS_PER_SMEM_ROW) % MMAs_PER_REDUCE_ROW) ^ inter_mma_read_idx) * (TILE_N_PER_MMA/_4INT_TO_INT4_) +
-    	         inner_mma_read_idx;
-    sRv4_read[3] = red_read_idy * TILE_N_V4_PER_CTA    +
-                 smem_row_read_id  * SMEM_ROW_V4_SIZE +
-                 ((((red_read_idy + 3) / N_ROWS_PER_SMEM_ROW) % MMAs_PER_REDUCE_ROW) ^ inter_mma_read_idx) * (TILE_N_PER_MMA/_4INT_TO_INT4_) +
-    	         inner_mma_read_idx;
-#endif
+    uint sRv4_read  =  mma_read_idy      * TILE_N_V4_PER_CTA +
+                       smem_row_read_id  * SMEM_ROW_V4_SIZE  +
+                     (((mma_read_idy % TILE_M_PER_MMA) / N_ROWS_PER_SMEM_ROW) ^ smem_row_read_off);
 
     const int4 ZEROv4 = {0, 0, 0, 0};
 
@@ -449,9 +422,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #pragma unroll
     for(int s = 0; s < OUTPUT_STEPS; s++)
     {
-	//fp16时不用每次swizzle idx，是因为一个cta的线程可以把sub_mma行(即8行)的数据一次加载完，下一个sub_mma块就可以沿用上一次读的索引不变，只需加上偏移即可。
-        //READ_sRv4(Rv4, sm_base_v4, sRv4_read);
-        READ_sRv4(Rv4, sm_base_v4, sRv4_read[s % SWIZZLE_GROUP]);
+        READ_sRv4(Rv4, sm_base_v4, sRv4_read);
 
 #if TILE_K_PER_CTA > TILE_K_PER_SET
         int * Rv1  = (int *) Rv4;

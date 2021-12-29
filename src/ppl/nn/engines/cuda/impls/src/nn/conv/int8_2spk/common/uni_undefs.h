@@ -554,6 +554,5 @@
 #undef packchar4
 #undef TILE_N_IN_MMA_PER_WARP
 #undef MMAs_PER_REDUCE_ROW
-#undef SWIZZLE_GROUP
 #undef MAX
 #undef MIN

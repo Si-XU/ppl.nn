@@ -416,7 +416,6 @@
 #define MIN(x, y)  ( (x) <= (y) ? (x) : (y) )
 #define MMAs_PER_REDUCE_ROW     MIN( (TILE_N_V1_PER_CTA/TILE_N_V1_PER_MMA), SMEM_ROW_V8_SIZE )
 #define TILE_N_IN_MMA_PER_WARP  ( TILE_N_V1_PER_WARP/TILE_N_V1_PER_MMA ) 
-#define SWIZZLE_GROUP ( MAX( 1, (4/(CTA_SIZE_IN_THD/TILE_N_V4_PER_CTA)) ) )
 
 ////////////////////////////////////////
 // bit size macros
