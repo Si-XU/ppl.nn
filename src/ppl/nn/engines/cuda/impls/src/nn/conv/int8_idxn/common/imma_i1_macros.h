@@ -21,7 +21,6 @@
 
 #define MMA_INST_OPCODE \
         "mma.sync.aligned.m8n8k16.row.col.s32.s8.s8.s32 {%0,%1}, {%2}, {%3}, {%4,%5};\n"
-        //"mma.sync.aligned.m16n8k8.row.col.f16.f16.f16.f16 {%0,%1}, {%2,%3}, {%4}, {%5,%6};\n"
         
 #define MMA_INST(_d0, _d1, _a, _b) \
         asm volatile(MMA_INST_OPCODE:   "=r"(_d0),   "=r"(_d1): "r"(_a), "r"(_b),  "r"(_d0),   "r"(_d1));

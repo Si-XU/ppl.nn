@@ -70,7 +70,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     uint flt_hwc_v8 = flt_hw * flt_chl_per_grp_pad_v16;
 #endif
 
-    bool dCv1_y_valid[BLK_M_PER_MMA];//FIXME assume as 1
+    bool dCv1_y_valid[BLK_M_PER_MMA];
     uint   dCv1_idy[BLK_M_PER_MMA];
 
     dCv1_idy[0] =  cta_idy     * TILE_M_V1_PER_CTA  +
@@ -132,12 +132,10 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     SET_IN_Mv1_ID(tid, sm_base_v4);
 #elif (TILE_M_PER_CTA < CTA_SIZE_IN_THD)
     if(tid < TILE_M_PER_CTA)
-	// tid: (base, w, h, n)
         SET_IN_Mv1_ID(tid, sm_base_v4);
 #endif
 
     if(tid < koff_num_pad)
-	// tid: (off, w, h, n)
         SET_IN_Kv8_OFF(tid, sm_base_v4);
 
 #if TILE_K_PER_STEP == 16
@@ -171,9 +169,8 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
         SET_dBv4_BOUND(i, dBv4_off[i], flt_n_valid[i]);
     }
 #endif
-    // nhw id
+
     uint in_id_read  =  warp_idy * TILE_M_PER_MMA + tid_y;
-    // cin off
     uint in_off_read =  tid_x + SM_IN_ID_SIZE;
 
 #if TILE_K_PER_STEP == 16
@@ -191,10 +188,10 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     for(int i = 0; i < NUM_M_STEPS; i++)
     {
 #pragma unroll
-        for(int b = 0; b < BLK_M_PER_MMA; b++)
+	    for(int b = 0; b < BLK_M_PER_MMA; b++)
         {
-            in_id[i * BLK_M_PER_MMA + b] = sm_base_v4[in_id_read + TILE_M_PER_STEP * i + b*TILE_M_PER_SUB_MMA];
-        }
+            in_id[i * BLK_M_PER_MMA + b]     = sm_base_v4[in_id_read + TILE_M_PER_STEP * i + b*TILE_M_PER_SUB_MMA];
+	    }
     }
 
     for(uint i = 0; i < kloop_num; i++)
@@ -240,7 +237,6 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
         MMA_INSTS(C, reg_dAv1, reg_dBv1);
 #endif
 
-	// advance MMA_X_IN_THD
 #if TILE_K_PER_STEP == 16
         in_off_read += TILE_K_V4_PER_CTA;
 #elif TILE_K_PER_STEP == 32
@@ -256,10 +252,10 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     for(int step = 0; step < NUM_M_STEPS; step++)
     {
 #pragma unroll
-	for(int b = 0; b < BLK_M_PER_MMA; b++)
+	    for(int b = 0; b < BLK_M_PER_MMA; b++)
         {
             dCv1_y_valid[b] = (dCv1_idy[b] < out_nhw);
-	}
+	    }
 
         uint Cv1_off  = step * TILE_N_V2_PER_THD * BLK_M_PER_MMA;
 
@@ -286,7 +282,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #endif
 
         quantOutData_x1(Cv2, fCv2, out_scale);
-	packChar2_x1(outData, Cv2);
+	    packChar2_x1(outData, Cv2);
 
         OUTPUT_1x1_BY_INT1();
 #elif TILE_N_PER_WARP == 16
@@ -346,7 +342,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #pragma unroll
         for(int b = 0; b < BLK_M_PER_MMA; b++){
             dCv1_idy[b] += TILE_M_PER_STEP;
-	}
+	    }
     }
 
 #endif // __CUDA_ARCH__

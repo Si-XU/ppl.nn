@@ -440,6 +440,8 @@ double PPLCUDAConvolutionSelectKernel(
                     int kloop_num    = DivUp(flt_hw * flt_chl_per_grp_pad, g_kernel_container[kid].tile_k_per_cta);
                     int koff_num_pad = Align(kloop_num * (g_kernel_container[kid].tile_k_per_cta / flt_pad_size), WARP_SIZE);
 
+                    grid_size.x *= grid_size.z;
+                    grid_size.z = 1;
                     (g_kernel_container[kid].idx_kptr)<<<grid_size, block_size, 0, stream>>>(IDX_KPARAM_LIST);
                 } else if (g_kernel_container[kid].ktype == CONV_2SPK_F1 || g_kernel_container[kid].ktype == CONV_2SPK_F3 ||
                            g_kernel_container[kid].ktype == CONV_2SPK_FN || g_kernel_container[kid].ktype == CONV_2SPK_FS ||
@@ -610,6 +612,8 @@ void PPLCUDAConvolutionForwardImp(
         int kloop_num    = DivUp(flt_hw * flt_chl_per_grp_pad, g_kernel_container[kid].tile_k_per_cta);
         int koff_num_pad = Align(kloop_num * (g_kernel_container[kid].tile_k_per_cta / flt_pad_size), WARP_SIZE);
 
+                    grid_size.x *= grid_size.z;
+                    grid_size.z = 1;
         (g_kernel_container[kid].idx_kptr)<<<grid_size, block_size, 0, stream>>>(IDX_KPARAM_LIST);
 
     } else if (g_kernel_container[kid].ktype == CONV_2SPK_F1 || g_kernel_container[kid].ktype == CONV_2SPK_F3 ||
@@ -1182,6 +1186,9 @@ void PPLCUDAConvolutionForwardJitImp(
     const void *elt_prelu = (const void *)fuse_param.elt_prelu;
 
     if (algo_param.algo_name.find("Idxn") != std::string::npos) {
+        grid_size.x = grid_size.x * grid_size.z;
+        grid_size.z = 1;
+
         int img_pad_size = pad_size;
         int flt_pad_size = algo_param.tiles.flt_pad_size;
 

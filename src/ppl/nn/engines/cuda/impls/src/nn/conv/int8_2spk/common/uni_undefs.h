@@ -104,6 +104,7 @@
 #undef _8MMA_
 
 #undef _HALF_ZERO_
+#undef _ZERO_
 
 #undef _INT_TO_BYTE_
 #undef _INT_TO_2HALF_
@@ -117,7 +118,9 @@
 #undef _INT4_TO_8HALF_
 
 #undef SMEM_ROW_V1_SIZE
+#undef SMEM_ROW_V2_SIZE
 #undef SMEM_ROW_V4_SIZE
+#undef SMEM_ROW_V8_SIZE
 #undef SMEM_ROW_BYTE_SIZE
 #undef SMEM_ROW_BIT_SIZE
 
@@ -129,7 +132,6 @@
 #undef TILE_M_PER_MMA
 #undef TILE_K_PER_MMA
 #undef TILE_N_PER_MMA
-#undef TILE_M_PER_MMA_HALF
 
 #undef MMA_SIZE_Y_IN_THD
 #undef MMA_SIZE_Y_IN_THD
@@ -197,11 +199,13 @@
 #undef TILE_K_V2_PER_CTA
 #undef TILE_K_V4_PER_CTA
 #undef TILE_K_V8_PER_CTA
+#undef TILE_K_V16_PER_CTA
 
 #undef TILE_K_V1_PER_WARP
 #undef TILE_K_V2_PER_WARP
 #undef TILE_K_V4_PER_WARP
 #undef TILE_K_V8_PER_WARP
+#undef TILE_K_V16_PER_WARP
 
 #undef TILE_K_V1_PER_THD
 #undef TILE_K_V2_PER_THD
@@ -552,8 +556,3 @@
 #undef deQuantData
 #undef LOAD_SCALE
 #undef packchar4
-#undef TILE_N_IN_MMA_PER_WARP
-#undef MMAs_PER_REDUCE_ROW
-#undef SWIZZLE_GROUP
-#undef MAX
-#undef MIN

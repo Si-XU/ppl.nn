@@ -500,7 +500,6 @@
 // concat macros
 //////////////////////////////////////////////////////
 
-//FIXME _INT4_TO_4HALF2_
 #define SET_CONCAT_OFF_V1(_has_concat, _concat_v1_off0) \
         { \
                 _concat_v1_off0 = dCv1_idy[0] * num_flt_v2; \
@@ -869,7 +868,6 @@
 // concat macros
 //////////////////////////////////////////////////////
 
-//FIXME _INT4_TO_4HALF2_
 #define JIT_SET_CONCAT_OFF_V1(_concat_v1_off0) \
         { \
             if(dCv1_y_valid[0]) _concat_v1_off0 = concat_offset_v16 * _INT4_TO_8HALF_ + dCv1_idy[0] * concat_stride_v16 * _INT4_TO_8HALF_; \

@@ -143,7 +143,6 @@
 #define _HALF_ZERO_             0.0
 #define _ZERO_                  0.0f
 
-
 #define _INT_TO_BYTE_           4
 #define _INT_TO_2HALF_          2
 #define _INT2_TO_2HALF2_        2
@@ -155,10 +154,10 @@
 #define _INT4_TO_4HALF2_        4
 #define _INT4_TO_8HALF_         8
 
-#define SMEM_ROW_V8_SIZE        4
-#define SMEM_ROW_V4_SIZE        8
-#define SMEM_ROW_V2_SIZE        16
 #define SMEM_ROW_V1_SIZE        32
+#define SMEM_ROW_V2_SIZE        16
+#define SMEM_ROW_V4_SIZE        8
+#define SMEM_ROW_V8_SIZE        4
 #define SMEM_ROW_BYTE_SIZE      128
 #define SMEM_ROW_BIT_SIZE       1024
 
@@ -169,7 +168,6 @@
 #define TILE_M_PER_MMA          8
 #define TILE_K_PER_MMA          8
 #define TILE_N_PER_MMA          8
-#define TILE_M_PER_SUB_MMA      8
 
 #define MMA_SIZE_X_IN_THD       4
 #define MMA_SIZE_Y_IN_THD       8
@@ -277,7 +275,6 @@
 // shared memory size macros
 ////////////////////////////////////////
 
-//FIXME: the final is TILE_N_V16_PER_CTA
 #define OUTPUT_STEPS            ((TILE_M_V1_PER_CTA) * (TILE_N_V4_PER_CTA) / CTA_SIZE_IN_THD)
 
 #if OUTPUT_STEPS < 1
@@ -285,8 +282,6 @@
 #define OUTPUT_STEPS  1
 #endif
 
-//#define N_ROWS_PER_SMEM_ROW     (SMEM_ROW_V4_SIZE / TILE_N_V8_PER_CTA)
-//#define K_ROWS_PER_SMEM_ROW     (SMEM_ROW_V4_SIZE / TILE_K_V8_PER_CTA)
 #define N_ROWS_PER_SMEM_ROW     (SMEM_ROW_V4_SIZE / TILE_N_V4_PER_CTA)
 #define K_ROWS_PER_SMEM_ROW     (SMEM_ROW_V4_SIZE / TILE_K_V16_PER_CTA)
 
@@ -333,7 +328,6 @@
 
 #define   C_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (SET_SIZE_IN_THD))
 #define  HC_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (SET_SIZE_IN_THD))
-//#define Cv4_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (SET_SIZE_IN_THD * _4CHAR_TO_INT_ * _4INT_TO_INT4_))
 #define Cv4_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (SET_SIZE_IN_THD * _4INT_TO_INT4_))
 
 #if Cv4_ITEMS_PER_THD < 1
@@ -412,11 +406,6 @@
         { \
             _lut_id = (_lut_id == flt_hw) ? 1 : _lut_id + 1; \
         }
-#define MAX(x, y)  ( (x) >= (y) ? (x) : (y) )
-#define MIN(x, y)  ( (x) <= (y) ? (x) : (y) )
-#define MMAs_PER_REDUCE_ROW     MIN( (TILE_N_V1_PER_CTA/TILE_N_V1_PER_MMA), SMEM_ROW_V8_SIZE )
-#define TILE_N_IN_MMA_PER_WARP  ( TILE_N_V1_PER_WARP/TILE_N_V1_PER_MMA ) 
-#define SWIZZLE_GROUP ( MAX( 1, (4/(CTA_SIZE_IN_THD/TILE_N_V4_PER_CTA)) ) )
 
 ////////////////////////////////////////
 // bit size macros

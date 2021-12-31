@@ -50,9 +50,8 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     uint warp_idy = tid >> (WARP_SIZE_IN_BITS + CTA_SIZE_X_IN_BITS);
 
     uint cta_idx = blockIdx.y;
-    uint cta_idy = blockIdx.x;
-
-    uint grp_id = blockIdx.z;
+    uint grp_id = blockIdx.x % num_grp;
+    uint cta_idy = blockIdx.x / num_grp;
 
     uint in_chl_per_grp_pad_v8 = in_chl_per_grp_pad >> 3;
 #if TILE_K_PER_STEP == 8

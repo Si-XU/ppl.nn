@@ -149,7 +149,6 @@
 #define TILE_M_PER_MMA          8
 #define TILE_K_PER_MMA          16
 #define TILE_N_PER_MMA          8
-//#define TILE_M_PER_MMA_HALF     ((TILE_M_PER_MMA) / 2)
 #define TILE_M_PER_SUB_MMA      8
 #define TILE_M_V1_PER_SUB_MMA   TILE_M_PER_SUB_MMA
 
@@ -213,7 +212,6 @@
 #define TILE_M_V2_PER_MMA       ((TILE_M_PER_MMA)  / 2)
 #define TILE_M_V4_PER_MMA       ((TILE_M_PER_MMA)  / 4)
 #define TILE_M_V8_PER_MMA       ((TILE_M_PER_MMA)  / 8)
-//#define TILE_M_V1_PER_MMA_HALF  ((TILE_M_PER_MMA)  / 2)
 
 /////////////////////
 // tile k
@@ -269,7 +267,6 @@
 ////////////////////////////////////////
 
 #define   C_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (CTA_SIZE_IN_THD * _1INT_))
-//#define  HC_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (CTA_SIZE_IN_THD))
 #define Cv4_ITEMS_PER_THD       ((TILE_M_PER_CTA) * (TILE_N_PER_CTA) / (CTA_SIZE_IN_THD * _1INT_ * _4INT_TO_INT4_))
 
 ////////////////////////////////////////
