@@ -156,6 +156,9 @@ ppl::common::RetCode PPLCUDANonZeroForwardImp(
         case ppl::common::DATATYPE_FLOAT32:
             NonZeroImp<float>(stream, input_shape, (float*)input, output_shape, output, tempbuffer);
             return ppl::common::RC_SUCCESS;
+        case ppl::common::DATATYPE_INT64:
+            NonZeroImp<int64_t>(stream, input_shape, (int64_t*)input, output_shape, output, tempbuffer);
+            return ppl::common::RC_SUCCESS;
         default:
             return ppl::common::RC_UNSUPPORTED;
     }

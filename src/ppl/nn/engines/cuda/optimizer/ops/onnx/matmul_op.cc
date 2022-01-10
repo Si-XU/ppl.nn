@@ -18,7 +18,7 @@
 #include "ppl/nn/engines/cuda/optimizer/ops/onnx/matmul_op.h"
 
 #include "ppl/nn/common/logger.h"
-#include "ppl/nn/engines/cuda/kernels/onnx/gemm_kernel.h"
+#include "ppl/nn/engines/cuda/kernels/onnx/matmul_kernel.h"
 #include "ppl/nn/oputils/onnx/reshape_matmul.h"
 
 using namespace std;
@@ -28,14 +28,6 @@ using namespace ppl::nn::common;
 namespace ppl { namespace nn { namespace cuda {
 
 RetCode MatMulOp::Init(const OptKernelOptions& options) {
-    param_.param.num_output = 1;
-    param_.param.bias_term = 0; // 0 or 1
-    param_.param.alpha = 1;
-    param_.param.beta = 1;
-    param_.param.transA = 0;
-    param_.param.transB = 0;
-    param_.param.N = 1; // for converted mat B
-
     infer_type_func_ = [](InputOutputInfo* info, std::vector<CudaTensorQuant>* quant, datatype_t type) -> RetCode {
         type = ppl::common::DATATYPE_FLOAT16;
         ppl::common::RetCode status;
@@ -57,8 +49,6 @@ RetCode MatMulOp::Init(const OptKernelOptions& options) {
 }
 
 RetCode MatMulOp::Finalize(const OptKernelOptions& options) {
-    param_ = *((CudaGemmParam*)options.param);
-
     auto status = SetCommonParam(options);
     if (status != RC_SUCCESS) {
         LOG(ERROR) << "load common param failed: " << GetRetCodeStr(status);
@@ -68,16 +58,8 @@ RetCode MatMulOp::Finalize(const OptKernelOptions& options) {
     return RC_SUCCESS;
 }
 
-void MatMulOp::CopyParam(void*& param) {
-    if (param == nullptr) {
-        param = new CudaGemmParam();
-    }
-    *(CudaGemmParam*)param = param_;
-    return;
-}
-
 KernelImpl* MatMulOp::CreateKernelImpl() const {
-    return CreateKernelImplWithParam<GemmKernel>(&param_);
+    return CreateKernelImplWithoutParam<MatmulKernel>();
 }
 
 }}} // namespace ppl::nn::cuda

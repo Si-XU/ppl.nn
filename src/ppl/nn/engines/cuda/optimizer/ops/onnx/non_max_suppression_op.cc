@@ -62,7 +62,7 @@ RetCode NonMaxSupressionOp::Init(const OptKernelOptions& options) {
 
     infer_dims_func_ = [](InputOutputInfo* info) -> RetCode {
         int64_t max_output_boxes_per_class = 0;
-        if (info->GetInputCount() >= 3) {
+        if (info->GetInputCount() >= 3 && info->GetInput<TensorImpl>(2)->GetBufferPtr()) {
             auto status = info->GetInput<TensorImpl>(2)->CopyToHost(&max_output_boxes_per_class);
             if (status != RC_SUCCESS) {
                 LOG(ERROR) << "Copy max output boxes failed: " << GetRetCodeStr(status);
