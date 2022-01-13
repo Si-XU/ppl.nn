@@ -275,12 +275,16 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
         FUSE_RELU_1x1_V1(has_relu);
         FUSE_CLIP_1x1_V1(has_clip, clip_max, clip_min);
+#ifdef PPLNN_ENABLE_CUDA_JIT
         FUSE_PRELU_1x1_V1(has_prelu, prelu, leaky);
+#endif
 
         FUSE_ELT_1x1_V1(has_elt, pre_data);
         FUSE_RELU_1x1_V1(has_elt_relu);
         FUSE_CLIP_1x1_V1(has_elt_clip, elt_clip_max, elt_clip_min);
+#ifdef PPLNN_ENABLE_CUDA_JIT
         FUSE_PRELU_1x1_V1(has_elt_prelu, elt_prelu, elt_leaky);
+#endif
 
         SET_CONCAT_OFF_V1(has_concat, concat_v1_off0);
 #endif
@@ -301,12 +305,16 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
         FUSE_RELU_1x2_V1(has_relu);
         FUSE_CLIP_1x2_V1(has_clip, clip_max, clip_min);
+#ifdef PPLNN_ENABLE_CUDA_JIT
         FUSE_PRELU_1x2_V1(has_prelu, prelu, leaky);
+#endif
 
         FUSE_ELT_1x2_V1(has_elt, pre_data);
         FUSE_RELU_1x2_V1(has_elt_relu);
         FUSE_CLIP_1x2_V1(has_elt_clip, elt_clip_max, elt_clip_min);
+#ifdef PPLNN_ENABLE_CUDA_JIT
         FUSE_PRELU_1x2_V1(has_elt_prelu, elt_prelu, elt_leaky);
+#endif
 
         SET_CONCAT_OFF_V1(has_concat, concat_v1_off0);
 #endif
@@ -327,12 +335,16 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
         FUSE_RELU_1x4_V1(has_relu);
         FUSE_CLIP_1x4_V1(has_clip, clip_max, clip_min);
+#ifdef PPLNN_ENABLE_CUDA_JIT
         FUSE_PRELU_1x4_V1(has_prelu, prelu, leaky);
+#endif
 
         FUSE_ELT_1x4_V1(has_elt, pre_data);
         FUSE_RELU_1x4_V1(has_elt_relu);
         FUSE_CLIP_1x4_V1(has_elt_clip, elt_clip_max, elt_clip_min);
+#ifdef PPLNN_ENABLE_CUDA_JIT
         FUSE_PRELU_1x4_V1(has_elt_prelu, elt_prelu, elt_leaky);
+#endif
 
         SET_CONCAT_OFF_V1(has_concat, concat_v1_off0);
 #endif

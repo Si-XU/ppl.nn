@@ -278,6 +278,7 @@
 // prelu macros
 //////////////////////////////////////////////////////
 
+#ifdef PPLNN_ENABLE_CUDA_JIT
 #define FUSE_PRELU_1x1_V1(_has_prelu, _prelu, _leaky) \
         { \
        	    if(_has_prelu == 1 && dCv1_x_valid[0]) \
@@ -442,6 +443,7 @@
                     fCv2[Cv1_off + 0].y = fCv2[Cv1_off + 3].y * _hscale3[1]; \
 	    } \
         }
+#endif
 
 //////////////////////////////////////////////////////
 // eltwise macros

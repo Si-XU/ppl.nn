@@ -87,6 +87,7 @@
 	        } \
         }
 
+#ifdef PPLNN_ENABLE_CUDA_JIT
 #define FUSE_PRELU_V4(_fR, _has_prelu, _prelu, _leaky) \
         { \
 	        if( _has_prelu && dCv4_x_valid  && dCv4_y_valid ) { \
@@ -126,6 +127,7 @@
 		\
 	        } \
         }
+#endif
 
 #define FUSE_ELT_V4(_fR, _has_elt, _pre_data) \
         { \

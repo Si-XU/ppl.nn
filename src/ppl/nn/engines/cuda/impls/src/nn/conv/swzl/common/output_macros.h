@@ -121,6 +121,7 @@
 // prelu macros
 //////////////////////////////////////////////////////
 
+#ifdef PPLNN_ENABLE_CUDA_JIT
 #define FUSE_PRELU_V4(_has_prelu, _prelu, _leaky) \
     { \
         if (_has_prelu && dCv4_y_valid) {                                                                                        \
@@ -160,6 +161,7 @@
             } \
         } \
     }
+#endif
 
 
 //////////////////////////////////////////////////////

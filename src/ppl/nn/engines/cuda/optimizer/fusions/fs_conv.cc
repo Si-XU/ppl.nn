@@ -77,7 +77,7 @@ const bool ConvFusion::FuseTest(ir::Node* node, const OptKernelOptions& options,
     auto nextnode = topo->GetNodeById(nextnode_id);
 
     if (canfuse(nextnode, options)) {
-        LOG(DEBUG) << "Fuse node[" << node->GetName() << "] and nextnode[" << nextnode->GetName() << "]";
+        LOG(INFO) << "Fuse node[" << node->GetName() << "] and nextnode[" << nextnode->GetName() << "]";
         param->extra_param.fuse_info.types.emplace_back(nextnode->GetType().name);
         param->extra_param.fuse_info.input_ind.emplace_back(node->GetInputCount());
 
