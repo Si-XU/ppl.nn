@@ -1225,27 +1225,27 @@ int main(int argc, char* argv[]) {
     }
 
     vector<string> input_data; // store input data for profiling
-    if (!g_flag_input.empty()) {
-        if (!SetInputsAllInOne(g_flag_input, input_shapes, runtime.get(), &input_data)) {
-            LOG(ERROR) << "SetInputsAllInOne failed.";
-            return -1;
-        }
-    } else if (!g_flag_inputs.empty()) {
-        if (!SetInputsOneByOne(g_flag_inputs, input_shapes, runtime.get(), &input_data)) {
-            LOG(ERROR) << "SetInputsOneByOne failed.";
-            return -1;
-        }
-    } else if (!g_flag_reshaped_inputs.empty()) {
-        if (!SetReshapedInputsOneByOne(g_flag_reshaped_inputs, runtime.get(), &input_data)) {
-            LOG(ERROR) << "SetReshapedInputsOneByOne failed.";
-            return -1;
-        }
-    } else {
-        if (!SetRandomInputs(input_shapes, runtime.get(), &input_data)) {
-            LOG(ERROR) << "SetRandomInputs failed.";
-            return -1;
-        }
-    }
+    // if (!g_flag_input.empty()) {
+    //     if (!SetInputsAllInOne(g_flag_input, input_shapes, runtime.get(), &input_data)) {
+    //         LOG(ERROR) << "SetInputsAllInOne failed.";
+    //         return -1;
+    //     }
+    // } else if (!g_flag_inputs.empty()) {
+    //     if (!SetInputsOneByOne(g_flag_inputs, input_shapes, runtime.get(), &input_data)) {
+    //         LOG(ERROR) << "SetInputsOneByOne failed.";
+    //         return -1;
+    //     }
+    // } else if (!g_flag_reshaped_inputs.empty()) {
+    //     if (!SetReshapedInputsOneByOne(g_flag_reshaped_inputs, runtime.get(), &input_data)) {
+    //         LOG(ERROR) << "SetReshapedInputsOneByOne failed.";
+    //         return -1;
+    //     }
+    // } else {
+    //     if (!SetRandomInputs(input_shapes, runtime.get(), &input_data)) {
+    //         LOG(ERROR) << "SetRandomInputs failed.";
+    //         return -1;
+    //     }
+    // }
 
     for (uint32_t i = 0; i < runtime->GetInputCount(); ++i) {
         auto in = runtime->GetInputTensor(i);
@@ -1256,47 +1256,96 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    if (g_flag_save_input) {
-        if (!SaveInputsAllInOne(runtime.get())) {
-            return -1;
-        }
-    } else if (g_flag_save_inputs) {
-        if (!SaveInputsOneByOne(runtime.get())) {
-            return -1;
-        }
-    }
+    // if (g_flag_save_input) {
+    //     if (!SaveInputsAllInOne(runtime.get())) {
+    //         return -1;
+    //     }
+    // } else if (g_flag_save_inputs) {
+    //     if (!SaveInputsOneByOne(runtime.get())) {
+    //         return -1;
+    //     }
+    // }
 
     auto prepare_end_ts = std::chrono::system_clock::now();
     auto prepare_diff = std::chrono::duration_cast<std::chrono::microseconds>(prepare_end_ts - prepare_begin_ts);
-    LOG(INFO) << "Prepare costs: " << (float)prepare_diff.count() / 1000 << " ms.";
+    // LOG(INFO) << "Prepare costs: " << (float)prepare_diff.count() / 1000 << " ms.";
 
     auto run_begin_ts = std::chrono::system_clock::now();
-    status = runtime->Run();
+
+#ifdef PPLNN_USE_CUDA
+    std::ifstream infile(g_flag_save_data_dir + "/image.txt");
+    std::string line;
+    while (std::getline(infile, line))
+    {
+        vector<vector<int64_t>> input_shapes;
+        auto space = line.find(" ");
+        std::string file_path = line.substr(0, space);
+        std::string in_shapes = line.substr(space + 1);
+        if (!ParseInputShapes(in_shapes, &input_shapes)) {
+            LOG(ERROR) << "ParseInputShapes failed.";
+            return -1;
+        }
+        if (!SetInputsAllInOne(file_path, input_shapes, runtime.get(), &input_data)) {
+            LOG(ERROR) << "SetInputsAllInOne failed.";
+            return -1;
+        }
+        status = runtime->Run();
+        for (uint32_t c = 0; c < runtime->GetOutputCount(); ++c) {
+            auto t = runtime->GetOutputTensor(c);
+
+            TensorShape dst_desc = *t->GetShape();
+            dst_desc.SetDataFormat(DATAFORMAT_NDARRAY);
+            auto bytes = dst_desc.GetBytesIncludingPadding();
+            vector<char> buffer(bytes);
+
+            status = t->ConvertToHost(buffer.data(), dst_desc);
+            if (status != RC_SUCCESS) {
+                LOG(ERROR) << "convert data of tensor[" << t->GetName() << "] failed: " << GetRetCodeStr(status);
+                return false;
+            }
+            auto left = file_path.rfind("/");
+            auto right = file_path.rfind(".");
+            const string out_file_name = g_flag_save_data_dir + "/" + file_path.substr(left, right - left) + "_" + t->GetName() + ".dat";
+            ofstream ofs(out_file_name, ios_base::out | ios_base::binary | ios_base::trunc);
+            if (!ofs.is_open()) {
+                LOG(ERROR) << "open output file[" << out_file_name << "]";
+                return false;
+            }
+
+            if (bytes / 4 <= 10000 || dst_desc.GetDataType() != DATATYPE_FLOAT32) {
+                ofs.write(buffer.data(), bytes);
+            } else {
+                uint32_t seed = g_flag_seed;
+                uint32_t siz = 4096;
+                uint32_t mod = bytes / 4;
+                vector<char> sample_bytes(siz * sizeof(float));
+                for (uint32_t i = 0; i < sample_bytes.size(); i += 4) {
+                    uint32_t index = seed % mod * 4;
+                    sample_bytes[i] = buffer[index];
+                    sample_bytes[i+1] = buffer[index+1];
+                    sample_bytes[i+2] = buffer[index+2];
+                    sample_bytes[i+3] = buffer[index+3];
+		            seed = (0x343FDll * seed + 0x269EC3ll) % (2ll << 31);
+                }
+                ofs.write(sample_bytes.data(), sample_bytes.size());
+            }
+            
+        }
+    }
+#endif
+
     auto run_end_ts = std::chrono::system_clock::now();
     if (status != RC_SUCCESS) {
         LOG(ERROR) << "Run() failed: " << GetRetCodeStr(status);
         return -1;
     }
 
-    PrintInputOutputInfo(runtime.get());
+    // PrintInputOutputInfo(runtime.get());
 
     auto diff = std::chrono::duration_cast<std::chrono::microseconds>(run_end_ts - run_begin_ts);
     LOG(INFO) << "Run() costs: " << (float)diff.count() / 1000 << " ms.";
 
-    if (g_flag_save_outputs) {
-        if (!SaveOutputsOneByOne(runtime.get())) {
-            return -1;
-        }
-    }
-
     LOG(INFO) << "Run ok";
-
-    if (g_flag_enable_profiling) {
-        if (!Profiling(input_data, runtime.get())) {
-            LOG(ERROR) << "Profiling() failed.";
-            return -1;
-        }
-    }
 
     return 0;
 }
