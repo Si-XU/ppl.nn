@@ -23,16 +23,17 @@ using namespace ppl::common;
 namespace ppl { namespace nn {
 
 Engine* CudaEngineFactory::Create(const CudaEngineOptions& options) {
-    auto engine = new cuda::CudaEngine();
-    if (engine) {
-        auto status = engine->Init(options);
-        if (status != RC_SUCCESS) {
-            LOG(ERROR) << "init cuda engine failed: " << GetRetCodeStr(status);
-            delete engine;
-            return nullptr;
-        }
-    }
-    return engine;
+    // auto engine = new cuda::CudaEngine();
+    // if (engine) {
+    //     auto status = engine->Init(options);
+    //     if (status != RC_SUCCESS) {
+    //         LOG(ERROR) << "init cuda engine failed: " << GetRetCodeStr(status);
+    //         delete engine;
+    //         return nullptr;
+    //     }
+    // }
+    // return engine;
+    return nullptr;
 }
 
 }} // namespace ppl::nn
