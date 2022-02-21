@@ -126,7 +126,12 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     int *reg_dBv1 = (int *)reg_dBv4;
 #endif
 
-#if (TILE_M_PER_CTA > CTA_SIZE_IN_THD)
+#if (TILE_M_PER_CTA == 4 * CTA_SIZE_IN_THD)
+    SET_IN_Mv1_ID(tid, sm_base_v4);
+    SET_IN_Mv1_ID(tid + CTA_SIZE_IN_THD * 1, sm_base_v4);
+    SET_IN_Mv1_ID(tid + CTA_SIZE_IN_THD * 2, sm_base_v4);
+    SET_IN_Mv1_ID(tid + CTA_SIZE_IN_THD * 3, sm_base_v4);
+#elif (TILE_M_PER_CTA == 2 * CTA_SIZE_IN_THD)
     SET_IN_Mv1_ID(tid, sm_base_v4);
     SET_IN_Mv1_ID(tid + CTA_SIZE_IN_THD, sm_base_v4);
 #elif (TILE_M_PER_CTA == CTA_SIZE_IN_THD)

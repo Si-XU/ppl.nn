@@ -336,6 +336,7 @@
 #undef LOAD_dAv1_SIZE2
 #undef LOAD_dAv1_SIZE4
 #undef LOAD_dAv1_SIZE8
+#undef LOAD_dAv1_SIZE16
 
 #undef LOAD_dAv2_SIZE_16TH
 #undef LOAD_dAv2_SIZE_8TH
@@ -345,6 +346,7 @@
 #undef LOAD_dAv2_SIZE2
 #undef LOAD_dAv2_SIZE4
 #undef LOAD_dAv2_SIZE8
+#undef LOAD_dAv2_SIZE16
 
 #undef LOAD_dAv4_SIZE_16TH
 #undef LOAD_dAv4_SIZE_8TH
@@ -354,6 +356,7 @@
 #undef LOAD_dAv4_SIZE2
 #undef LOAD_dAv4_SIZE4
 #undef LOAD_dAv4_SIZE8
+#undef LOAD_dAv4_SIZE16
 
 #undef LOAD_dAv1
 #undef LOAD_dAv2
