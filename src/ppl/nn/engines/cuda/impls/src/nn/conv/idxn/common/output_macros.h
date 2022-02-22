@@ -91,32 +91,34 @@
 	        } \
         }
 
-// #define FUSE_RELU_V1(_has_relu) \
-//         { \
-// 	        if( _has_relu == 1) \
-//             { \
-//                 _Pragma("unroll") \
-//                 for(int i = 0; i < NUM_N_STEPS; i++) \
-//                 { \
-//                     if( dCv1_y_valid[0] && dCv1_x_valid[i] ) HMAX2_INST(C[Cv1_off + i],               C[Cv1_off + i],               0, C[Cv1_off + i]); \
-//                     if( dCv1_y_valid[1] && dCv1_x_valid[i] ) HMAX2_INST(C[Cv1_off + i + NUM_N_STEPS], C[Cv1_off + i + NUM_N_STEPS], 0, C[Cv1_off + i + NUM_N_STEPS]); \
-// 	            } \
-// 	        } \
-//             else if( _has_relu == 2) \
-//             { \
-//                 __half2 h2ONE((__half)1.f, (__half)1.f); \
-//                 __half2 *h2C = (__half2 *)C; \
-//                 \
-//                 _Pragma("unroll") \
-//                 for(int i = 0; i < NUM_N_STEPS; i++) \
-//                 { \
-//                     if( dCv1_y_valid[0] && dCv1_x_valid[i] ) \
-//                         h2C[Cv1_off + i]               = __h2div(h2exp(h2C[Cv1_off + i]),               __hadd2(h2ONE, h2exp(h2C[Cv1_off + i]))); \
-//                     if( dCv1_y_valid[1] && dCv1_x_valid[i] ) \
-//                         h2C[Cv1_off + i + NUM_N_STEPS] = __h2div(h2exp(h2C[Cv1_off + i + NUM_N_STEPS]), __hadd2(h2ONE, h2exp(h2C[Cv1_off + i + NUM_N_STEPS]))); \
-// 	            } \
-// 	        } \
-//         }
+#if 0
+#define FUSE_RELU_V1(_has_relu) \
+        { \
+	        if( _has_relu == 1) \
+            { \
+                _Pragma("unroll") \
+                for(int i = 0; i < NUM_N_STEPS; i++) \
+                { \
+                    if( dCv1_y_valid[0] && dCv1_x_valid[i] ) HMAX2_INST(C[Cv1_off + i],               C[Cv1_off + i],               0, C[Cv1_off + i]); \
+                    if( dCv1_y_valid[1] && dCv1_x_valid[i] ) HMAX2_INST(C[Cv1_off + i + NUM_N_STEPS], C[Cv1_off + i + NUM_N_STEPS], 0, C[Cv1_off + i + NUM_N_STEPS]); \
+	            } \
+	        } \
+            else if( _has_relu == 2) \
+            { \
+                __half2 h2ONE((__half)1.f, (__half)1.f); \
+                __half2 *h2C = (__half2 *)C; \
+                \
+                _Pragma("unroll") \
+                for(int i = 0; i < NUM_N_STEPS; i++) \
+                { \
+                    if( dCv1_y_valid[0] && dCv1_x_valid[i] ) \
+                        h2C[Cv1_off + i]               = __h2div(h2exp(h2C[Cv1_off + i]),               __hadd2(h2ONE, h2exp(h2C[Cv1_off + i]))); \
+                    if( dCv1_y_valid[1] && dCv1_x_valid[i] ) \
+                        h2C[Cv1_off + i + NUM_N_STEPS] = __h2div(h2exp(h2C[Cv1_off + i + NUM_N_STEPS]), __hadd2(h2ONE, h2exp(h2C[Cv1_off + i + NUM_N_STEPS]))); \
+	            } \
+	        } \
+        }
+#endif
 
 //////////////////////////////////////////////////////
 // clip macros

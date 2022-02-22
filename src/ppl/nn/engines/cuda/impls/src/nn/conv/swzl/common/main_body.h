@@ -36,7 +36,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
 #if defined(ENABLE_FUSE)
     __half2 *h2R = (__half2 *)Rv4;
-    __half *hR = (__half *)Rv4;
+    // __half *hR = (__half *)Rv4;
 #endif
 
     uint tid       =  threadIdx.x;
