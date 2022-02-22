@@ -84,17 +84,33 @@
                         _Pragma("unroll") for (int j = 0; j < _INT4_TO_4HALF2_; j++) {                    \
                             Rv1[i * _INT4_TO_4HALF2_ + j] = __vmaxs2(Rv1[i * _INT4_TO_4HALF2_ + j], 0);   \
                         }                                                                                 \
-                    } else if (_has_relu == 2) {                                                          \
-                        __half2 h2ONE((__half)1.f, (__half)1.f);                                          \
-                                                                                                          \
-                        _Pragma("unroll") for (int j = 0; j < _INT4_TO_4HALF2_; j++) {                    \
-                            h2R[i * _INT4_TO_4HALF2_ + j] = __h2div(h2exp(h2R[i * _INT4_TO_4HALF2_ + j]), \
-                                    __hadd2(h2ONE, h2exp(h2R[i * _INT4_TO_4HALF2_ + j])));                \
-                        }                                                                                 \
                     }                                                                                     \
 		        }                                                                                         \
 		    }                                                                                             \
         }
+// #define FUSE_RELU_V4(_has_relu)                                                                           \
+//         {                                                                                                 \
+// 	        if(_has_relu & dCv4_y_valid)                                                                  \
+//             {                                                                                             \
+//                 _Pragma("unroll") for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++)                           \
+//                 {                                                                                         \
+//                     int *Rv1 = (int *)Rv4;                                                                \
+//                                                                                                           \
+//                     if (_has_relu == 1) {                                                                 \
+//                         _Pragma("unroll") for (int j = 0; j < _INT4_TO_4HALF2_; j++) {                    \
+//                             Rv1[i * _INT4_TO_4HALF2_ + j] = __vmaxs2(Rv1[i * _INT4_TO_4HALF2_ + j], 0);   \
+//                         }                                                                                 \
+//                     } else if (_has_relu == 2) {                                                          \
+//                         __half2 h2ONE((__half)1.f, (__half)1.f);                                          \
+//                                                                                                           \
+//                         _Pragma("unroll") for (int j = 0; j < _INT4_TO_4HALF2_; j++) {                    \
+//                             h2R[i * _INT4_TO_4HALF2_ + j] = __h2div(h2exp(h2R[i * _INT4_TO_4HALF2_ + j]), \
+//                                     __hadd2(h2ONE, h2exp(h2R[i * _INT4_TO_4HALF2_ + j])));                \
+//                         }                                                                                 \
+//                     }                                                                                     \
+// 		        }                                                                                         \
+// 		    }                                                                                             \
+//         }
 
 //////////////////////////////////////////////////////
 // clip macros
