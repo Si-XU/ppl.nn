@@ -22,86 +22,7 @@
 #include "cudakernel/unary/exp.h"
 #include "ppl/nn/common/tensor_shape.h"
 #include "ppl/common/retcode.h"
-#include <cuda_runtime.h>
-#include <float.h>
-#include <memory>
-#include <cuda_fp16.h>
-
-template<typename T>
-__device__ __forceinline__ T _Exp(T a);
-
-template<>
-__device__ __forceinline__ float _Exp<float>(float a) {
-    return expf(a);
-}
-
-template<>
-__device__ __forceinline__ double _Exp<double>(double a) {
-    return exp(a);
-}
-
-template<>
-__device__ __forceinline__ half _Exp<half>(half a) {
-    return hexp(a);
-}
-
-template<typename T>
-__device__ __forceinline__ T _Ldg(const T* p) {
-    return __ldg(p);
-}
-
-template<>
-__device__ __forceinline__ bool _Ldg<bool>(const bool* p) {
-    return *p;
-}
-
-template<typename T>
-__device__ __forceinline__ T _ExpMax() {
-    return (T)20.0f;
-}
-
-template<>
-__device__ __forceinline__ float _ExpMax<float>() {
-    return 80.0f;
-}
-
-template<>
-__device__ __forceinline__ double _ExpMax<double>() {
-    return 800.0;
-}
-
-template<typename T>
-__device__ __forceinline__ T CudaLogZero() {
-    return (T)-_ExpMax<T>();
-}
-
-template<typename T>
-__device__ __forceinline__ T _SafeExp(const T v) {
-    return _Exp(min(v, _ExpMax<T>()));
-}
-
-template<typename T>
-__device__ __forceinline__ T _LogAdd(const T x, const T y) {
-    return x + max(log(_SafeExp(y - x) + (T)1.0f), y - x);
-}
-
-#define FINAL_MASK 0xffffffff
-template<typename T>
-__device__ __forceinline__ T WARP_SHFL_XOR(T value, int laneMask,
-                                            int width = 32, unsigned int mask = FINAL_MASK) {
-#if __CUDACC_VER_MAJOR__ * 1000 + __CUDACC_VER_MINOR__ * 10 >= 9000
-    return __shfl_xor_sync(mask, value, laneMask, width);
-#else
-    return __shfl_xor(value, laneMask, width);
-#endif
-}
-
-template<typename T>
-__device__ __forceinline__ T WarpReduceLogAddSum(T val) {
-    for (int mask = 16; mask > 0; mask >>= 1)
-        val = _LogAdd(WARP_SHFL_XOR(val, mask, 32, FINAL_MASK), val);
-    return val;
-}
+#include "cudakernel/common/common.cuh"
 
 uint64_t PPLSoftmaxGetTempBufferSize(
     const ppl::nn::TensorShape* input_shape,
@@ -176,9 +97,6 @@ CREATE_SOFTMAXSCORE_KERNEL_BOOL32(Mask1, blockIdx.x / H * T)
 CREATE_SOFTMAXSCORE_KERNEL_BOOL32(Mask2, blockIdx.x / (H * T) * T)
 CREATE_SOFTMAXSCORE_KERNEL_BOOL32(Mask3, blockIdx.x / (B * H) * T)
 
-
-
-
 template<typename Tin, typename Tout, typename TCompute = float>
 __global__ void SoftmaxScoreKernel32(const Tin* in, Tout* out, const int T) {
     auto cur_in = in + blockIdx.x * T;
@@ -193,6 +111,34 @@ __global__ void SoftmaxScoreKernel32(const Tin* in, Tout* out, const int T) {
         cur_out[tid] = _Exp((TCompute)__ldg(cur_in + tid) - log_sum);
     }
 }
+
+template<typename Tin, typename Tout, typename TCompute = float>
+__global__ void SoftmaxScoreKernel64(const Tin* in, Tout* out, const int T) {
+    auto cur_in = in + blockIdx.x * T;
+    auto cur_out = out + blockIdx.x * T;
+    __shared__ TCompute sm[2];
+    // reduce log sum
+    TCompute log_sum = CudaLogZero<TCompute>();
+    for(auto tid = threadIdx.x; tid < T; tid += blockDim.x) {
+        log_sum = _LogAdd((TCompute)__ldg(cur_in + tid), log_sum);
+    }
+    auto lane_id = threadIdx.x & 0x1f;
+    auto wid = threadIdx.x >> 5;
+    log_sum = WarpReduceLogAddSum(log_sum);
+    if(lane_id == 0) {
+        sm[wid] = log_sum;
+    }
+    __syncthreads();
+    if (lane_id == 0) {
+        log_sum = _LogAdd(sm[0], sm[1]);
+    }
+    __syncthreads();
+    log_sum = WARP_SHFL(log_sum, 0);
+    for(auto tid = threadIdx.x; tid < T; tid += blockDim.x) {
+        cur_out[tid] = _Exp((TCompute)__ldg(cur_in + tid) - log_sum);
+    }
+}
+
 
 
 /*
@@ -213,24 +159,47 @@ ppl::common::RetCode PPLCUDAFastSoftmaxForwardImp(
 {
     dim3 grid(B * H * T, 1, 1);
     if (key_padding_mask != nullptr) {
-        dim3 block(32);
-        if(mask_type == 0) {
-            SoftmaxScoreKernel32Mask0<Tin, MaskT, Tout, float>
-                <<<grid, block, 0, stream>>>(input, key_padding_mask, output, B, H, T);
-        } else if(mask_type == 1) {
-            SoftmaxScoreKernel32Mask1<Tin, MaskT, Tout, float>
-                <<<grid, block, 0, stream>>>(input, key_padding_mask, output, B, H, T);
-        } else if(mask_type == 2) {
-            SoftmaxScoreKernel32Mask2<Tin, MaskT, Tout, float>
-                <<<grid, block, 0, stream>>>(input, key_padding_mask, output, B, H, T);
-        } else if(mask_type == 3) {
-            SoftmaxScoreKernel32Mask3<Tin, MaskT, Tout, float>
-                <<<grid, block, 0, stream>>>(input, key_padding_mask, output, B, H, T);
+        if(B * H * T < 512) {
+            dim3 block(32);
+            if(mask_type == 0) {
+                SoftmaxScoreKernel32Mask0<Tin, MaskT, Tout, float>
+                    <<<grid, block, 0, stream>>>(input, key_padding_mask, output, B, H, T);
+            } else if(mask_type == 1) {
+                SoftmaxScoreKernel32Mask1<Tin, MaskT, Tout, float>
+                    <<<grid, block, 0, stream>>>(input, key_padding_mask, output, B, H, T);
+            } else if(mask_type == 2) {
+                SoftmaxScoreKernel32Mask2<Tin, MaskT, Tout, float>
+                    <<<grid, block, 0, stream>>>(input, key_padding_mask, output, B, H, T);
+            } else if(mask_type == 3) {
+                SoftmaxScoreKernel32Mask3<Tin, MaskT, Tout, float>
+                    <<<grid, block, 0, stream>>>(input, key_padding_mask, output, B, H, T);
+            }
+        } else {
+            dim3 block(64);
+            // if(mask_type == 0) {
+            //     SoftmaxScoreKernel64Mask0<Tin, MaskT, Tout, float>
+            //         <<<grid, block, 0, stream>>>(input, key_padding_mask, output, B, H, T);
+            // } else if(mask_type == 1) {
+            //     SoftmaxScoreKernel64Mask1<Tin, MaskT, Tout, float>
+            //         <<<grid, block, 0, stream>>>(input, key_padding_mask, output, B, H, T);
+            // } else if(mask_type == 2) {
+            //     SoftmaxScoreKernel64Mask2<Tin, MaskT, Tout, float>
+            //         <<<grid, block, 0, stream>>>(input, key_padding_mask, output, B, H, T);
+            // } else if(mask_type == 3) {
+            //     SoftmaxScoreKernel64Mask3<Tin, MaskT, Tout, float>
+            //         <<<grid, block, 0, stream>>>(input, key_padding_mask, output, B, H, T);
+            // }
         }
     } else {
-        dim3 block(32);
-        SoftmaxScoreKernel32<Tin, Tout, float>
-            <<<grid, block, 0, stream>>>(input, output, T);
+        if (B * H * T < 512) {
+            dim3 block(32);
+            SoftmaxScoreKernel32<Tin, Tout, float>
+                <<<grid, block, 0, stream>>>(input, output, T);
+        } else {
+            dim3 block(64);
+            SoftmaxScoreKernel64<Tin, Tout, float>
+                <<<grid, block, 0, stream>>>(input, output, T);
+        }
     }
     return ppl::common::RC_SUCCESS;
 }

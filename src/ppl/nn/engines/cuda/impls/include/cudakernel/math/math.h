@@ -308,6 +308,54 @@ struct Math<half, half, float> {
 };
 
 template <>
+struct Math<float2, float2, float2> {
+    static inline __device__ float2 add(float2 lhs, float2 rhs)
+    {
+        lhs.x = lhs.x + rhs.x;
+        lhs.y = lhs.y + rhs.y;
+
+        return lhs;
+    }
+    static inline __device__ float2 sub(float2 lhs, float2 rhs)
+    {
+        lhs.x = lhs.x - rhs.x;
+        lhs.y = lhs.y - rhs.y;
+
+        return lhs;
+    }
+    static inline __device__ float2 mul(float2 lhs, float2 rhs)
+    {
+        lhs.x = lhs.x * rhs.x;
+        lhs.y = lhs.y * rhs.y;
+
+        return lhs;
+    }
+    static inline __device__ float2 div(float2 lhs, float2 rhs)
+    {
+        lhs.x = lhs.x / rhs.x;
+        lhs.y = lhs.y / rhs.y;
+
+        return lhs;
+    }
+    static inline __device__ float2 neg(float2 v)
+    {
+        v.x      = -v.x;
+        v.y      = -v.y;
+
+        return v;
+    }
+
+    static inline __device__ float2 zero()
+    {
+        float2 res;
+        res.x = 0.0f;
+        res.y = 0.0f;
+        return res;
+    }
+};
+
+
+template <>
 struct Math<half2, half2, half2> {
     static inline __device__ half2 add(half2 lhs, half2 rhs)
     {
