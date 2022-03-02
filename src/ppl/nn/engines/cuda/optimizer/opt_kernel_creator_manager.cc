@@ -167,11 +167,14 @@ OptKernelCreatorManager::OptKernelCreatorManager() {
     REGISTER_OPT_KERNEL_CREATOR("", "ConstantOfShape", 9, 16, ConstantOfShapeOp);
     REGISTER_OPT_KERNEL_CREATOR("", "Conv", 11, 16, ConvOp);
     REGISTER_OPT_KERNEL_CREATOR("", "ConvTranspose", 11, 16, ConvTransposeOp);
+    REGISTER_OPT_KERNEL_CREATOR("", "Cos", 1, 16, CosOp);
+    REGISTER_OPT_KERNEL_CREATOR("", "CumSum", 1, 16, CumSumOp);
     // D
     REGISTER_OPT_KERNEL_CREATOR("", "DepthToSpace", 11, 12, DepthToSpaceOp);
     REGISTER_OPT_KERNEL_CREATOR("", "Div", 7, 12, DivOp);
     // E
     REGISTER_OPT_KERNEL_CREATOR("", "Equal", 11, 12, EqualOp);
+    REGISTER_OPT_KERNEL_CREATOR("", "Erf", 1, 16, ErfOp);
     REGISTER_OPT_KERNEL_CREATOR("", "Exp", 6, 12, ExpOp);
     REGISTER_OPT_KERNEL_CREATOR("", "Expand", 8, 12, ExpandOp);
     // F
@@ -224,6 +227,7 @@ OptKernelCreatorManager::OptKernelCreatorManager() {
     REGISTER_OPT_KERNEL_CREATOR("", "SequenceAt", 11, 16, SequenceAtOp);
     REGISTER_OPT_KERNEL_CREATOR("", "Shape", 1, 12, ShapeOp);
     REGISTER_OPT_KERNEL_CREATOR("", "Sigmoid", 6, 12, SigmoidOp);
+    REGISTER_OPT_KERNEL_CREATOR("", "Sin", 1, 16, SinOp);
     REGISTER_OPT_KERNEL_CREATOR("", "Slice", 11, 12, SliceOp);
     REGISTER_OPT_KERNEL_CREATOR("", "Softmax", 11, 12, SoftmaxOp);
     REGISTER_OPT_KERNEL_CREATOR("", "Split", 11, 12, SplitOp);
