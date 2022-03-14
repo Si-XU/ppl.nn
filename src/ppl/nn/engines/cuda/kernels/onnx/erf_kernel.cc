@@ -17,16 +17,16 @@
 
 #include "ppl/nn/engines/cuda/kernels/onnx/erf_kernel.h"
 
+#include "cudakernel/unary/unary.h"
 namespace ppl { namespace nn { namespace cuda {
 
 ppl::common::RetCode ErfKernel::DoExecute(KernelExecContext* ctx) {
     auto input = ctx->GetInput<TensorImpl>(0);
     auto output = ctx->GetOutput<TensorImpl>(0);
 
-    // TODO: Add Erf Forward
-    // ppl::common::RetCode status = PPLCUDAErfForwardImp();
-
-    return ppl::common::RC_UNSUPPORTED;
+    ppl::common::RetCode status = PPLCUDAUnaryErfForwardImp(GetStream(), input->GetShape(), input->GetBufferPtr(),
+                                                              output->GetShape(), output->GetBufferPtr());
+    return status;
 }
 
 }}} // namespace ppl::nn::cuda

@@ -17,10 +17,17 @@
 
 #include "ppl/nn/engines/cuda/kernels/onnx/cos_kernel.h"
 
+#include "cudakernel/unary/unary.h"
+
 namespace ppl { namespace nn { namespace cuda {
 
 ppl::common::RetCode CosKernel::DoExecute(KernelExecContext* ctx) {
-    return ppl::common::RC_UNSUPPORTED;
+    auto input = ctx->GetInput<TensorImpl>(0);
+    auto output = ctx->GetOutput<TensorImpl>(0);
+
+    ppl::common::RetCode status = PPLCUDAUnaryCosForwardImp(GetStream(), input->GetShape(), input->GetBufferPtr(),
+                                                              output->GetShape(), output->GetBufferPtr());
+    return status;
 }
 
 }}} // namespace ppl::nn::cuda

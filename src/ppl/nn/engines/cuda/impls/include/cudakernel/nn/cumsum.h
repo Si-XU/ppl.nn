@@ -15,18 +15,17 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "ppl/nn/engines/cuda/kernels/onnx/sin_kernel.h"
+#ifndef PPLCUDA_KERNEL_INCLUDE_CUMSUM_CUMSUM_H_
+#define PPLCUDA_KERNEL_INCLUDE_CUMSUM_CUMSUM_H_
+#include "ppl/nn/common/tensor_shape.h"
+#include "ppl/common/retcode.h"
+#include <cuda_runtime.h>
 
-#include "cudakernel/unary/unary.h"
-namespace ppl { namespace nn { namespace cuda {
+ppl::common::RetCode PPLCUDACumsumForwardImp(
+    cudaStream_t stream,
+    int axis,
+    const ppl::nn::TensorShape* input_shape,
+    const void* input,
+    void* output);
 
-ppl::common::RetCode SinKernel::DoExecute(KernelExecContext* ctx) {
-    auto input = ctx->GetInput<TensorImpl>(0);
-    auto output = ctx->GetOutput<TensorImpl>(0);
-
-    ppl::common::RetCode status = PPLCUDAUnarySinForwardImp(GetStream(), input->GetShape(), input->GetBufferPtr(),
-                                                              output->GetShape(), output->GetBufferPtr());
-    return status;
-}
-
-}}} // namespace ppl::nn::cuda
+#endif // PPLCUDA_KERNEL_INCLUDE_CUMSUM_CUMSUM_H_

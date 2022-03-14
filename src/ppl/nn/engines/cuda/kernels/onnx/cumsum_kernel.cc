@@ -17,10 +17,20 @@
 
 #include "ppl/nn/engines/cuda/kernels/onnx/cumsum_kernel.h"
 
+#include "cudakernel/nn/cumsum.h"
+
 namespace ppl { namespace nn { namespace cuda {
 
 ppl::common::RetCode CumSumKernel::DoExecute(KernelExecContext* ctx) {
     // TODO : ADD CumSum Forward
+    auto input = ctx->GetInput<TensorImpl>(0);
+    auto axis_tensor = ctx->GetInput<TensorImpl>(1);
+    auto output = ctx->GetOutput<TensorImpl>(0);
+    int axis = axis_tensor->GetBufferPtr<int>()[0];
+
+
+    ppl::common::RetCode status = PPLCUDACumsumForwardImp(GetStream(), axis, input->GetShape(), input->GetBufferPtr(),
+                                                            output->GetBufferPtr());
     
     return ppl::common::RC_SUCCESS;
 }
