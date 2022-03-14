@@ -15,25 +15,30 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "ppl/nn/engines/cuda/module/op_compile_manager.h"
+#ifndef _ST_HPC_PPL_NN_ENGINES_CUDA_KERNELS_ONNX_BGEMM_FP32_KERNEL_H_
+#define _ST_HPC_PPL_NN_ENGINES_CUDA_KERNELS_ONNX_BGEMM_FP32_KERNEL_H_
+
+#include "ppl/nn/engines/cuda/kernel.h"
+#include "ppl/nn/engines/cuda/params/gemm_extra_param.h"
 
 namespace ppl { namespace nn { namespace cuda {
 
-OpCompiler* OpCompilerManager::FindCompiler(const std::string& kernel_type) const {
-    auto res = type2compiler_.find(kernel_type);
-    if (res == type2compiler_.end()) {
-        return nullptr;
-    }
-    return res->second;
-}
+class MatMulFp32Kernel : public CudaKernel {
+public:
+    MatMulFp32Kernel(const ir::Node* node) : CudaKernel(node) {}
 
-OpCompilerManager::OpCompilerManager() {
-    type2compiler_.emplace("Conv", &conv_);
-    type2compiler_.emplace("Gemm", &gemm_);
-    // type2compiler_.emplace("MatMul", &gemm_);
-    type2compiler_.emplace("ConvTranspose", &convtranspose_);
-    type2compiler_.emplace("LSTM", &normal_);
-    type2compiler_.emplace("MMCVModulatedDeformConv2d", &normal_);
-}
+    void SetParam(const CudaGemmParam* p) {
+        param_ = p;
+    }
+
+private:
+    ppl::common::RetCode DoExecute(KernelExecContext*) override;
+    bool CanDoExecute(const KernelExecContext&) const override;
+
+private:
+    const CudaGemmParam* param_ = nullptr;
+};
 
 }}} // namespace ppl::nn::cuda
+
+#endif

@@ -15,25 +15,21 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "ppl/nn/engines/cuda/module/op_compile_manager.h"
+#ifndef PPLCUDA_KERNEL_INCLUDE_MATMUL_H_
+#define PPLCUDA_KERNEL_INCLUDE_MATMUL_H_
+#include "ppl/nn/common/tensor_shape.h"
+#include "ppl/common/retcode.h"
 
-namespace ppl { namespace nn { namespace cuda {
+#include "cuda.h"
 
-OpCompiler* OpCompilerManager::FindCompiler(const std::string& kernel_type) const {
-    auto res = type2compiler_.find(kernel_type);
-    if (res == type2compiler_.end()) {
-        return nullptr;
-    }
-    return res->second;
-}
+ppl::common::RetCode PPLCUDAMatmulForwardImp(
+    const cudaStream_t& stream,
+    const ppl::nn::TensorShape* input_shape,
+    const void* input,
+    const ppl::nn::TensorShape* weight_shape,
+    const void* weight,
+    const ppl::nn::TensorShape* output_shape,
+    void* output);
 
-OpCompilerManager::OpCompilerManager() {
-    type2compiler_.emplace("Conv", &conv_);
-    type2compiler_.emplace("Gemm", &gemm_);
-    // type2compiler_.emplace("MatMul", &gemm_);
-    type2compiler_.emplace("ConvTranspose", &convtranspose_);
-    type2compiler_.emplace("LSTM", &normal_);
-    type2compiler_.emplace("MMCVModulatedDeformConv2d", &normal_);
-}
 
-}}} // namespace ppl::nn::cuda
+#endif // PPLCUDA_KERNEL_INCLUDE_MATMUL_H_

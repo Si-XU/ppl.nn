@@ -19,6 +19,7 @@
 
 #include "ppl/nn/common/logger.h"
 #include "ppl/nn/engines/cuda/kernels/onnx/matmul_kernel.h"
+#include "ppl/nn/engines/cuda/kernels/onnx/matmul_fp32_kernel.h"
 #include "ppl/nn/oputils/onnx/reshape_matmul.h"
 
 using namespace std;
@@ -37,7 +38,8 @@ RetCode MatMulOp::Init(const OptKernelOptions& options) {
     param_.param.N = 1; // for converted mat B
 
     infer_type_func_ = [](InputOutputInfo* info, std::vector<CudaTensorQuant>* quant, datatype_t type) -> RetCode {
-        type = ppl::common::DATATYPE_FLOAT16;
+        // type = ppl::common::DATATYPE_FLOAT16;
+        type = ppl::common::DATATYPE_FLOAT32;
         ppl::common::RetCode status;
         if (type == DATATYPE_UNKNOWN) {
             status = InferInheritedType(info);
@@ -77,7 +79,9 @@ void MatMulOp::CopyParam(void*& param) {
 }
 
 KernelImpl* MatMulOp::CreateKernelImpl() const {
-    return CreateKernelImplWithParam<MatMulKernel>(&param_);
+    // return CreateKernelImplWithParam<MatMulKernel>(&param_);
+    return CreateKernelImplWithParam<MatMulFp32Kernel>(&param_);
+
 }
 
 }}} // namespace ppl::nn::cuda

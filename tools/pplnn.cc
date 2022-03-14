@@ -548,6 +548,7 @@ static bool SetInputsAllInOne(const string& input_file, const vector<vector<int6
     auto data = fm.Data();
     for (uint32_t c = 0; c < runtime->GetInputCount(); ++c) {
         auto t = runtime->GetInputTensor(c);
+        LOG(INFO) << c << " input name " << t->GetName();
 
         if (!input_shapes.empty()) {
             t->GetShape()->Reshape(input_shapes[c]);
@@ -624,6 +625,7 @@ static bool SetInputsOneByOne(const string& input_files_str, const vector<vector
         }
 
         auto t = runtime->GetInputTensor(i);
+        LOG(INFO) << i << " input name " << t->GetName();
 
         if (!input_shapes.empty()) {
             t->GetShape()->Reshape(input_shapes[i]);

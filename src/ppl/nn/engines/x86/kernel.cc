@@ -16,6 +16,8 @@
 // under the License.
 
 #include "ppl/nn/engines/x86/kernel.h"
+#include <memory>
+#include <fstream>
 using namespace std;
 using namespace ppl::common;
 
@@ -69,6 +71,25 @@ RetCode X86Kernel::Execute(KernelExecContext* ctx) {
             }
         }
     }
+
+for (uint32_t i = 0; i < ctx->GetOutputCount(); i++) {
+    auto output = ctx->GetOutput<TensorImpl>(i);
+    int save_bytes = output->GetShape()->GetDataType() == ppl::common::DATATYPE_FLOAT16 ?
+                    sizeof(float) * output->GetShape()->GetElementsExcludingPadding() :
+                    output->GetShape()->GetBytesExcludingPadding();
+    std::unique_ptr<char[]> out_data(new char[save_bytes]);
+    TensorShape tmp_shape(*output->GetShape());
+    if(output->GetShape()->GetDataType() == ppl::common::DATATYPE_FLOAT16) {
+        tmp_shape.SetDataType(ppl::common::DATATYPE_FLOAT32);
+    } else {
+        tmp_shape.SetDataType(output->GetShape()->GetDataType());
+    }
+    tmp_shape.SetDataFormat(ppl::common::DATAFORMAT_NDARRAY);
+    output->ConvertToHost(out_data.get(), tmp_shape);
+    std::string outputname = output->GetName();
+    std::ofstream out_fs(outputname + ".dat");
+    out_fs.write((char*)out_data.get(), save_bytes);
+}
 
     return status;
 }
