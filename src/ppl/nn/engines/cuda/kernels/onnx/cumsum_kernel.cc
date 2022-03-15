@@ -22,17 +22,26 @@
 namespace ppl { namespace nn { namespace cuda {
 
 ppl::common::RetCode CumSumKernel::DoExecute(KernelExecContext* ctx) {
-    // TODO : ADD CumSum Forward
     auto input = ctx->GetInput<TensorImpl>(0);
     auto axis_tensor = ctx->GetInput<TensorImpl>(1);
     auto output = ctx->GetOutput<TensorImpl>(0);
-    int axis = axis_tensor->GetBufferPtr<int>()[0];
+    int32_t axis = -1;
+    int64_t temp = -1;
+    auto axis_type = axis_tensor->GetShape()->GetDataType();
+    if (axis_type == ppl::common::DATATYPE_INT32) {
+        axis_tensor->ConvertToHost(&axis, *axis_tensor->GetShape());
+    } else if (axis_type == ppl::common::DATATYPE_INT64) {
+        axis_tensor->ConvertToHost(&temp, *axis_tensor->GetShape());
+        axis = temp;
+    } else {
+        return ppl::common::RC_UNSUPPORTED;
+    }
 
 
     ppl::common::RetCode status = PPLCUDACumsumForwardImp(GetStream(), axis, input->GetShape(), input->GetBufferPtr(),
                                                             output->GetBufferPtr());
     
-    return ppl::common::RC_SUCCESS;
+    return status;
 }
 
 }}} // namespace ppl::nn::cuda

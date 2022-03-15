@@ -23,11 +23,11 @@ using namespace ppl::common;
 namespace ppl { namespace nn { namespace cuda {
 
 RetCode CumSumOp::Init(const OptKernelOptions& options) {
-    auto status = GenericLoadParam(options, &param_);
-    if (status != RC_SUCCESS) {
-        LOG(ERROR) << "load param failed: " << GetRetCodeStr(status);
-        return status;
-    }
+    // auto status = GenericLoadParam(options, &param_);
+    // if (status != RC_SUCCESS) {
+    //     LOG(ERROR) << "load param failed: " << GetRetCodeStr(status);
+    //     return status;
+    // }
 
     infer_type_func_ = [](InputOutputInfo* info, std::vector<CudaTensorQuant>* quant, datatype_t type) -> RetCode {
         ppl::common::RetCode status;
