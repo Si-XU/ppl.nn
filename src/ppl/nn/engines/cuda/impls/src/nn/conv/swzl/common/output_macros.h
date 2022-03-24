@@ -74,7 +74,7 @@
 
 #define FUSE_RELU_V4(_has_relu)                                                                           \
         {                                                                                                 \
-	        if(_has_relu & dCv4_y_valid)                                                                  \
+	        if(_has_relu && dCv4_y_valid)                                                                  \
             {                                                                                             \
                 _Pragma("unroll") for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++)                           \
                 {                                                                                         \
@@ -92,7 +92,7 @@
 #if 0
 #define FUSE_RELU_V4(_has_relu)                                                                           \
         {                                                                                                 \
-	        if(_has_relu & dCv4_y_valid)                                                                  \
+	        if(_has_relu && dCv4_y_valid)                                                                  \
             {                                                                                             \
                 _Pragma("unroll") for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++)                           \
                 {                                                                                         \
@@ -121,7 +121,7 @@
 
 #define FUSE_CLIP_V4(_has_clip, _clip_max, _clip_min) \
         { \
-	        if(_has_clip & dCv4_y_valid) \
+	        if(_has_clip && dCv4_y_valid) \
             { \
                 _Pragma("unroll") for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
                 { \

@@ -31,10 +31,10 @@
                 if( dCv1_y_valid[1] && dCv1_x_valid[i] ) dCv1[concat_v1_off1 + dCv1_idx[i]] = C[Cv1_off + i + NUM_N_STEPS]; \
             } \
             \
-            dCv1_y_valid[0] = (dCv1_idy[0] < out_nhw); \
-            dCv1_y_valid[1] = (dCv1_idy[1] < out_nhw); \
             dCv1_idy[0]  += TILE_M_PER_STEP; \
             dCv1_idy[1]  += TILE_M_PER_STEP; \
+            dCv1_y_valid[0] = (dCv1_idy[0] < out_nhw); \
+            dCv1_y_valid[1] = (dCv1_idy[1] < out_nhw); \
         }
 
 #else
@@ -49,10 +49,10 @@
                 if( dCv1_y_valid[1] && dCv1_x_valid[i] ) dCv1[dCv1_idy[1] * num_flt_v2 + dCv1_idx[i]] = C[Cv1_off + i + NUM_N_STEPS]; \
             } \
             \
-            dCv1_y_valid[0] = (dCv1_idy[0] < out_nhw); \
-            dCv1_y_valid[1] = (dCv1_idy[1] < out_nhw); \
             dCv1_idy[0]  += TILE_M_PER_STEP; \
             dCv1_idy[1]  += TILE_M_PER_STEP; \
+            dCv1_y_valid[0] = (dCv1_idy[0] < out_nhw); \
+            dCv1_y_valid[1] = (dCv1_idy[1] < out_nhw); \
         }
 
 #endif
