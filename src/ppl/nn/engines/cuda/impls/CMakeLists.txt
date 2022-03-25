@@ -3,7 +3,8 @@ project(PPLCUDAKernel)
 
 set(_NVCC_FLAGS )
 if(CUDA_VERSION_MAJOR VERSION_GREATER_EQUAL "10")
-    set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_75,code=sm_75")
+    #set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_75,code=sm_75")
+    set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_80,code=sm_80")
 endif()
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${_NVCC_FLAGS}")
 
