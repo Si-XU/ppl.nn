@@ -74,8 +74,8 @@ double TuringIMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
         PPLCUDAConvolutionLoadAlgoParam(attr_param_.extra_param.algo_info);
         return 0.0f;
     } else { // Give the default kernel
-        attr_param_.extra_param.algo_info.algo_name = "nv2spkConv_imma8816_nhwc_fn_b128x64_w64x32_k16_s16_buf1";
-        attr_param_.extra_param.algo_info.kid = 4000;
+        attr_param_.extra_param.algo_info.algo_name = "nvSwzlSm75Int8Conv_imma8816_nhwc_fn_b256x64_w64x64_k64_buf2";
+        attr_param_.extra_param.algo_info.kid = 4955;
         attr_param_.extra_param.algo_info.splitk = 1;
         attr_param_.extra_param.algo_info.splitf = 1;
         PPLCUDAConvolutionLoadAlgoParam(attr_param_.extra_param.algo_info);
@@ -135,7 +135,8 @@ double TuringIMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
     temp_quant_param.d_flt_scale = wegiht_quant.addr;
     temp_quant_param.pre_scale = 0.0f;
 
-    auto stream = options.opt_stage_device->GetStream();
+    auto stream = options.device->GetStream();
+    int device_id = options.device->GetDeviceId();
 
 #ifdef PPLNN_ENABLE_CUDA_JIT
     // Do select
@@ -152,10 +153,10 @@ double TuringIMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
         temp_conv_param, temp_quant_param, temp_fuse_param);
 #else
     // Do select
-    auto timer = PPLCUDAConvolutionSelectKernelInt8(
-        stream, shape_in0.GetDataType(), (int4*)input_buffer.addr, (int4*)weight_buffer.addr, (int4*)output_buffer.addr,
-        (int4*)bias_buffer.addr, (int4*)temp_buffer.addr, attr_param_.extra_param.algo_info, temp_conv_param,
-        temp_quant_param, temp_fuse_param);
+    auto timer = PPLCUDAConvolutionSelectKernelInt8(device_id, stream, shape_in0.GetDataType(), (int4*)input_buffer.addr,
+                                                   (int4*)weight_buffer.addr, (int4*)output_buffer.addr,
+                                                   (int4*)bias_buffer.addr, (int4*)temp_buffer.addr,
+                                                   attr_param_.extra_param.algo_info, temp_conv_param, temp_quant_param, temp_fuse_param);
 #endif
     CudaArgs::AlgoSelects algo_select;
     algo_select.kname = attr_param_.extra_param.algo_info.algo_name;

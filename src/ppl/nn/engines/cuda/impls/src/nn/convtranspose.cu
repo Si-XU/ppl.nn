@@ -408,6 +408,7 @@ __global__ void reverse_flt(void *flt, void *rev_flt, const int C, const int R, 
 
 
 ppl::common::RetCode PPLCUDAConvTransposeCvt(
+    int device_id,
     cudaStream_t stream,
     const void* in_filter,
     void* temp_buffer,
@@ -441,9 +442,8 @@ ppl::common::RetCode PPLCUDAConvTransposeCvt(
     a_shape.Reshape({K, M});
     out_a_shape.Reshape({padM, padK});
 
-    __half* trans_flt = (__half*)temp_buffer;
-    //k_pad-crs 2 crsk_pad
-    ppl::common::RetCode status = PPLCUDATransposeForwardImp(stream,
+    ppl::common::RetCode status = PPLCUDATransposeForwardImp(device_id,
+                                                             stream,
                                                              trans_param,
                                                              &a_shape,
                                                              in_filter,
@@ -489,6 +489,7 @@ ppl::common::RetCode PPLCUDAConvTransposeCvt(
    input: nhwc_pad
 */
 ppl::common::RetCode PPLCUDAConvTransposeForward(
+    int device_id,
     cudaStream_t stream,
     ppl::nn::cuda::CUDAModule* module,
     ppl::nn::TensorShape* input_shape,
