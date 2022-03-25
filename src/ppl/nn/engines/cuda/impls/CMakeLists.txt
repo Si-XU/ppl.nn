@@ -28,7 +28,8 @@ execute_process(
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/int8_2spk/gen_2spk_int8_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_2spk
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/int8_idxn/gen_idxn_int8_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_idxn
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/2spk/gen_2spk_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/idxn/gen_idxn_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/idxn/gen_idxn_sm75_fp16_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/idxn/gen_idxn_sm80_fp16_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/swzl/gen_swzl_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/swzl
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif()
@@ -40,7 +41,7 @@ if(PPLNN_ENABLE_CUDA_JIT)
                                             src/nn/conv/gene_kernel.cc)
 else()
     file(GLOB_RECURSE CUDA_SRC ${CUDA_SRC} ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk/f*_kernels.cu
-                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/idxn_kernels*.cu
+                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/idxn_*_kernels.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/swzl/f*_kernels*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk/init*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/init*.cu

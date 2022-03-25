@@ -204,7 +204,8 @@ __inline__ void InitializeKernelContainerInt8(std::vector<kernel_info_t> &g_kern
         Initialize2spkConvFNKernelContainer(g_kernel_container);
         Initialize2spkConvFSKernelContainer(g_kernel_container);
 
-        InitializeIdxnConvKernelContainer(g_kernel_container);
+        InitializeIdxnSM75FP16ConvKernelContainer(g_kernel_container);
+        InitializeIdxnSM80FP16ConvKernelContainer(g_kernel_container);
 
         InitializeSwzlConvF1KernelContainer(g_kernel_container);
         InitializeSwzlConvF3KernelContainer(g_kernel_container);

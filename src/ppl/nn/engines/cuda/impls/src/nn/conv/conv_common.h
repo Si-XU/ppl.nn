@@ -548,7 +548,8 @@ void Initialize2spkConvF3KernelContainer(std::vector<kernel_info_t> &kernel_cont
 void Initialize2spkConvFNKernelContainer(std::vector<kernel_info_t> &kernel_container);
 void Initialize2spkConvFSKernelContainer(std::vector<kernel_info_t> &kernel_container);
 
-void InitializeIdxnConvKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void InitializeIdxnSM75FP16ConvKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void InitializeIdxnSM80FP16ConvKernelContainer(std::vector<kernel_info_t> &kernel_container);
 
 void InitializeSwzlConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
 void InitializeSwzlConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
