@@ -34,7 +34,7 @@ class KernelInfo:
                 "_w" + str(self.warp_y) + "x" + str(self.warp_x) + \
                 "_k" + str(self.k_size) + "_s" + str(self.s_size) + "_buf" + str(self.buf_size)
 
-        self.kname = "nv2spkConv_hmma1688_nhwc_" + self.flt_size + self.kconfig
+        self.kname = "nv2spkSM75Conv_hmma1688_nhwc_" + self.flt_size + self.kconfig
         self.fname = self.flt_size + "/2spk_"  + self.flt_size + self.kconfig + ".cu"
 
         self.HALF_SIZE = 2
@@ -267,7 +267,7 @@ class LutSourceFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#include  \"2spk/%s_lut_kernels.h\"\n\n" % flt_size)
+        self.f.write("#include  \"2spk/sm75/fp16/%s_lut_kernels.h\"\n\n" % flt_size)
 
         if self.flt_size == "f1" or self.flt_size == "f3" or self.flt_size == "fn":
             self.f.write("#define ENABLE_FUSE\n\n")
@@ -276,7 +276,7 @@ class LutSourceFile:
 
 
     def AppendKernel(self, fname):
-        self.f.write("#include \"2spk/%s\"\n" % fname)
+        self.f.write("#include \"2spk/sm75/fp16/%s\"\n" % fname)
 
     def Close(self):
         self.f.close()
@@ -290,7 +290,7 @@ class SpkSourceFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#include  \"2spk/%s_spk_kernels.h\"\n\n" % flt_size)
+        self.f.write("#include  \"2spk/sm75/fp16/%s_spk_kernels.h\"\n\n" % flt_size)
 
         if self.flt_size == "fs":
             self.f.write("#define ENABLE_SPLITF\n\n")
@@ -298,7 +298,7 @@ class SpkSourceFile:
         self.f.write("#define ENABLE_SPLITK\n\n")
 
     def AppendKernel(self, fname):
-        self.f.write("#include \"2spk/%s\"\n" % fname)
+        self.f.write("#include \"2spk/sm75/fp16/%s\"\n" % fname)
 
     def Close(self):
         self.f.close()
@@ -312,8 +312,8 @@ class LutHeaderFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#ifndef __PPLCUDA_2SPK_%s_LUT_KERNELS_H__\n" % flt_size.upper())
-        self.f.write("#define __PPLCUDA_2SPK_%s_LUT_KERNELS_H__\n" % flt_size.upper())
+        self.f.write("#ifndef __PPLCUDA_2SPK_SM75_FP16_%s_LUT_KERNELS_H__\n" % flt_size.upper())
+        self.f.write("#define __PPLCUDA_2SPK_SM75_FP16_%s_LUT_KERNELS_H__\n" % flt_size.upper())
 
         self.f.write("\n\n#include \"kernel_type.h\"\n\n")
 
@@ -333,8 +333,8 @@ class SpkHeaderFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#ifndef __PPLCUDA_2SPK_%s_SPK_KERNELS_H__\n" % flt_size.upper())
-        self.f.write("#define __PPLCUDA_2SPK_%s_SPK_KERNELS_H__\n" % flt_size.upper())
+        self.f.write("#ifndef __PPLCUDA_2SPK_SM75_FP16_%s_SPK_KERNELS_H__\n" % flt_size.upper())
+        self.f.write("#define __PPLCUDA_2SPK_SM75_FP16_%s_SPK_KERNELS_H__\n" % flt_size.upper())
 
         self.f.write("\n\n#include \"kernel_type.h\"\n\n")
 
@@ -356,10 +356,10 @@ class InitFile:
 
         self.f.write("#include \"conv_common.h\"\n\n")
 
-        self.f.write("#include \"2spk/%s_lut_kernels.h\"\n" % self.flt_size)
-        self.f.write("#include \"2spk/%s_spk_kernels.h\"\n\n" % self.flt_size)
+        self.f.write("#include \"2spk/sm75/fp16/%s_lut_kernels.h\"\n" % self.flt_size)
+        self.f.write("#include \"2spk/sm75/fp16/%s_spk_kernels.h\"\n\n" % self.flt_size)
 
-        self.f.write("void Initialize2spkConv%sKernelContainer(std::vector<kernel_info_t> & kernel_container)\n{\n" % self.flt_size.upper())
+        self.f.write("void Initialize2spkSM75FP16Conv%sKernelContainer(std::vector<kernel_info_t> & kernel_container)\n{\n" % self.flt_size.upper())
 
     def AppendKernel(self, kname):
         self.f.write("\tADD_KERNEL(CONV_2SPK_%s, \"%s\", &%s, &%s, NULL);\n" % (self.flt_size.upper(), kname, kname, kname))
