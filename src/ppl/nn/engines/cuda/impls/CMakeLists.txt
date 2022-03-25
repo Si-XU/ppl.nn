@@ -42,10 +42,12 @@ if(PPLNN_ENABLE_CUDA_JIT)
                                             src/nn/conv/gene_kernel.cc)
 else()
     file(GLOB_RECURSE CUDA_SRC ${CUDA_SRC} ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk/sm75/fp16/f*_kernels.cu
-                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/sm75/fp16/idxn_*_kernels.cu
+                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/sm75/fp16/idxn_kernels.cu
+                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/sm80/fp16/idxn_kernels.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/swzl/f*_kernels*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk/sm75/fp16/init*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/sm75/fp16/init*.cu
+                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/sm80/fp16/init*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/swzl/init*.cu)
 endif()
 
