@@ -31,7 +31,7 @@ class KernelInfo:
                 "_k" + str(self.k_size) + "_s" + str(self.s_size)
 
         self.kname = "nvIdxnSM75Conv_hmma1688_nhwc" + self.kconfig
-        self.fname = "sm75_fp16_kernels" + "/idxn"  + self.kconfig + ".cu"
+        self.fname = "kernels" + "/idxn"  + self.kconfig + ".cu"
 
         self.WARP_SIZE = 32
         self.MMA_Y = 16
@@ -177,16 +177,16 @@ class KernelInfo:
 class IdxSourceFile:
     def __init__(self, path):
         self.path = path
-        self.fname = "idxn_sm75_fp16_kernels.cu"
+        self.fname = "idxn_kernels.cu"
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#include  \"idxn/idxn_sm75_fp16_kernels.h\"\n\n")
+        self.f.write("#include  \"idxn/sm75/fp16/idxn_kernels.h\"\n\n")
 
         self.f.write("#define ENABLE_FUSE\n\n")
 
     def AppendKernel(self, fname):
-        self.f.write("#include \"idxn/%s\"\n" % fname)
+        self.f.write("#include \"idxn/sm75/fp16/%s\"\n" % fname)
 
     def Close(self):
         self.f.close()
@@ -194,7 +194,7 @@ class IdxSourceFile:
 class IdxHeaderFile:
     def __init__(self, path):
         self.path = path
-        self.fname = "idxn_sm75_fp16_kernels.h"
+        self.fname = "idxn_kernels.h"
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
@@ -213,13 +213,13 @@ class IdxHeaderFile:
 class InitFile:
     def __init__(self, path):
         self.path = path
-        self.fname = "init_idxn_sm75_fp16_kernels.cu"
+        self.fname = "init_idxn_kernels.cu"
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
         self.f.write("#include \"conv_common.h\"\n\n")
 
-        self.f.write("#include \"idxn/idxn_sm75_fp16_kernels.h\"\n\n")
+        self.f.write("#include \"idxn/sm75/fp16/idxn_kernels.h\"\n\n")
 
         self.f.write("void InitializeIdxnSM75FP16ConvKernelContainer(std::vector<kernel_info_t> & kernel_container)\n{\n")
 
@@ -276,7 +276,7 @@ def GenAllKernels(parent_path):
 
     init_file = InitFile(parent_path)
 
-    path = parent_path + '/sm75_fp16_kernels'
+    path = parent_path + '/kernels'
 
     if not os.path.exists(path):
         os.makedirs(path)
