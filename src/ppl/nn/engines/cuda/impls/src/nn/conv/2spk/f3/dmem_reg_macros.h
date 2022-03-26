@@ -101,6 +101,43 @@
         _regB[7] = (_flt_n_valid[7] && _flt_c_v8_valid) ? _dB[_dBv4_off[7]] : ZEROv4; \
     }
 
+#define LOAD_dBv4_SIZE16(_regB, _dB, _dBv4_off, _flt_c_v8_valid, _flt_n_valid)           \
+    {                                                                                    \
+        _dBv4_off[0] += flt_lut.idx[lut_id];                                             \
+        _dBv4_off[1] += flt_lut.idx[lut_id];                                             \
+        _dBv4_off[2] += flt_lut.idx[lut_id];                                             \
+        _dBv4_off[3] += flt_lut.idx[lut_id];                                             \
+        _dBv4_off[4] += flt_lut.idx[lut_id];                                             \
+        _dBv4_off[5] += flt_lut.idx[lut_id];                                             \
+        _dBv4_off[6] += flt_lut.idx[lut_id];                                             \
+        _dBv4_off[7] += flt_lut.idx[lut_id];                                             \
+        _dBv4_off[8] += flt_lut.idx[lut_id];                                             \
+        _dBv4_off[9] += flt_lut.idx[lut_id];                                             \
+        _dBv4_off[10] += flt_lut.idx[lut_id];                                            \
+        _dBv4_off[11] += flt_lut.idx[lut_id];                                            \
+        _dBv4_off[12] += flt_lut.idx[lut_id];                                            \
+        _dBv4_off[13] += flt_lut.idx[lut_id];                                            \
+        _dBv4_off[14] += flt_lut.idx[lut_id];                                            \
+        _dBv4_off[15] += flt_lut.idx[lut_id];                                            \
+                                                                                         \
+        _regB[0] = (_flt_n_valid[0] && _flt_c_v8_valid) ? _dB[_dBv4_off[0]] : ZEROv4;    \
+        _regB[1] = (_flt_n_valid[1] && _flt_c_v8_valid) ? _dB[_dBv4_off[1]] : ZEROv4;    \
+        _regB[2] = (_flt_n_valid[2] && _flt_c_v8_valid) ? _dB[_dBv4_off[2]] : ZEROv4;    \
+        _regB[3] = (_flt_n_valid[3] && _flt_c_v8_valid) ? _dB[_dBv4_off[3]] : ZEROv4;    \
+        _regB[4] = (_flt_n_valid[4] && _flt_c_v8_valid) ? _dB[_dBv4_off[4]] : ZEROv4;    \
+        _regB[5] = (_flt_n_valid[5] && _flt_c_v8_valid) ? _dB[_dBv4_off[5]] : ZEROv4;    \
+        _regB[6] = (_flt_n_valid[6] && _flt_c_v8_valid) ? _dB[_dBv4_off[6]] : ZEROv4;    \
+        _regB[7] = (_flt_n_valid[7] && _flt_c_v8_valid) ? _dB[_dBv4_off[7]] : ZEROv4;    \
+        _regB[8] = (_flt_n_valid[8] && _flt_c_v8_valid) ? _dB[_dBv4_off[8]] : ZEROv4;    \
+        _regB[9] = (_flt_n_valid[9] && _flt_c_v8_valid) ? _dB[_dBv4_off[9]] : ZEROv4;    \
+        _regB[10] = (_flt_n_valid[10] && _flt_c_v8_valid) ? _dB[_dBv4_off[10]] : ZEROv4; \
+        _regB[11] = (_flt_n_valid[11] && _flt_c_v8_valid) ? _dB[_dBv4_off[11]] : ZEROv4; \
+        _regB[12] = (_flt_n_valid[12] && _flt_c_v8_valid) ? _dB[_dBv4_off[12]] : ZEROv4; \
+        _regB[13] = (_flt_n_valid[13] && _flt_c_v8_valid) ? _dB[_dBv4_off[13]] : ZEROv4; \
+        _regB[14] = (_flt_n_valid[14] && _flt_c_v8_valid) ? _dB[_dBv4_off[14]] : ZEROv4; \
+        _regB[15] = (_flt_n_valid[15] && _flt_c_v8_valid) ? _dB[_dBv4_off[15]] : ZEROv4; \
+    }
+
 #define SET_dBv4_BOUND(_step_id, _dBv4_off, _flt_n_valid)                            \
     {                                                                                \
         int _flt_n_id = cta_idx * TILE_N_PER_CTA +                                   \
@@ -258,4 +295,73 @@
         _regA[13] = ((_flt_hw_bid & in_hw_mask[13]) && _in_c_v8_valid) ? _dA[_dAv4_off[13]] : ZEROv4; \
         _regA[14] = ((_flt_hw_bid & in_hw_mask[14]) && _in_c_v8_valid) ? _dA[_dAv4_off[14]] : ZEROv4; \
         _regA[15] = ((_flt_hw_bid & in_hw_mask[15]) && _in_c_v8_valid) ? _dA[_dAv4_off[15]] : ZEROv4; \
+    }
+
+#define LOAD_dAv4_SIZE32(_regA, _dA, _dAv4_off, _in_c_v8_valid, _flt_hw_bid)                          \
+    {                                                                                                 \
+        _dAv4_off[0] += in_lut.idx[lut_id];                                                           \
+        _dAv4_off[1] += in_lut.idx[lut_id];                                                           \
+        _dAv4_off[2] += in_lut.idx[lut_id];                                                           \
+        _dAv4_off[3] += in_lut.idx[lut_id];                                                           \
+        _dAv4_off[4] += in_lut.idx[lut_id];                                                           \
+        _dAv4_off[5] += in_lut.idx[lut_id];                                                           \
+        _dAv4_off[6] += in_lut.idx[lut_id];                                                           \
+        _dAv4_off[7] += in_lut.idx[lut_id];                                                           \
+        _dAv4_off[8] += in_lut.idx[lut_id];                                                           \
+        _dAv4_off[9] += in_lut.idx[lut_id];                                                           \
+        _dAv4_off[10] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[11] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[12] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[13] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[14] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[15] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[16] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[17] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[18] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[19] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[20] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[21] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[22] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[23] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[24] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[25] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[26] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[27] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[28] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[29] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[30] += in_lut.idx[lut_id];                                                          \
+        _dAv4_off[31] += in_lut.idx[lut_id];                                                          \
+                                                                                                      \
+        _regA[0]  = ((_flt_hw_bid & in_hw_mask[0]) && _in_c_v8_valid) ? _dA[_dAv4_off[0]] : ZEROv4;   \
+        _regA[1]  = ((_flt_hw_bid & in_hw_mask[1]) && _in_c_v8_valid) ? _dA[_dAv4_off[1]] : ZEROv4;   \
+        _regA[2]  = ((_flt_hw_bid & in_hw_mask[2]) && _in_c_v8_valid) ? _dA[_dAv4_off[2]] : ZEROv4;   \
+        _regA[3]  = ((_flt_hw_bid & in_hw_mask[3]) && _in_c_v8_valid) ? _dA[_dAv4_off[3]] : ZEROv4;   \
+        _regA[4]  = ((_flt_hw_bid & in_hw_mask[4]) && _in_c_v8_valid) ? _dA[_dAv4_off[4]] : ZEROv4;   \
+        _regA[5]  = ((_flt_hw_bid & in_hw_mask[5]) && _in_c_v8_valid) ? _dA[_dAv4_off[5]] : ZEROv4;   \
+        _regA[6]  = ((_flt_hw_bid & in_hw_mask[6]) && _in_c_v8_valid) ? _dA[_dAv4_off[6]] : ZEROv4;   \
+        _regA[7]  = ((_flt_hw_bid & in_hw_mask[7]) && _in_c_v8_valid) ? _dA[_dAv4_off[7]] : ZEROv4;   \
+        _regA[8]  = ((_flt_hw_bid & in_hw_mask[8]) && _in_c_v8_valid) ? _dA[_dAv4_off[8]] : ZEROv4;   \
+        _regA[9]  = ((_flt_hw_bid & in_hw_mask[9]) && _in_c_v8_valid) ? _dA[_dAv4_off[9]] : ZEROv4;   \
+        _regA[10] = ((_flt_hw_bid & in_hw_mask[10]) && _in_c_v8_valid) ? _dA[_dAv4_off[10]] : ZEROv4; \
+        _regA[11] = ((_flt_hw_bid & in_hw_mask[11]) && _in_c_v8_valid) ? _dA[_dAv4_off[11]] : ZEROv4; \
+        _regA[12] = ((_flt_hw_bid & in_hw_mask[12]) && _in_c_v8_valid) ? _dA[_dAv4_off[12]] : ZEROv4; \
+        _regA[13] = ((_flt_hw_bid & in_hw_mask[13]) && _in_c_v8_valid) ? _dA[_dAv4_off[13]] : ZEROv4; \
+        _regA[14] = ((_flt_hw_bid & in_hw_mask[14]) && _in_c_v8_valid) ? _dA[_dAv4_off[14]] : ZEROv4; \
+        _regA[15] = ((_flt_hw_bid & in_hw_mask[15]) && _in_c_v8_valid) ? _dA[_dAv4_off[15]] : ZEROv4; \
+        _regA[16] = ((_flt_hw_bid & in_hw_mask[16]) && _in_c_v8_valid) ? _dA[_dAv4_off[16]] : ZEROv4; \
+        _regA[17] = ((_flt_hw_bid & in_hw_mask[17]) && _in_c_v8_valid) ? _dA[_dAv4_off[17]] : ZEROv4; \
+        _regA[18] = ((_flt_hw_bid & in_hw_mask[18]) && _in_c_v8_valid) ? _dA[_dAv4_off[18]] : ZEROv4; \
+        _regA[19] = ((_flt_hw_bid & in_hw_mask[19]) && _in_c_v8_valid) ? _dA[_dAv4_off[19]] : ZEROv4; \
+        _regA[20] = ((_flt_hw_bid & in_hw_mask[20]) && _in_c_v8_valid) ? _dA[_dAv4_off[20]] : ZEROv4; \
+        _regA[21] = ((_flt_hw_bid & in_hw_mask[21]) && _in_c_v8_valid) ? _dA[_dAv4_off[21]] : ZEROv4; \
+        _regA[22] = ((_flt_hw_bid & in_hw_mask[22]) && _in_c_v8_valid) ? _dA[_dAv4_off[22]] : ZEROv4; \
+        _regA[23] = ((_flt_hw_bid & in_hw_mask[23]) && _in_c_v8_valid) ? _dA[_dAv4_off[23]] : ZEROv4; \
+        _regA[24] = ((_flt_hw_bid & in_hw_mask[24]) && _in_c_v8_valid) ? _dA[_dAv4_off[24]] : ZEROv4; \
+        _regA[25] = ((_flt_hw_bid & in_hw_mask[25]) && _in_c_v8_valid) ? _dA[_dAv4_off[25]] : ZEROv4; \
+        _regA[26] = ((_flt_hw_bid & in_hw_mask[26]) && _in_c_v8_valid) ? _dA[_dAv4_off[26]] : ZEROv4; \
+        _regA[27] = ((_flt_hw_bid & in_hw_mask[27]) && _in_c_v8_valid) ? _dA[_dAv4_off[27]] : ZEROv4; \
+        _regA[28] = ((_flt_hw_bid & in_hw_mask[28]) && _in_c_v8_valid) ? _dA[_dAv4_off[28]] : ZEROv4; \
+        _regA[29] = ((_flt_hw_bid & in_hw_mask[29]) && _in_c_v8_valid) ? _dA[_dAv4_off[29]] : ZEROv4; \
+        _regA[30] = ((_flt_hw_bid & in_hw_mask[30]) && _in_c_v8_valid) ? _dA[_dAv4_off[30]] : ZEROv4; \
+        _regA[31] = ((_flt_hw_bid & in_hw_mask[31]) && _in_c_v8_valid) ? _dA[_dAv4_off[31]] : ZEROv4; \
     }

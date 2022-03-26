@@ -73,6 +73,13 @@
 #undef _C16_
 #undef _C32_
 
+#undef _0BYTE_
+#undef _1BYTE_
+#undef _2BYTE_
+#undef _4BYTE_
+#undef _8BYTE_
+#undef _16BYTE_
+
 #undef _1INT_
 #undef _2INT_
 #undef _4INT_
@@ -109,14 +116,18 @@
 #undef _INT_TO_2HALF_
 #undef _INT2_TO_2HALF2_
 #undef _INT2_TO_2INT_
+#undef _INT2_TO_4HALF_
 
+#undef _INT8_TO_2INT4_
 #undef _INT4_TO_INT4_
 #undef _INT4_TO_2INT2_
 #undef _INT4_TO_4INT_
 #undef _INT4_TO_4HALF2_
 #undef _INT4_TO_8HALF_
+#undef _INT4_TO_16BYTE_
 
 #undef SMEM_ROW_V1_SIZE
+#undef SMEM_ROW_V2_SIZE
 #undef SMEM_ROW_V4_SIZE
 #undef SMEM_ROW_BYTE_SIZE
 #undef SMEM_ROW_BIT_SIZE
@@ -130,7 +141,7 @@
 #undef TILE_N_PER_MMA
 #undef TILE_M_PER_MMA_HALF
 
-#undef MMA_SIZE_Y_IN_THD
+#undef MMA_SIZE_X_IN_THD
 #undef MMA_SIZE_Y_IN_THD
 
 #undef MMA_SIZE_X_IN_BITS
@@ -157,6 +168,10 @@
 
 #undef CTA_SIZE_IN_WARP
 #undef CTA_SIZE_IN_THD
+
+#undef WARP_SIZE_IN_THD_HALF
+#undef WARP_SIZE_IN_THD_QTR
+
 #undef CTA_SIZE_IN_BITS
 
 ////////////////////////////////////////
@@ -212,6 +227,7 @@
 #undef TILE_K_V4_PER_KMA
 #undef TILE_K_V8_PER_KMA
 
+
 /////////////////////
 // tile n
 
@@ -252,6 +268,9 @@
 ////////////////////////////////////////
 
 #undef C_ITEMS_PER_THD
+#undef HC_ITEMS_PER_THD
+#undef Cv2_ITEMS_PER_THD
+#undef Cv4_ITEMS_PER_THD
 
 ////////////////////////////////////////
 // load A and B from device memory macros
@@ -273,8 +292,7 @@
 // shared memory size macros
 ////////////////////////////////////////
 
-#undef USE_1BUF
-#undef USE_2BUF
+#undef BUF_NUM
 
 #undef SM_A_SIZE
 #undef SM_B_SIZE
@@ -332,6 +350,8 @@
 #undef FWD_FLT_SIZE4
 #undef FWD_FLT_SIZE8
 #undef FWD_FLT_SIZE16
+
+#undef SET_BOUND_FLT3
 
 ////////////////////////////////////////
 // mma macros
@@ -443,6 +463,7 @@
 #undef LOAD_dAv4_SIZE4
 #undef LOAD_dAv4_SIZE8
 #undef LOAD_dAv4_SIZE16
+#undef LOAD_dAv4_SIZE32
 
 #undef LOAD_dAv4
 
@@ -461,28 +482,59 @@
 #undef LOAD_dBv4_SIZE4
 #undef LOAD_dBv4_SIZE8
 #undef LOAD_dBv4_SIZE16
+#undef LOAD_dBv4_SIZE32
 
 #undef LOAD_dBv4
 
 #undef SET_dBv4_BOUND
 
 /////////////////////////////////////////////////////
+// common async copy macros
+/////////////////////////////////////////////////////
+
+#undef PRED_CP_ASYNC_CA
+#undef PRED_CP_ASYNC_CA_L2_PREFETCH
+
+#undef PRED_CP_ASYNC_CG
+#undef PRED_CP_ASYNC_CG_L2_PREFETCH
+
+#undef CP_ASYNC_ZFILL_CA
+#undef CP_ASYNC_ZFILL_CA_L2_PREFETCH
+
+#undef CP_ASYNC_ZFILL_CG
+#undef CP_ASYNC_ZFILL_CG_L2_PREFETCH
+
+#undef PRED_CP_ASYNC_ZFILL_CA
+#undef PRED_CP_ASYNC_ZFILL_CA_L2_PREFETCH
+
+#undef PRED_CP_ASYNC_ZFILL_CG
+#undef PRED_CP_ASYNC_ZFILL_CG_L2_PREFETCH
+
+#undef CP_ASYNC_FENSE
+#undef CP_ASYNC_WAIT_ALL_BUT
+#undef CP_ASYNC_WAIT_ALL
+
+#undef CP_ASYNC
+
+/////////////////////////////////////////////////////
 // common write shared memory macros
 /////////////////////////////////////////////////////
 
-#undef SWITCH_BUFFER
+////////////////////////////////////////
+// k group macros
+////////////////////////////////////////
 
-#undef FWD_KGROUP_ODD
-#undef FWD_KGROUP_EVEN
+#undef INFLIGHT_BUF_NUM
+
+#undef FWD_BUF
+
+#undef FWD_KGROUP_GAP1
+#undef FWD_KGROUP_GAP2
 
 #undef FWD_KGROUP_STEP1
 #undef FWD_KGROUP_STEP2
 #undef FWD_KGROUP_STEP3
 #undef FWD_KGROUP_STEP4
-
-#undef C_ITEMS_PER_THD
-#undef HC_ITEMS_PER_THD
-#undef Cv4_ITEMS_PER_THD
 
 //////////////////////////
 // write sA & sB
@@ -497,6 +549,7 @@
 #undef WRITE_sUv4_SIZE4
 #undef WRITE_sUv4_SIZE8
 #undef WRITE_sUv4_SIZE16
+#undef WRITE_sUv4_SIZE32
 
 #undef WRITE_sAv4
 #undef WRITE_sBv4
@@ -516,14 +569,15 @@
 #undef READ_sUv1_SIZE2
 #undef READ_sUv1_SIZE4
 
-#undef READ_sUv1_1x1
-#undef READ_sUv1_2x1
+#undef READ_sUv1_K1_1x1
+#undef READ_sUv1_K1_1x2
+#undef READ_sUv1_K1_1x4
+#undef READ_sUv1_K1_1x8
 
-#undef READ_sUv1_1x2
-#undef READ_sUv1_2x2
-
-#undef READ_sUv1_1x4
-#undef READ_sUv1_2x4
+#undef READ_sUv1_K1_2x1
+#undef READ_sUv1_K1_2x2
+#undef READ_sUv1_K1_2x4
+#undef READ_sUv1_K1_2x8
 
 #undef READ_sAv1
 #undef READ_sBv1
@@ -536,9 +590,24 @@
 
 #undef ADD_BIAS_V4
 
+////////////////////////////////////////
+// fuse size macros
+////////////////////////////////////////
+
+#undef REDUCE_V4_SIZE
+#undef Rv4
+
+////////////////////////////////////////
+// fuse macros
+////////////////////////////////////////
+
 #undef FUSE_RELU_V4
 #undef FUSE_CLIP_V4
 #undef FUSE_PRELU_V4
 #undef FUSE_ELT_V4
 
 #undef SET_CONCAT_OFF_V4
+
+#undef HADD2_INST
+#undef HMAX2_INST
+#undef HMIN2_INST

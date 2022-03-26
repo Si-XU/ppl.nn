@@ -85,6 +85,8 @@ struct kernel_info_t {
     int flt_pad_size; // for idxn conv
 
     int cta_size_in_thd;
+    int buf_num;
+    int smem_size_v1; // smem size by INT1
 
     std::string kname;
 
@@ -121,6 +123,8 @@ struct kernel_info_t {
         flt_pad_size = -1;
 
         cta_size_in_thd = -1;
+        buf_num = -1;
+        smem_size_v1 = -1;
     }
 
     kernel_info_t(int kid_, conv_ktype_t ktype_, const char kname_[], int8_lut_kernel_t * lut_kptr_, int8_spk_kernel_t * spk_kptr_, int8_idx_kernel_t * idx_kptr_)
@@ -181,6 +185,8 @@ struct kernel_info_t {
             cta_size_in_thd = (tile_m_per_cta / tile_m_per_warp) * \
                               (tile_n_per_cta / tile_n_per_warp) * \
                               WARP_SIZE;
+
+            smem_size_v1 = (tile_m_per_cta + cta_size_in_thd) * _INT4_TO_4INT_;
         } else if (ktype == CONV_2SPK_F1 || ktype == CONV_2SPK_F3 || ktype == CONV_2SPK_FN || ktype == CONV_2SPK_FS) {
             if (strstr(kname_substrs[3].c_str(), "f1"))
                 flt_size = 1;
@@ -197,11 +203,18 @@ struct kernel_info_t {
             sscanf(kname_substrs[5].c_str(), "w%dx%d", &tile_m_per_warp, &tile_n_per_warp);
             sscanf(kname_substrs[6].c_str(), "k%d", &tile_k_per_cta);
             sscanf(kname_substrs[7].c_str(), "s%d", &tile_k_per_set);
+            sscanf(kname_substrs[8].c_str(), "buf%d", &buf_num);
 
             cta_size_in_thd = (tile_m_per_cta / tile_m_per_warp) *
                               (tile_n_per_cta / tile_n_per_warp) *
                               (tile_k_per_cta / tile_k_per_set) *
                               WARP_SIZE;
+
+            int smem_a_v1 = tile_m_per_cta * tile_k_per_cta * buf_num / _2HALF_TO_INT_;
+            int smem_b_v1 = tile_n_per_cta * tile_k_per_cta * buf_num / _2HALF_TO_INT_;
+            int smem_r_v1 = tile_m_per_cta * tile_n_per_cta * (tile_k_per_cta / tile_k_per_set) / _2HALF_TO_INT_;
+
+            smem_size_v1 = Max(smem_a_v1 + smem_b_v1, smem_r_v1);
         } else if( ktype == CONV_SWZL_F1 || ktype == CONV_SWZL_F3 || ktype == CONV_SWZL_FN ) {
             if(      strstr(kname_substrs[3].c_str(), "f1") ) flt_size = 1;
             else if( strstr(kname_substrs[3].c_str(), "f3") ) flt_size = 3;
@@ -211,10 +224,17 @@ struct kernel_info_t {
             sscanf(kname_substrs[4].c_str(), "b%dx%d", &tile_m_per_cta,  &tile_n_per_cta);
             sscanf(kname_substrs[5].c_str(), "w%dx%d", &tile_m_per_warp, &tile_n_per_warp);
             sscanf(kname_substrs[6].c_str(), "k%d",    &tile_k_per_cta);
+            sscanf(kname_substrs[7].c_str(), "buf%d",  &buf_num);
     
             cta_size_in_thd = (tile_m_per_cta / tile_m_per_warp) * \
                               (tile_n_per_cta / tile_n_per_warp) * \
                               WARP_SIZE;
+
+            int smem_a_v1 = tile_m_per_cta * tile_k_per_cta * buf_num / _2HALF_TO_INT_;
+            int smem_b_v1 = tile_n_per_cta * tile_k_per_cta * buf_num / _2HALF_TO_INT_;
+            int smem_r_v1 = tile_m_per_cta * tile_n_per_cta / _2HALF_TO_INT_;
+
+            smem_size_v1 = Max(smem_a_v1 + smem_b_v1, smem_r_v1);
         }
     }
 
@@ -296,6 +316,17 @@ struct kernel_info_t {
                    (tile_m_per_warp != 128 || tile_n_per_warp != 64);
         }
         return false;
+    }
+
+    bool CheckSMemSizeFeasible()
+    {
+        // TODO: replace the static value
+        // cudaDeviceProp device_prop;
+        // cudaGetDeviceProperties(&device_prop, device_id);
+
+        const int MAX_SMEM_SIZE_V1 = 163 * 1024 / 4;
+
+        return (smem_size_v1 <= MAX_SMEM_SIZE_V1);
     }
 
     bool CheckKernelTypeFeasible(int flt_height, int flt_width, int num_chl_per_grp, int splitk)
