@@ -48,6 +48,11 @@
 
 #define MAX_SPLIT_SIZE          18
 
+#define MAX_TB_SMEM_SIZE        (48  * 1024)
+#define MAX_SM75_SMEM_SIZE      (64  * 1024)
+#define MAX_SM80_SMEM_SIZE      (163 * 1024)
+
+
 #define ADD_KERNEL(_ktype, _kname, _lut_kptr, _spk_kptr, _idx_kptr) \
     kernel_container.push_back(kernel_info_t(kernel_container.size(), _ktype, _kname, _lut_kptr, _spk_kptr, _idx_kptr));
 
@@ -86,7 +91,7 @@ struct kernel_info_t {
 
     int cta_size_in_thd;
     int buf_num;
-    int smem_size_v1; // smem size by INT1
+    int smem_size; // smem size in byte
 
     std::string kname;
 
@@ -124,7 +129,7 @@ struct kernel_info_t {
 
         cta_size_in_thd = -1;
         buf_num = -1;
-        smem_size_v1 = -1;
+        smem_size = -1;
     }
 
     kernel_info_t(int kid_, conv_ktype_t ktype_, const char kname_[], int8_lut_kernel_t * lut_kptr_, int8_spk_kernel_t * spk_kptr_, int8_idx_kernel_t * idx_kptr_)
@@ -186,7 +191,7 @@ struct kernel_info_t {
                               (tile_n_per_cta / tile_n_per_warp) * \
                               WARP_SIZE;
 
-            smem_size_v1 = (tile_m_per_cta + cta_size_in_thd) * _INT4_TO_4INT_;
+            smem_size = (tile_m_per_cta + cta_size_in_thd) * _INT4_TO_4INT_ * _INT_TO_4BYTE_;
         } else if (ktype == CONV_2SPK_F1 || ktype == CONV_2SPK_F3 || ktype == CONV_2SPK_FN || ktype == CONV_2SPK_FS) {
             if (strstr(kname_substrs[3].c_str(), "f1"))
                 flt_size = 1;
@@ -214,7 +219,7 @@ struct kernel_info_t {
             int smem_b_v1 = tile_n_per_cta * tile_k_per_cta * buf_num / _2HALF_TO_INT_;
             int smem_r_v1 = tile_m_per_cta * tile_n_per_cta * (tile_k_per_cta / tile_k_per_set) / _2HALF_TO_INT_;
 
-            smem_size_v1 = Max(smem_a_v1 + smem_b_v1, smem_r_v1);
+            smem_size = Max(smem_a_v1 + smem_b_v1, smem_r_v1) * _INT_TO_4BYTE_;
         } else if( ktype == CONV_SWZL_F1 || ktype == CONV_SWZL_F3 || ktype == CONV_SWZL_FN ) {
             if(      strstr(kname_substrs[3].c_str(), "f1") ) flt_size = 1;
             else if( strstr(kname_substrs[3].c_str(), "f3") ) flt_size = 3;
@@ -234,7 +239,7 @@ struct kernel_info_t {
             int smem_b_v1 = tile_n_per_cta * tile_k_per_cta * buf_num / _2HALF_TO_INT_;
             int smem_r_v1 = tile_m_per_cta * tile_n_per_cta / _2HALF_TO_INT_;
 
-            smem_size_v1 = Max(smem_a_v1 + smem_b_v1, smem_r_v1);
+            smem_size = Max(smem_a_v1 + smem_b_v1, smem_r_v1) * _INT_TO_4BYTE_;
         }
     }
 
@@ -323,10 +328,31 @@ struct kernel_info_t {
         // TODO: replace the static value
         // cudaDeviceProp device_prop;
         // cudaGetDeviceProperties(&device_prop, device_id);
+        return (smem_size <= MAX_SM80_SMEM_SIZE);
+    }
 
-        const int MAX_SMEM_SIZE_V1 = 163 * 1024 / 4;
+    void AdaptLutKernelSMemSize()
+    {
+        if(smem_size <= MAX_TB_SMEM_SIZE)
+            return;
+        else if (smem_size <= MAX_SM80_SMEM_SIZE) { // TODO: replace the static value
+            cudaFuncSetAttribute(lut_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
+            return;
+        }
 
-        return (smem_size_v1 <= MAX_SMEM_SIZE_V1);
+        return;
+    }
+
+    void AdaptSpkKernelSMemSize()
+    {
+        if(smem_size <= MAX_TB_SMEM_SIZE)
+            return;
+        else if (smem_size <= MAX_SM80_SMEM_SIZE) { // TODO: replace the static value
+            cudaFuncSetAttribute(spk_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
+            return;
+        }
+
+        return;
     }
 
     bool CheckKernelTypeFeasible(int flt_height, int flt_width, int num_chl_per_grp, int splitk)

@@ -88,7 +88,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #endif
 
 #if defined(ENABLE_SPLITK)
-    int kloop = flt_hw * DivUp(num_chl_per_spk, TILE_K_PER_CTA);
+    int kloop = flt_hw * DivUp(num_chl_per_spk, TILE_K_PER_SET);
 #elif defined(ENABLE_SPLITF) || defined(ENABLE_FUSE)
     int kloop = kloop_num;
 #endif
