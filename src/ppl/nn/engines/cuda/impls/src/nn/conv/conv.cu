@@ -204,10 +204,10 @@ __inline__ void InitializeKernelContainerInt8(std::vector<kernel_info_t> &g_kern
         Initialize2spkSM75FP16ConvFNKernelContainer(g_kernel_container);
         Initialize2spkSM75FP16ConvFSKernelContainer(g_kernel_container);
 
-        // Initialize2spkSM80FP16ConvF1KernelContainer(g_kernel_container);
-        // Initialize2spkSM80FP16ConvF3KernelContainer(g_kernel_container);
-        // Initialize2spkSM80FP16ConvFNKernelContainer(g_kernel_container);
-        // Initialize2spkSM80FP16ConvFSKernelContainer(g_kernel_container);
+        Initialize2spkSM80FP16ConvF1KernelContainer(g_kernel_container);
+        Initialize2spkSM80FP16ConvF3KernelContainer(g_kernel_container);
+        Initialize2spkSM80FP16ConvFNKernelContainer(g_kernel_container);
+        Initialize2spkSM80FP16ConvFSKernelContainer(g_kernel_container);
 
         InitializeIdxnSM75FP16ConvKernelContainer(g_kernel_container);
         InitializeIdxnSM80FP16ConvKernelContainer(g_kernel_container);

@@ -92,7 +92,7 @@ void init_f1_kvec(std::vector<kernel_info_t> &g_kvec, ppl::common::datatype_t ty
 #ifndef PPLNN_ENABLE_CUDA_JIT
     if (type == ppl::common::DATATYPE_FLOAT16) {
         Initialize2spkSM75FP16ConvF1KernelContainer(g_kvec);
-        // Initialize2spkSM80FP16ConvF1KernelContainer(g_kvec);
+        Initialize2spkSM80FP16ConvF1KernelContainer(g_kvec);
     }
     is_g_kvec_set = true;
 #endif

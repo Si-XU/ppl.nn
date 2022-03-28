@@ -132,6 +132,9 @@
 #undef SMEM_ROW_BYTE_SIZE
 #undef SMEM_ROW_BIT_SIZE
 
+#undef _K16_TO_2K8_
+#undef _K32_TO_4K8_
+
 ////////////////////////////////////////
 // mma size macros
 ////////////////////////////////////////
@@ -578,6 +581,16 @@
 #undef READ_sUv1_K1_2x2
 #undef READ_sUv1_K1_2x4
 #undef READ_sUv1_K1_2x8
+
+#undef READ_sUv1_K2_1x1
+#undef READ_sUv1_K2_1x2
+#undef READ_sUv1_K2_1x4
+#undef READ_sUv1_K2_1x8
+
+#undef READ_sUv1_K2_2x1
+#undef READ_sUv1_K2_2x2
+#undef READ_sUv1_K2_2x4
+#undef READ_sUv1_K2_2x8
 
 #undef READ_sAv1
 #undef READ_sBv1

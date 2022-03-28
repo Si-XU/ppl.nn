@@ -605,10 +605,10 @@ void Initialize2spkSM75FP16ConvF3KernelContainer(std::vector<kernel_info_t> &ker
 void Initialize2spkSM75FP16ConvFNKernelContainer(std::vector<kernel_info_t> &kernel_container);
 void Initialize2spkSM75FP16ConvFSKernelContainer(std::vector<kernel_info_t> &kernel_container);
 
-// void Initialize2spkSM80FP16ConvF1KernelContainer(std::vector<kernel_info_t> &kernel_container);
-// void Initialize2spkSM80FP16ConvF3KernelContainer(std::vector<kernel_info_t> &kernel_container);
-// void Initialize2spkSM80FP16ConvFNKernelContainer(std::vector<kernel_info_t> &kernel_container);
-// void Initialize2spkSM80FP16ConvFSKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80FP16ConvF1KernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80FP16ConvF3KernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80FP16ConvFNKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80FP16ConvFSKernelContainer(std::vector<kernel_info_t> &kernel_container);
 
 void InitializeIdxnSM75FP16ConvKernelContainer(std::vector<kernel_info_t> &kernel_container);
 void InitializeIdxnSM80FP16ConvKernelContainer(std::vector<kernel_info_t> &kernel_container);

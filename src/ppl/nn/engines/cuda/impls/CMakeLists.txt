@@ -28,7 +28,7 @@ execute_process(
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/int8_2spk/gen_2spk_int8_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_2spk
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/int8_idxn/gen_idxn_int8_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/int8_idxn
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/2spk/gen_2spk_sm75_fp16_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk/sm75/fp16
-    #COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/2spk/gen_2spk_sm80_fp16_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk_sm80_fp16
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/2spk/gen_2spk_sm80_fp16_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk/sm80/fp16
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/idxn/gen_idxn_sm75_fp16_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/sm75/fp16
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/idxn/gen_idxn_sm80_fp16_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/sm80/fp16
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/swzl/gen_swzl_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/swzl
@@ -42,10 +42,12 @@ if(PPLNN_ENABLE_CUDA_JIT)
                                             src/nn/conv/gene_kernel.cc)
 else()
     file(GLOB_RECURSE CUDA_SRC ${CUDA_SRC} ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk/sm75/fp16/f*_kernels.cu
+                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk/sm80/fp16/f*_kernels.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/sm75/fp16/idxn_kernels.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/sm80/fp16/idxn_kernels.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/swzl/f*_kernels*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk/sm75/fp16/init*.cu
+                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk/sm80/fp16/init*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/sm75/fp16/init*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/sm80/fp16/init*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/swzl/init*.cu)

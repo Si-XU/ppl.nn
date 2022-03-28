@@ -190,6 +190,9 @@
 #define SMEM_ROW_BYTE_SIZE 128
 #define SMEM_ROW_BIT_SIZE  1024
 
+#define _K16_TO_2K8_ 2
+#define _K32_TO_4K8_ 4
+
 ////////////////////////////////////////
 // mma size macros
 ////////////////////////////////////////
@@ -353,13 +356,35 @@
 
 #endif
 
-// 0x4 means 0x01 << 2
+#if defined(USE_HMMA16816)
+
+#define FWD_KGROUP_GAP1(_sUv1_read) \
+        { \
+            _sUv1_read = _sUv1_read ^ 0x8; \
+        }
+
+#define FWD_KGROUP_GAP2(_sUv1_read) \
+        { \
+            _sUv1_read = _sUv1_read ^ 0x18; \
+        }
+
+#define FWD_KGROUP_STEP1(_sUv1_read)     FWD_KGROUP_GAP1(_sUv1_read)
+#define FWD_KGROUP_STEP3(_sUv1_read)     FWD_KGROUP_GAP1(_sUv1_read)
+
+#if TILE_K_PER_SET == 32
+#define FWD_KGROUP_STEP2(_sUv1_read)     FWD_KGROUP_GAP1(_sUv1_read)
+#elif TILE_K_PER_SET == 64
+#define FWD_KGROUP_STEP2(_sUv1_read)     FWD_KGROUP_GAP2(_sUv1_read)
+#define FWD_KGROUP_STEP4(_sUv1_read)     FWD_KGROUP_GAP2(_sUv1_read)
+#endif
+
+#elif defined(USE_HMMA1688)
+
 #define FWD_KGROUP_GAP1(_sUv1_read) \
         { \
             _sUv1_read = _sUv1_read ^ 0x4; \
         }
 
-// 0xc means 0x03 << 2
 #define FWD_KGROUP_GAP2(_sUv1_read) \
         { \
             _sUv1_read = _sUv1_read ^ 0xc; \
@@ -375,6 +400,7 @@
 #define FWD_KGROUP_STEP4(_sUv1_read)     FWD_KGROUP_GAP2(_sUv1_read)
 #endif
 
+#endif
 ////////////////////////////////////////
 // main loop macros
 ////////////////////////////////////////

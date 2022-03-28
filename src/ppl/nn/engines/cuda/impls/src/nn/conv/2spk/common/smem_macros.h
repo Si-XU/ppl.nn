@@ -134,8 +134,13 @@
 // read shared memory macros
 ////////////////////////////////////////////////////
 
+#if defined(USE_HMMA1688)
 #define REG_sAv1_SIZE (TILE_M_V1_PER_THD)
 #define REG_sBv1_SIZE (TILE_N_V2_PER_THD)
+#elif defined(USE_HMMA16816)
+#define REG_sAv1_SIZE   (TILE_M_V1_PER_THD * _K16_TO_2K8_)
+#define REG_sBv1_SIZE   (TILE_N_V2_PER_THD * _K16_TO_2K8_)
+#endif
 
 #define READ_sUv1_SIZE1(_reg, _reg_off, _smp_base_v1, _sUv1_read)                      \
     {                                                                                  \
@@ -197,3 +202,57 @@
         READ_sUv1_SIZE4(_reg, 12, _smp_base_v1, _sUv1_read + TILE_K_V2_PER_CTA * WARP_SIZE_IN_THD * 3); \
     }
 
+#define READ_sUv1_K2_1x1(_reg, _smp_base_v1, _sUv1_read) \
+        { \
+            READ_sUv1_SIZE2(_reg, 0, _smp_base_v1, _sUv1_read); \
+        }
+
+#define READ_sUv1_K2_1x2(_reg, _smp_base_v1, _sUv1_read) \
+        { \
+            READ_sUv1_SIZE4(_reg, 0, _smp_base_v1, _sUv1_read); \
+        }
+
+#define READ_sUv1_K2_1x4(_reg, _smp_base_v1, _sUv1_read) \
+        { \
+            READ_sUv1_SIZE4(_reg, 0, _smp_base_v1, _sUv1_read); \
+            READ_sUv1_SIZE4(_reg, 4, _smp_base_v1, _sUv1_read + TILE_K_V2_PER_CTA * (WARP_SIZE_IN_THD / 2)); \
+        }
+
+#define READ_sUv1_K2_1x8(_reg, _smp_base_v1, _sUv1_read) \
+        { \
+            READ_sUv1_SIZE4(_reg, 0,  _smp_base_v1, _sUv1_read); \
+            READ_sUv1_SIZE4(_reg, 4,  _smp_base_v1, _sUv1_read + TILE_K_V2_PER_CTA * (WARP_SIZE_IN_THD / 2) * 1); \
+            READ_sUv1_SIZE4(_reg, 8,  _smp_base_v1, _sUv1_read + TILE_K_V2_PER_CTA * (WARP_SIZE_IN_THD / 2) * 2); \
+            READ_sUv1_SIZE4(_reg, 12, _smp_base_v1, _sUv1_read + TILE_K_V2_PER_CTA * (WARP_SIZE_IN_THD / 2) * 3); \
+        }
+
+#define READ_sUv1_K2_2x1(_reg, _smp_base_v1, _sUv1_read) \
+        { \
+            READ_sUv1_SIZE4(_reg, 0, _smp_base_v1, _sUv1_read); \
+        }
+
+#define READ_sUv1_K2_2x2(_reg, _smp_base_v1, _sUv1_read) \
+        { \
+            READ_sUv1_SIZE4(_reg, 0, _smp_base_v1, _sUv1_read); \
+            READ_sUv1_SIZE4(_reg, 4, _smp_base_v1, _sUv1_read + TILE_K_V2_PER_CTA * (WARP_SIZE_IN_THD / 2)); \
+        }
+
+#define READ_sUv1_K2_2x4(_reg, _smp_base_v1, _sUv1_read) \
+        { \
+            READ_sUv1_SIZE4(_reg, 0,  _smp_base_v1, _sUv1_read); \
+            READ_sUv1_SIZE4(_reg, 4,  _smp_base_v1, _sUv1_read + TILE_K_V2_PER_CTA * (WARP_SIZE_IN_THD / 2) * 1); \
+            READ_sUv1_SIZE4(_reg, 8,  _smp_base_v1, _sUv1_read + TILE_K_V2_PER_CTA * (WARP_SIZE_IN_THD / 2) * 2); \
+            READ_sUv1_SIZE4(_reg, 12, _smp_base_v1, _sUv1_read + TILE_K_V2_PER_CTA * (WARP_SIZE_IN_THD / 2) * 3); \
+        }
+
+#define READ_sUv1_K2_2x8(_reg, _smp_base_v1, _sUv1_read) \
+        { \
+            READ_sUv1_SIZE4(_reg, 0,  _smp_base_v1, _sUv1_read); \
+            READ_sUv1_SIZE4(_reg, 4,  _smp_base_v1, _sUv1_read + TILE_K_V2_PER_CTA * (WARP_SIZE_IN_THD / 2) * 1); \
+            READ_sUv1_SIZE4(_reg, 8,  _smp_base_v1, _sUv1_read + TILE_K_V2_PER_CTA * (WARP_SIZE_IN_THD / 2) * 2); \
+            READ_sUv1_SIZE4(_reg, 12, _smp_base_v1, _sUv1_read + TILE_K_V2_PER_CTA * (WARP_SIZE_IN_THD / 2) * 3); \
+            READ_sUv1_SIZE4(_reg, 16, _smp_base_v1, _sUv1_read + TILE_K_V2_PER_CTA * (WARP_SIZE_IN_THD / 2) * 4); \
+            READ_sUv1_SIZE4(_reg, 20, _smp_base_v1, _sUv1_read + TILE_K_V2_PER_CTA * (WARP_SIZE_IN_THD / 2) * 5); \
+            READ_sUv1_SIZE4(_reg, 24, _smp_base_v1, _sUv1_read + TILE_K_V2_PER_CTA * (WARP_SIZE_IN_THD / 2) * 6); \
+            READ_sUv1_SIZE4(_reg, 28, _smp_base_v1, _sUv1_read + TILE_K_V2_PER_CTA * (WARP_SIZE_IN_THD / 2) * 7); \
+        }
