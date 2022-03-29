@@ -625,9 +625,9 @@ void InitializeSwzlSM75FP16ConvF1KernelContainer(std::vector<kernel_info_t> & ke
 void InitializeSwzlSM75FP16ConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
 void InitializeSwzlSM75FP16ConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
 
-// void InitializeSwzlSM80FP16ConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
-// void InitializeSwzlSM80FP16ConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
-// void InitializeSwzlSM80FP16ConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM80FP16ConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM80FP16ConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM80FP16ConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
 
 void InitializeInt82spkConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
 void InitializeInt82spkConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);

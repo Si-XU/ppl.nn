@@ -32,7 +32,7 @@ execute_process(
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/idxn/gen_idxn_sm75_fp16_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/sm75/fp16
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/idxn/gen_idxn_sm80_fp16_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/sm80/fp16
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/swzl/gen_swzl_sm75_fp16_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/swzl/sm75/fp16
-    #COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/swzl/gen_swzl_sm80_fp16_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/swzl/sm80/fp16
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/swzl/gen_swzl_sm80_fp16_kernel.py ${CMAKE_CURRENT_BINARY_DIR}/conv/swzl/sm80/fp16
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif()
 
@@ -47,13 +47,13 @@ else()
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/sm75/fp16/idxn_kernels.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/sm80/fp16/idxn_kernels.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/swzl/sm75/fp16/f*_kernels*.cu
-                                       #${CMAKE_CURRENT_BINARY_DIR}/conv/swzl/sm80/fp16/f*_kernels*.cu
+                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/swzl/sm80/fp16/f*_kernels*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk/sm75/fp16/init*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk/sm80/fp16/init*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/sm75/fp16/init*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/idxn/sm80/fp16/init*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/swzl/sm75/fp16/init*.cu
-                                       #${CMAKE_CURRENT_BINARY_DIR}/conv/swzl/sm80/fp16/init*.cu
+                                       ${CMAKE_CURRENT_BINARY_DIR}/conv/swzl/sm80/fp16/init*.cu
                                        )
 endif()
 

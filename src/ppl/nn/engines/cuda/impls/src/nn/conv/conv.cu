@@ -216,9 +216,9 @@ __inline__ void InitializeKernelContainerInt8(std::vector<kernel_info_t> &g_kern
         InitializeSwzlSM75FP16ConvF3KernelContainer(g_kernel_container);
         InitializeSwzlSM75FP16ConvFNKernelContainer(g_kernel_container);
 
-        // InitializeSwzlSM80FP16ConvF1KernelContainer(g_kernel_container);
-        // InitializeSwzlSM80FP16ConvF3KernelContainer(g_kernel_container);
-        // InitializeSwzlSM80FP16ConvFNKernelContainer(g_kernel_container);
+        InitializeSwzlSM80FP16ConvF1KernelContainer(g_kernel_container);
+        InitializeSwzlSM80FP16ConvF3KernelContainer(g_kernel_container);
+        InitializeSwzlSM80FP16ConvFNKernelContainer(g_kernel_container);
 #endif
     }
 
