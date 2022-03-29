@@ -45,7 +45,7 @@ class KernelInfo:
         self.INT4_TO_4INT = 4
         self.INT4_TO_16BYTE = 16
         self.MMA_Y = 16
-        self.MMA_K = 8
+        self.MMA_K = 16
         self.MMA_X = 8
         self.MMA_Y_HALF = self.MMA_Y / 2
         self.PB_PER_TURING_SM = 4
