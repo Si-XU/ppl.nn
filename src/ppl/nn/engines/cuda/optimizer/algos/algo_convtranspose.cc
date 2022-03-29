@@ -128,7 +128,8 @@ double ConvTransposeAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOption
     param.transA = 0;
     param.transB = 0;
     param.bias_term = temp_conv_param.has_bias;
-    auto timer = PPLCUDAGemmSelectKernel(stream, &shape_in0, input_buffer.addr, &shape_in1, weight_buffer.addr,
+    int device_id = options.device->GetDeviceId();
+    auto timer = PPLCUDAGemmSelectKernel(device_id, stream, &shape_in0, input_buffer.addr, &shape_in1, weight_buffer.addr,
                                          bias_buffer.addr, &shape_out, output_buffer.addr, temp_buffer.addr,
                                          param, temp_fuse_param, attr_param_.extra_param.algo_info);
 #endif

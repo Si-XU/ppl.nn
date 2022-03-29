@@ -157,6 +157,7 @@ ppl::common::RetCode PPLCUDAConvolutionPredictKernelInt8(
     conv_param_t &conv_param);
 
 double PPLCUDAConvolutionSelectKernel(
+    int device_id,
     cudaStream_t& stream,
     ppl::common::datatype_t type,
     int4* d_input,

@@ -353,6 +353,7 @@ double PPLCUDAGemmJITSelectKernel(
 }
 
 double PPLCUDAGemmSelectKernel(
+    int device_id,
     const cudaStream_t &stream,
     const ppl::nn::TensorShape *input_shape,
     const void *input,
@@ -366,6 +367,11 @@ double PPLCUDAGemmSelectKernel(
     const fuse_param_t &fuse_param,
     algo_param_t &algo_param)
 {
+    cudaDeviceProp device_prop;
+    cudaGetDeviceProperties(&device_prop, device_id);
+
+    int device_arch = device_prop.major * 10 + device_prop.minor;
+
     auto type = weight_shape->GetDataType();
     if (!is_g_kvec_set)
         init_f1_kvec(g_kvec, type);
@@ -421,8 +427,12 @@ double PPLCUDAGemmSelectKernel(
         int cta_size_in_thd = g_kvec[kid].cta_size_in_thd;
         int smem_size = g_kvec[kid].smem_size;
 
-        if (!g_kvec[kid].CheckSMemSizeFeasible())
+        if (!g_kvec[kid].CheckSMemSizeFeasible(device_arch))
                 continue;
+
+        if (!g_kvec[kid].CheckGpuArchFeasible(device_arch))
+                continue;
+
         g_kvec[kid].AdaptLutKernelSMemSize();
 
         dim3 block_size, grid_size;

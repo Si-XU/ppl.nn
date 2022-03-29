@@ -30,7 +30,7 @@ class KernelInfo:
                 "_w" + str(self.warp_y) + "x" + str(self.warp_x) + \
                 "_k" + str(self.k_size) + "_s" + str(self.s_size)
 
-        self.kname = "nvIdxnSM80Conv_hmma16816_nhwc" + self.kconfig
+        self.kname = "nvIdxnSm80Fp16Conv_hmma16816_nhwc" + self.kconfig
         self.fname = "kernels" + "/idxn"  + self.kconfig + ".cu"
 
         self.WARP_SIZE = 32

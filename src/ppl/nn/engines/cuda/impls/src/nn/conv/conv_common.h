@@ -43,15 +43,19 @@
 #define _C4_                    4
 #define _C8_                    8
 #define _BYTE128_               128
+#define _BYTE1024_              1024
 
 #define Max(x, y)         (((x) > (y))  ? (x) : (y))
 
 #define MAX_SPLIT_SIZE          18
 
-#define MAX_TB_SMEM_SIZE        (48  * 1024)
-#define MAX_SM75_SMEM_SIZE      (64  * 1024)
-#define MAX_SM80_SMEM_SIZE      (163 * 1024)
+#define MAX_STATIC_SMEM_SIZE_PER_CTA    (48  * _BYTE1024_)
 
+#define SM75_MAX_SMEM_SIZE_PER_CTA      (64  * _BYTE1024_)
+#define SM80_MAX_SMEM_SIZE_PER_CTA      (164 * _BYTE1024_)
+
+#define SM75_MAX_DYN_SMEM_SIZE_PER_CTA  (64  * _BYTE1024_)
+#define SM80_MAX_DYN_SMEM_SIZE_PER_CTA  (163 * _BYTE1024_)
 
 #define ADD_KERNEL(_ktype, _kname, _lut_kptr, _spk_kptr, _idx_kptr) \
     kernel_container.push_back(kernel_info_t(kernel_container.size(), _ktype, _kname, _lut_kptr, _spk_kptr, _idx_kptr));
@@ -95,6 +99,9 @@ struct kernel_info_t {
 
     std::string kname;
 
+    int karch;
+    ppl::common::datatype_t kprec;
+
     conv_ktype_t ktype;
 
     lut_kernel_t* lut_kptr;
@@ -108,6 +115,8 @@ struct kernel_info_t {
     {
         kname    = "";
         kid      = -1;
+        karch    = -1;
+        kprec    = ppl::common::DATATYPE_UNKNOWN;
         ktype    = CONV_KTYPE_NUM;
         lut_kptr = NULL;
         spk_kptr = NULL;
@@ -174,6 +183,13 @@ struct kernel_info_t {
         while (std::getline(kname_str, substr, '_')) {
             kname_substrs.push_back(substr);
         }
+
+        sscanf(kname_substrs[0].c_str(), "Sm%d", &karch);
+
+        if (kname_substrs[0].find("Fp16") != std::string::npos)
+            kprec = ppl::common::DATATYPE_FLOAT16;
+        else if (kname_substrs[0].find("Int8") != std::string::npos)
+            kprec = ppl::common::DATATYPE_INT8;
 
         if (ktype == CONV_IDXN_C2 || ktype == CONV_IDXN_C4 || ktype == CONV_IDXN_C32) {
             sscanf(kname_substrs[3].c_str(), "b%dx%d", &tile_m_per_cta, &tile_n_per_cta);
@@ -331,35 +347,37 @@ struct kernel_info_t {
         return false;
     }
 
-    bool CheckSMemSizeFeasible()
+    bool CheckSMemSizeFeasible(int device_arch)
     {
-        // TODO: replace the static value
-        // cudaDeviceProp device_prop;
-        // cudaGetDeviceProperties(&device_prop, device_id);
-        return (smem_size <= MAX_SM80_SMEM_SIZE);
+        if (device_arch == 75)
+            return (smem_size <= SM75_MAX_DYN_SMEM_SIZE_PER_CTA);
+
+        if (device_arch == 80)
+            return (smem_size <= SM80_MAX_DYN_SMEM_SIZE_PER_CTA);
+
+        return false;
+    }
+
+    bool CheckGpuArchFeasible(int device_arch)
+    {
+        return (device_arch >= karch);
     }
 
     void AdaptLutKernelSMemSize()
     {
-        if(smem_size <= MAX_TB_SMEM_SIZE)
+        if(smem_size <= MAX_STATIC_SMEM_SIZE_PER_CTA)
             return;
-        else if (smem_size <= MAX_SM80_SMEM_SIZE) { // TODO: replace the static value
-            cudaFuncSetAttribute(lut_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
-            return;
-        }
 
+        cudaFuncSetAttribute(lut_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
         return;
     }
 
     void AdaptSpkKernelSMemSize()
     {
-        if(smem_size <= MAX_TB_SMEM_SIZE)
+        if(smem_size <= MAX_STATIC_SMEM_SIZE_PER_CTA)
             return;
-        else if (smem_size <= MAX_SM80_SMEM_SIZE) { // TODO: replace the static value
-            cudaFuncSetAttribute(spk_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
-            return;
-        }
 
+        cudaFuncSetAttribute(spk_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
         return;
     }
 

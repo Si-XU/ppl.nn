@@ -316,6 +316,7 @@ uint64_t PPLCUDAConvolutionGetRuntimeBufSize(
 /* -----------------  FP16 KERNEL ------------------ */
 
 double PPLCUDAConvolutionSelectKernel(
+    int device_id,
     cudaStream_t &stream,
     ppl::common::datatype_t type,
     int4 *d_input,
@@ -328,6 +329,11 @@ double PPLCUDAConvolutionSelectKernel(
     fuse_param_t &fuse_param,
     uint64_t workspace)
 {
+    cudaDeviceProp device_prop;
+    cudaGetDeviceProperties(&device_prop, device_id);
+
+    int device_arch = device_prop.major * 10 + device_prop.minor;
+
     if (!is_g_kernel_container_initialized)
         InitializeKernelContainerInt8(g_kernel_container, type);
 
@@ -407,13 +413,16 @@ double PPLCUDAConvolutionSelectKernel(
             if (!g_kernel_container[kid].CheckKernelTypeFeasible(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk))
                 continue;
 
+            if (!g_kernel_container[kid].CheckSMemSizeFeasible(device_arch))
+                continue;
+
+            if (!g_kernel_container[kid].CheckGpuArchFeasible(device_arch))
+                continue;
+
             if (!g_kernel_container[kid].CheckSplitkFeasible(num_chl_per_grp, splitk))
                 continue;
 
             if (!g_kernel_container[kid].CheckSplitfFeasible(splitf, splitk))
-                continue;
-
-            if (!g_kernel_container[kid].CheckSMemSizeFeasible())
                 continue;
 
             int4 *conv_out = (splitk > 1 || splitf > 1) ? splitk_buf : final_out;

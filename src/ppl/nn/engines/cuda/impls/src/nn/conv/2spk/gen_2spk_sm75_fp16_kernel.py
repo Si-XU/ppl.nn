@@ -34,7 +34,7 @@ class KernelInfo:
                 "_w" + str(self.warp_y) + "x" + str(self.warp_x) + \
                 "_k" + str(self.k_size) + "_s" + str(self.s_size) + "_buf" + str(self.buf_size)
 
-        self.kname = "nv2spkSM75Conv_hmma1688_nhwc_" + self.flt_size + self.kconfig
+        self.kname = "nv2spkSm75Fp16Conv_hmma1688_nhwc_" + self.flt_size + self.kconfig
         self.fname = self.flt_size + "/2spk_"  + self.flt_size + self.kconfig + ".cu"
 
         self.HALF_SIZE = 2
