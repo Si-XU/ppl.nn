@@ -237,7 +237,15 @@ struct kernel_info_t {
 
             int smem_a_v1 = tile_m_per_cta * tile_k_per_cta * buf_num / _2HALF_TO_INT_;
             int smem_b_v1 = tile_n_per_cta * tile_k_per_cta * buf_num / _2HALF_TO_INT_;
-            int smem_r_v1 = tile_m_per_cta * tile_n_per_cta / _2HALF_TO_INT_;
+
+            const int TILE_N_PER_MMA = 16;
+
+            int smem_r_v1 = 0;
+
+            if(tile_m_per_warp == 8)
+                smem_r_v1 = tile_m_per_cta * TILE_N_PER_MMA * (cta_size_in_thd / WARP_SIZE) * 2 / _2HALF_TO_INT_;
+            else if (tile_m_per_warp == 16 || tile_m_per_warp == 32 || tile_m_per_warp ==64)
+                smem_r_v1 = tile_m_per_cta * TILE_N_PER_MMA * (cta_size_in_thd / WARP_SIZE) / _2HALF_TO_INT_;
 
             smem_size = Max(smem_a_v1 + smem_b_v1, smem_r_v1) * _INT_TO_4BYTE_;
         }
@@ -613,9 +621,13 @@ void Initialize2spkSM80FP16ConvFSKernelContainer(std::vector<kernel_info_t> &ker
 void InitializeIdxnSM75FP16ConvKernelContainer(std::vector<kernel_info_t> &kernel_container);
 void InitializeIdxnSM80FP16ConvKernelContainer(std::vector<kernel_info_t> &kernel_container);
 
-void InitializeSwzlConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
-void InitializeSwzlConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
-void InitializeSwzlConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM75FP16ConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM75FP16ConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM75FP16ConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
+
+// void InitializeSwzlSM80FP16ConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
+// void InitializeSwzlSM80FP16ConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
+// void InitializeSwzlSM80FP16ConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
 
 void InitializeInt82spkConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
 void InitializeInt82spkConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);

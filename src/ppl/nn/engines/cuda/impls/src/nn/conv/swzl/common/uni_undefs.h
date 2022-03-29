@@ -72,6 +72,13 @@
 #undef _C16_
 #undef _C32_
 
+#undef _0BYTE_
+#undef _1BYTE_
+#undef _2BYTE_
+#undef _4BYTE_
+#undef _8BYTE_
+#undef _16BYTE_
+
 #undef _1INT_
 #undef _2INT_
 #undef _4INT_
@@ -116,12 +123,16 @@
 #undef _INT4_TO_4INT_
 #undef _INT4_TO_4HALF2_
 #undef _INT4_TO_8HALF_
+#undef _INT4_TO_16BYTE_
 
 #undef SMEM_ROW_V1_SIZE
 #undef SMEM_ROW_V2_SIZE
 #undef SMEM_ROW_V4_SIZE
 #undef SMEM_ROW_BYTE_SIZE
 #undef SMEM_ROW_BIT_SIZE
+
+#undef _K16_TO_2K8_
+#undef _K32_TO_4K8_
 
 ////////////////////////////////////////
 // mma size macros
@@ -284,8 +295,7 @@
 // shared memory size macros
 ////////////////////////////////////////
 
-#undef USE_1BUF
-#undef USE_2BUF
+#undef BUF_NUM
 
 #undef SM_A_SIZE
 #undef SM_B_SIZE
@@ -462,6 +472,34 @@
 #undef SET_dBv4_BOUND 
 
 /////////////////////////////////////////////////////
+// common async copy macros
+/////////////////////////////////////////////////////
+
+#undef PRED_CP_ASYNC_CA
+#undef PRED_CP_ASYNC_CA_L2_PREFETCH
+
+#undef PRED_CP_ASYNC_CG
+#undef PRED_CP_ASYNC_CG_L2_PREFETCH
+
+#undef CP_ASYNC_ZFILL_CA
+#undef CP_ASYNC_ZFILL_CA_L2_PREFETCH
+
+#undef CP_ASYNC_ZFILL_CG
+#undef CP_ASYNC_ZFILL_CG_L2_PREFETCH
+
+#undef PRED_CP_ASYNC_ZFILL_CA
+#undef PRED_CP_ASYNC_ZFILL_CA_L2_PREFETCH
+
+#undef PRED_CP_ASYNC_ZFILL_CG
+#undef PRED_CP_ASYNC_ZFILL_CG_L2_PREFETCH
+
+#undef CP_ASYNC_FENSE
+#undef CP_ASYNC_WAIT_ALL_BUT
+#undef CP_ASYNC_WAIT_ALL
+
+#undef CP_ASYNC
+
+/////////////////////////////////////////////////////
 // common write shared memory macros
 /////////////////////////////////////////////////////
 
@@ -469,7 +507,9 @@
 // k group macros
 ////////////////////////////////////////
 
-#undef SWITCH_BUFFER
+#undef INFLIGHT_BUF_NUM
+
+#undef FWD_BUF
 
 #undef FWD_KGROUP_GAP1
 #undef FWD_KGROUP_GAP2
@@ -517,16 +557,15 @@
 #undef READ_sUv1_SIZE2
 #undef READ_sUv1_SIZE4
 
-#undef READ_sUv1_1x1
-#undef READ_sUv1_2x1
+#undef READ_sUv1_K2_1x1
+#undef READ_sUv1_K2_1x2
+#undef READ_sUv1_K2_1x4
+#undef READ_sUv1_K2_1x8
 
-#undef READ_sUv1_1x2
-#undef READ_sUv1_2x2
-
-#undef READ_sUv1_1x4
-#undef READ_sUv1_2x4
-
-#undef READ_sUv1_1x8
+#undef READ_sUv1_K2_2x1
+#undef READ_sUv1_K2_2x2
+#undef READ_sUv1_K2_2x4
+#undef READ_sUv1_K2_2x8
 
 #undef READ_sAv1
 #undef READ_sBv1
@@ -539,9 +578,24 @@
 
 #undef ADD_BIAS_V4
 
+////////////////////////////////////////
+// fuse size macros
+////////////////////////////////////////
+
+#undef REDUCE_V4_SIZE
+#undef Rv4
+
+////////////////////////////////////////
+// fuse macros
+////////////////////////////////////////
+
 #undef FUSE_RELU_V4
 #undef FUSE_CLIP_V4
 #undef FUSE_PRELU_V4
 #undef FUSE_ELT_V4
 
 #undef SET_CONCAT_OFF_V4
+
+#undef HADD2_INST
+#undef HMAX2_INST
+#undef HMIN2_INST

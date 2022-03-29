@@ -212,9 +212,13 @@ __inline__ void InitializeKernelContainerInt8(std::vector<kernel_info_t> &g_kern
         InitializeIdxnSM75FP16ConvKernelContainer(g_kernel_container);
         InitializeIdxnSM80FP16ConvKernelContainer(g_kernel_container);
 
-        InitializeSwzlConvF1KernelContainer(g_kernel_container);
-        InitializeSwzlConvF3KernelContainer(g_kernel_container);
-        InitializeSwzlConvFNKernelContainer(g_kernel_container);
+        InitializeSwzlSM75FP16ConvF1KernelContainer(g_kernel_container);
+        InitializeSwzlSM75FP16ConvF3KernelContainer(g_kernel_container);
+        InitializeSwzlSM75FP16ConvFNKernelContainer(g_kernel_container);
+
+        // InitializeSwzlSM80FP16ConvF1KernelContainer(g_kernel_container);
+        // InitializeSwzlSM80FP16ConvF3KernelContainer(g_kernel_container);
+        // InitializeSwzlSM80FP16ConvFNKernelContainer(g_kernel_container);
 #endif
     }
 
@@ -470,7 +474,7 @@ double PPLCUDAConvolutionSelectKernel(
                         g_kernel_container[kid].AdaptLutKernelSMemSize();
 
                         if(g_kernel_container[kid].ktype == CONV_SWZL_F1 || g_kernel_container[kid].ktype == CONV_SWZL_F3 || g_kernel_container[kid].ktype == CONV_SWZL_FN)
-                            (g_kernel_container[kid].lut_kptr)<<<grid_size, block_size, 0, stream>>>(SWZL_LUT_KPARAM_LIST);
+                            (g_kernel_container[kid].lut_kptr)<<<grid_size, block_size, smem_size, stream>>>(SWZL_LUT_KPARAM_LIST);
                         else {
                             (g_kernel_container[kid].lut_kptr)<<<grid_size, block_size, smem_size, stream>>>(LUT_KPARAM_LIST);
                         }
@@ -482,7 +486,7 @@ double PPLCUDAConvolutionSelectKernel(
                         g_kernel_container[kid].AdaptSpkKernelSMemSize();
 
                         if(g_kernel_container[kid].ktype == CONV_SWZL_F1 || g_kernel_container[kid].ktype == CONV_SWZL_F3 || g_kernel_container[kid].ktype == CONV_SWZL_FN)
-                            (g_kernel_container[kid].spk_kptr)<<<grid_size, block_size, 0, stream>>>(SWZL_SPK_KPARAM_LIST);
+                            (g_kernel_container[kid].spk_kptr)<<<grid_size, block_size, smem_size, stream>>>(SWZL_SPK_KPARAM_LIST);
                         else
                             (g_kernel_container[kid].spk_kptr)<<<grid_size, block_size, smem_size, stream>>>(SPK_KPARAM_LIST);
                     }
@@ -648,7 +652,7 @@ void PPLCUDAConvolutionForwardImp(
             g_kernel_container[kid].AdaptLutKernelSMemSize();
 
             if(g_kernel_container[kid].ktype == CONV_SWZL_F1 || g_kernel_container[kid].ktype == CONV_SWZL_F3 || g_kernel_container[kid].ktype == CONV_SWZL_FN)
-                (g_kernel_container[kid].lut_kptr)<<<grid_size, block_size, 0, stream>>>(SWZL_LUT_KPARAM_LIST);
+                (g_kernel_container[kid].lut_kptr)<<<grid_size, block_size, smem_size, stream>>>(SWZL_LUT_KPARAM_LIST);
             else {
                 (g_kernel_container[kid].lut_kptr)<<<grid_size, block_size, smem_size, stream>>>(LUT_KPARAM_LIST);
             }
@@ -661,7 +665,7 @@ void PPLCUDAConvolutionForwardImp(
             g_kernel_container[kid].AdaptSpkKernelSMemSize();
 
             if(g_kernel_container[kid].ktype == CONV_SWZL_F1 || g_kernel_container[kid].ktype == CONV_SWZL_F3 || g_kernel_container[kid].ktype == CONV_SWZL_FN)
-                (g_kernel_container[kid].spk_kptr)<<<grid_size, block_size, 0, stream>>>(SWZL_SPK_KPARAM_LIST);
+                (g_kernel_container[kid].spk_kptr)<<<grid_size, block_size, smem_size, stream>>>(SWZL_SPK_KPARAM_LIST);
             else
                 (g_kernel_container[kid].spk_kptr)<<<grid_size, block_size, smem_size, stream>>>(SPK_KPARAM_LIST);
         }

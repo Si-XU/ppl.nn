@@ -131,6 +131,13 @@
 #define _C16_ 16
 #define _C32_ 32
 
+#define _0BYTE_  0
+#define _1BYTE_  1
+#define _2BYTE_  2
+#define _4BYTE_  4
+#define _8BYTE_  8
+#define _16BYTE_ 16
+
 #define _1INT_ 1
 #define _2INT_ 2
 #define _4INT_ 4
@@ -175,12 +182,16 @@
 #define _INT4_TO_4INT_   4
 #define _INT4_TO_4HALF2_ 4
 #define _INT4_TO_8HALF_  8
+#define _INT4_TO_16BYTE_ 16
 
 #define SMEM_ROW_V4_SIZE   8
 #define SMEM_ROW_V2_SIZE   16
 #define SMEM_ROW_V1_SIZE   32
 #define SMEM_ROW_BYTE_SIZE 128
 #define SMEM_ROW_BIT_SIZE  1024
+
+#define _K16_TO_2K8_ 2
+#define _K32_TO_4K8_ 4
 
 ////////////////////////////////////////
 // mma size macros
@@ -324,10 +335,29 @@
 // k group macros
 ////////////////////////////////////////
 
-#define SWITCH_BUFFER(_buf, _size, _base) \
+#if BUF_NUM == 2
+
+#define FWD_BUF(_addr0, _size0, _base0, _addr1, _size1, _base1) \
         { \
-            _buf = ((_buf - _base) ^ _size) + _base; \
+            _addr0 = ((_addr0 - _base0) ^ _size0) + _base0; \
+            _addr1 = ((_addr1 - _base1) ^ _size1) + _base1; \
         }
+
+#elif BUF_NUM > 2
+
+#define INFLIGHT_BUF_NUM        2
+
+#define FWD_BUF(_buf, _addr0, _size0, _addr1, _size1) \
+        { \
+            _buf   = (_buf == BUF_NUM - 1) ? 0 : _buf + 1; \
+            \
+            _addr0 = (_buf == 0) ? _addr0 - _size0 * (BUF_NUM - 1) : _addr0 + _size0; \
+            _addr1 = (_buf == 0) ? _addr1 - _size1 * (BUF_NUM - 1) : _addr1 + _size1; \
+        }
+
+#endif
+
+#if defined(USE_HMMA1688)
 
 #define FWD_KGROUP_GAP1(_sUv1_read) \
         { \
@@ -359,6 +389,31 @@
 #define FWD_KGROUP_STEP4(_sUv1_read)     FWD_KGROUP_GAP3(_sUv1_read)
 #define FWD_KGROUP_STEP6(_sUv1_read)     FWD_KGROUP_GAP2(_sUv1_read)
 #define FWD_KGROUP_STEP8(_sUv1_read)     FWD_KGROUP_GAP3(_sUv1_read)
+#endif
+
+#elif defined(USE_HMMA16816)
+
+#define FWD_KGROUP_GAP1(_sUv1_read) \
+        { \
+            _sUv1_read = _sUv1_read ^ 0x8; \
+        }
+
+// 0x18 means 0x6 << 2
+#define FWD_KGROUP_GAP2(_sUv1_read) \
+        { \
+            _sUv1_read = _sUv1_read ^ 0x18; \
+        }
+
+#define FWD_KGROUP_STEP1(_sUv1_read)     FWD_KGROUP_GAP1(_sUv1_read)
+#define FWD_KGROUP_STEP3(_sUv1_read)     FWD_KGROUP_GAP1(_sUv1_read)
+
+#if TILE_K_PER_CTA == 32
+#define FWD_KGROUP_STEP2(_sUv1_read)     FWD_KGROUP_GAP1(_sUv1_read)
+#elif TILE_K_PER_CTA == 64
+#define FWD_KGROUP_STEP2(_sUv1_read)     FWD_KGROUP_GAP2(_sUv1_read)
+#define FWD_KGROUP_STEP4(_sUv1_read)     FWD_KGROUP_GAP2(_sUv1_read)
+#endif
+
 #endif
 
 ////////////////////////////////////////
@@ -442,9 +497,18 @@
 #define SM_BASE_V4_1BUF         Max((SM_A_V4_1BUF + SM_B_V4_1BUF), (SM_C_V4_1BUF))
 #define SM_BASE_V4_2BUF         Max((SM_A_V4_2BUF + SM_B_V4_2BUF), (SM_C_V4_1BUF))
 
+#if (defined(__CUDA_ARCH__) && __CUDACC_VER_MAJOR__ >= 11)
+
+#define CVT_SM_PTR(_smp_base, _sm_base) \
+    _smp_base = static_cast<unsigned>(__cvta_generic_to_shared(_sm_base));
+
+#elif defined(__CUDA_ARCH__)
+
 #define CVT_SM_PTR(smp_base_v1, sm_base_v1) \
     asm("{ .reg .u64 smp_base_v1; cvta.to.shared.u64 smp_base_v1, %1; cvt.u32.u64 %0, smp_base_v1; }\n" \
             : "=r"(smp_base_v1) : "l"(sm_base_v1));
+
+#endif
 
 #define FWD_LUT(_lut_id) \
         { \
@@ -484,3 +548,24 @@
 #elif CTA_SIZE_IN_WARP == 8
 #define CTA_SIZE_IN_BITS        8
 #endif
+
+////////////////////////////////////////
+// fuse size macros
+////////////////////////////////////////
+
+#define REDUCE_V4_SIZE              (OUTPUT_BLKS_PER_STEP)
+#define Rv4_SIZE                    Max((REG_dAv4_SIZE + REG_dBv4_SIZE), REDUCE_V4_SIZE)
+
+////////////////////////////////////////
+// fuse macros
+////////////////////////////////////////
+
+#define HADD2_INST(_d, _a, _b) \
+        asm volatile("add.ftz.f16x2 %0, %1, %2;\n":   "=r"(_d): "r"(_a), "r"(_b));
+
+#define HMAX2_INST(_d, _a, _b, _c) \
+        asm volatile("vmax2.s32.s32.s32 %0, %1, %2, %3;\n":   "=r"(_d): "r"(_a), "r"(_b), "r"(_c));
+
+#define HMIN2_INST(_d, _a, _b, _c) \
+        asm volatile("vmin2.s32.s32.s32 %0, %1, %2, %3;\n":   "=r"(_d): "r"(_a), "r"(_b), "r"(_c));
+
