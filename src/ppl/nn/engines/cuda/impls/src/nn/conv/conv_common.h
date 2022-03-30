@@ -115,7 +115,7 @@ struct kernel_info_t {
     {
         kname    = "";
         kid      = -1;
-        karch    = -1;
+        karch    = 1000;
         kprec    = ppl::common::DATATYPE_UNKNOWN;
         ktype    = CONV_KTYPE_NUM;
         lut_kptr = NULL;
@@ -184,11 +184,14 @@ struct kernel_info_t {
             kname_substrs.push_back(substr);
         }
 
-        sscanf(kname_substrs[0].c_str(), "Sm%d", &karch);
+        if (strstr(kname_substrs[0].c_str(), "Sm80"))
+            karch = 80;
+        else if (strstr(kname_substrs[0].c_str(), "Sm75"))
+            karch = 75;
 
-        if (kname_substrs[0].find("Fp16") != std::string::npos)
+        if (strstr(kname_substrs[0].c_str(), "Fp16"))
             kprec = ppl::common::DATATYPE_FLOAT16;
-        else if (kname_substrs[0].find("Int8") != std::string::npos)
+        else if (strstr(kname_substrs[0].c_str(), "Int8"))
             kprec = ppl::common::DATATYPE_INT8;
 
         if (ktype == CONV_IDXN_C2 || ktype == CONV_IDXN_C4 || ktype == CONV_IDXN_C32) {
