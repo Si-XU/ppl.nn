@@ -220,7 +220,7 @@ __global__ void ScanWithBaseSumSinglePass(const T* input,
   size_t part_end = (blockIdx.x + 1) * part_size;
   for (size_t i = part_begin + threadIdx.x; i < part_end; i += blockDim.x) {
     T val = i < n ? input[i] : 0;
-    val = ScanBlock(val);
+    val = ScanBlock<T>(val);
     if (i < n) {
       output[i] = val + base_sum;
     }
@@ -250,17 +250,17 @@ ppl::common::RetCode PPLCUDACumsumForwardImp(
     size_t part_size = (num_elems + part_num - 1) / part_num;        \
     TYPE* part_sum = nullptr;                                   \
     cudaMalloc((void**)part_sum, part_num*sizeof(TYPE));            \
-    ReducePartSumKernelSinglePass<<<part_num, 1024, 0, stream>>>((const TYPE*)input, (TYPE*)part_sum, num_elems, part_size);   \
-    ScanWithBaseSumSinglePass<<<1, 1024, 0, stream>>>(         \
+    ReducePartSumKernelSinglePass<TYPE><<<part_num, 1024, 0, stream>>>((const TYPE*)input, (TYPE*)part_sum, num_elems, part_size);   \
+    ScanWithBaseSumSinglePass<TYPE><<<1, 1024, 0, stream>>>(         \
         (const TYPE*)part_sum, (TYPE*)part_sum, (TYPE*)part_sum, part_num, part_num);          \
-    ScanWithBaseSumSinglePass<<<part_num, 1024, 0, stream>>>(               \
+    ScanWithBaseSumSinglePass<TYPE><<<part_num, 1024, 0, stream>>>(               \
         (const TYPE*)input, (TYPE*)part_sum, (TYPE*)output, num_elems, part_size);      \
   } else if(axis == num_dims - 1) {                 \
       int num_rows = num_elems / row_size;              \
       dim3 threads(16, 32);                      \
       dim3 grid(ceil_div(num_rows, threads.y));            \
-      tensor_kernel_scan_innermost_dim<float, 16, 32><<<grid, threads, 0, stream>>>(          \
-      (float*)output, (const float*)input, num_rows, row_size, 0);            \
+      tensor_kernel_scan_innermost_dim<TYPE, 16, 32><<<grid, threads, 0, stream>>>(          \
+      (TYPE*)output, (const TYPE*)input, num_rows, row_size, 0);            \
   } else {                                                                    \
       int num_orows = 1;                                        \
       int num_irows = 1;                                     \
@@ -270,8 +270,8 @@ ppl::common::RetCode PPLCUDACumsumForwardImp(
           num_irows *= input_shape->GetDim(i);                  \
       dim3 threads(std::min(512, num_irows));                            \
       dim3 grid(num_orows, ceil_div(num_irows, threads.x));                    \
-      tensor_kernel_scan_outer_dim<float><<<grid, threads, 0, stream>>>(               \
-          (float*)output, (const float*)input,                                \
+      tensor_kernel_scan_outer_dim<TYPE><<<grid, threads, 0, stream>>>(               \
+          (TYPE*)output, (const TYPE*)input,                                \
           num_orows, num_irows, row_size, 0);                            \
   }                                                                     \
   return ppl::common::RC_SUCCESS;         
