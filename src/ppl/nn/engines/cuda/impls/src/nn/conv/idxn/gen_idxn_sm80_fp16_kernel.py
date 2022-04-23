@@ -138,30 +138,30 @@ class KernelInfo:
 
         f.write("#include <cuda_fp16.h>\n\n")
 
-        f.write("#include \"idxn/common/const_macros.h\"\n\n")
+        f.write("#include \"idxn/fp16/const_macros.h\"\n\n")
 
         if self.s_size == 16:
-            f.write("#include \"idxn/common/dmem_i2_macros.h\"\n\n")
-            f.write("#include \"idxn/common/hmma16816_i2_macros.h\"\n\n")
+            f.write("#include \"idxn/fp16/dmem_i2_macros.h\"\n\n")
+            f.write("#include \"idxn/fp16/hmma16816_i2_macros.h\"\n\n")
 
             f.write("#define LOAD_dAv2(_regA, _dAv2, _in_id, _in_off)    LOAD_dAv2_SIZE%d(_regA, _dAv2, _in_id, _in_off)\n" % self.dAvn_size)
             f.write("#define LOAD_dBv2(_regB, _dBv2, _dBv2_off)          LOAD_dBv2_SIZE%d(_regB, _dBv2, _dBv2_off)\n\n" % self.dBvn_size)
 
             f.write("#define MMA_INSTS(_C, _A, _B)                       MMA_INST_2INT_%dx%d(_C, _A, _B)\n\n" % (self.dAvn_size / 2, self.dBvn_size))
         elif self.s_size == 32:
-            f.write("#include \"idxn/common/dmem_i4_macros.h\"\n\n")
-            f.write("#include \"idxn/common/hmma16816_i4_macros.h\"\n\n")
+            f.write("#include \"idxn/fp16/dmem_i4_macros.h\"\n\n")
+            f.write("#include \"idxn/fp16/hmma16816_i4_macros.h\"\n\n")
 
             f.write("#define LOAD_dAv4(_regA, _dAv4, _in_id, _in_off)    LOAD_dAv4_SIZE%d(_regA, _dAv4, _in_id, _in_off)\n" % self.dAvn_size)
             f.write("#define LOAD_dBv4(_regB, _dBv4, _dBv4_off)          LOAD_dBv4_SIZE%d(_regB, _dBv4, _dBv4_off)\n\n" % self.dBvn_size)
 
             f.write("#define MMA_INSTS(_C, _A, _B)                       MMA_INST_4INT_%dx%d(_C, _A, _B)\n\n" % (self.dAvn_size / 2, self.dBvn_size))
 
-        f.write("#include \"idxn/common/output_macros.h\"\n\n")
+        f.write("#include \"idxn/fp16/output_macros.h\"\n\n")
 
-        f.write("#include \"idxn/common/main_body.h\"\n\n")
+        f.write("#include \"idxn/fp16/main_body.h\"\n\n")
 
-        f.write("#include \"idxn/common/uni_undefs.h\"\n\n")
+        f.write("#include \"idxn/fp16/uni_undefs.h\"\n\n")
 
 class IdxSourceFile:
     def __init__(self, path):

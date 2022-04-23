@@ -198,19 +198,19 @@ class KernelInfo:
 
         f.write("#include <cuda_fp16.h>\n\n")
 
-        f.write("#include \"swzl/common/const_macros.h\"\n\n")
-        f.write("#include \"swzl/%s/bound_macros.h\"\n\n" % self.flt_size)
-        f.write("#include \"swzl/common/ldsm_macros.h\"\n\n")
+        f.write("#include \"swzl/fp16/const_macros.h\"\n\n")
+        f.write("#include \"swzl/fp16/%s/bound_macros.h\"\n\n" % self.flt_size)
+        f.write("#include \"swzl/fp16/ldsm_macros.h\"\n\n")
 
         if self.buf_size <= 2:
-            f.write("#include \"swzl/%s/dmem_reg_macros.h\"\n\n" % self.flt_size)
+            f.write("#include \"swzl/fp16/%s/dmem_reg_macros.h\"\n\n" % self.flt_size)
         elif self.buf_size > 2:
-            f.write("#include \"swzl/common/async_macros.h\"\n\n")
-            f.write("#include \"swzl/%s/dmem_async_macros.h\"\n\n" % self.flt_size)
+            f.write("#include \"swzl/fp16/async_macros.h\"\n\n")
+            f.write("#include \"swzl/fp16/%s/dmem_async_macros.h\"\n\n" % self.flt_size)
 
-        f.write("#include \"swzl/common/hmma_macros.h\"\n\n")
-        f.write("#include \"swzl/common/reduce_macros.h\"\n\n")
-        f.write("#include \"swzl/common/smem_macros.h\"\n\n")
+        f.write("#include \"swzl/fp16/hmma_macros.h\"\n\n")
+        f.write("#include \"swzl/fp16/reduce_macros.h\"\n\n")
+        f.write("#include \"swzl/fp16/smem_macros.h\"\n\n")
 
         f.write("#define MMA_INSTS(_C, _B, _A)           MMA_INST_%dx%d(_C, _B, _A)\n\n" % (self.warp_y / self.MMA_Y, self.warp_x / self.MMA_X))
 
@@ -268,11 +268,11 @@ class KernelInfo:
             f.write("#define CP_ASYNC(_pred, _sm_v4, _sm_v4_off, _gm_v4, _gm_v4_off)                 PRED_CP_ASYNC_ZFILL_CG(_pred, _sm_v4 + _INT4_TO_16BYTE_ * (_sm_v4_off), _gm_v4 + _gm_v4_off)\n\n")
 
 
-        f.write("#include \"swzl/common/output_macros.h\"\n\n")
+        f.write("#include \"swzl/fp16/output_macros.h\"\n\n")
 
-        f.write("#include \"swzl/common/main_body16816.h\"\n\n")
+        f.write("#include \"swzl/fp16/main_body16816.h\"\n\n")
 
-        f.write("#include \"swzl/common/uni_undefs.h\"\n\n")
+        f.write("#include \"swzl/fp16/uni_undefs.h\"\n\n")
 
         f.close()
 
