@@ -168,56 +168,50 @@
 	        if( _has_prelu == 2) \
             { \
                 int _scale_v1[NUM_N_STEPS]; \
-                __half * _hscale[NUM_N_STEPS]; \
+                __half * _hscale = (__half *) _scale_v1; \
                 \
                 _Pragma("unroll") \
                 for(int i = 0; i < NUM_N_STEPS; i++) \
-                { \
-                    _scale_v1[i] = dCv1_x_valid[i] ? ((int *)_prelu)[dCv1_idx[i]] : 0; ; \
-                    _hscale[i] = (__half *) &_scale_v1[i]; \
-                } \
+                    _scale_v1[i] = dCv1_x_valid[i] ? ((int *)_prelu)[dCv1_idx[i]] : 0; \
                 \
                 _Pragma("unroll") \
                 for(int i = 0; i < NUM_N_STEPS; i++) \
                 { \
                     if( dCv1_y_valid[0] && dCv1_x_valid[i] && __hlt(hC[(Cv1_off + i) * _INT_TO_2HALF_ + 0], 0) ) \
-                        hC[(Cv1_off + i) * _INT_TO_2HALF_ + 0] = __hmul(hC[(Cv1_off + i) * _INT_TO_2HALF_ + 0], _hscale[i][0]); \
+                        hC[(Cv1_off + i) * _INT_TO_2HALF_ + 0] = __hmul(hC[(Cv1_off + i) * _INT_TO_2HALF_ + 0], _hscale[i * _INT_TO_2HALF_ + 0]); \
                     if( dCv1_y_valid[0] && dCv1_x_valid[i] && __hlt(hC[(Cv1_off + i) * _INT_TO_2HALF_ + 1], 0) ) \
-                        hC[(Cv1_off + i) * _INT_TO_2HALF_ + 1] = __hmul(hC[(Cv1_off + i) * _INT_TO_2HALF_ + 1], _hscale[i][1]); \
+                        hC[(Cv1_off + i) * _INT_TO_2HALF_ + 1] = __hmul(hC[(Cv1_off + i) * _INT_TO_2HALF_ + 1], _hscale[i * _INT_TO_2HALF_ + 1]); \
                     \
                     if( dCv1_y_valid[1] && dCv1_x_valid[i] && __hlt(hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 0], 0) ) \
-                        hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 0] = __hmul(hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 0], _hscale[i][0]); \
+                        hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 0] = __hmul(hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 0], _hscale[i * _INT_TO_2HALF_ + 0]); \
                     if( dCv1_y_valid[1] && dCv1_x_valid[i] && __hlt(hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 1], 0) ) \
-                        hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 1] = __hmul(hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 1], _hscale[i][1]); \
+                        hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 1] = __hmul(hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 1], _hscale[i * _INT_TO_2HALF_ + 1]); \
 	            } \
 	        } \
 	        if( _has_prelu == 3) \
             { \
                 int _scale_v1[BLK_M_PER_MMA * NUM_N_STEPS]; \
-                __half * _hscale[BLK_M_PER_MMA * NUM_N_STEPS]; \
+                __half * _hscale = (__half *) _scale_v1; \
                 \
                 _Pragma("unroll") \
                 for(int i = 0; i < NUM_N_STEPS; i++) \
                 { \
                     _scale_v1[i * BLK_M_PER_MMA + 0] = (dCv1_y_valid[0] && dCv1_x_valid[i]) ? ((int *)_prelu)[dCv1_idy[0] * num_flt_v2 + dCv1_idx[i]] : 0; \
                     _scale_v1[i * BLK_M_PER_MMA + 1] = (dCv1_y_valid[1] && dCv1_x_valid[i]) ? ((int *)_prelu)[dCv1_idy[1] * num_flt_v2 + dCv1_idx[i]] : 0; \
-                    \
-                    _hscale[i * BLK_M_PER_MMA + 0] = (__half *)&_scale_v1[i * BLK_M_PER_MMA + 0]; \
-                    _hscale[i * BLK_M_PER_MMA + 1] = (__half *)&_scale_v1[i * BLK_M_PER_MMA + 1]; \
                 } \
                 \
                 _Pragma("unroll") \
                 for(int i = 0; i < NUM_N_STEPS; i++) \
                 { \
                     if( dCv1_y_valid[0] && dCv1_x_valid[i] && __hlt(hC[(Cv1_off + i) * _INT_TO_2HALF_ + 0], 0) ) \
-                        hC[(Cv1_off + i) * _INT_TO_2HALF_ + 0] = __hmul(hC[(Cv1_off + i) * _INT_TO_2HALF_ + 0], _hscale[i * BLK_M_PER_MMA + 0][0]); \
+                        hC[(Cv1_off + i) * _INT_TO_2HALF_ + 0] = __hmul(hC[(Cv1_off + i) * _INT_TO_2HALF_ + 0], _hscale[(i * BLK_M_PER_MMA + 0) * _INT_TO_2HALF_ + 0]); \
                     if( dCv1_y_valid[0] && dCv1_x_valid[i] && __hlt(hC[(Cv1_off + i) * _INT_TO_2HALF_ + 1], 0) ) \
-                        hC[(Cv1_off + i) * _INT_TO_2HALF_ + 1] = __hmul(hC[(Cv1_off + i) * _INT_TO_2HALF_ + 1], _hscale[i * BLK_M_PER_MMA + 0][1]); \
+                        hC[(Cv1_off + i) * _INT_TO_2HALF_ + 1] = __hmul(hC[(Cv1_off + i) * _INT_TO_2HALF_ + 1], _hscale[(i * BLK_M_PER_MMA + 0) * _INT_TO_2HALF_ + 1]); \
                     \
                     if( dCv1_y_valid[1] && dCv1_x_valid[i] && __hlt(hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 0], 0) ) \
-                        hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 0] = __hmul(hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 0], _hscale[i * BLK_M_PER_MMA + 1][0]); \
+                        hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 0] = __hmul(hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 0], _hscale[(i * BLK_M_PER_MMA + 1) * _INT_TO_2HALF_ + 0]); \
                     if( dCv1_y_valid[1] && dCv1_x_valid[i] && __hlt(hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 1], 0) ) \
-                        hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 1] = __hmul(hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 1], _hscale[i * BLK_M_PER_MMA + 1][1]); \
+                        hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 1] = __hmul(hC[(Cv1_off + i + NUM_N_STEPS) * _INT_TO_2HALF_ + 1], _hscale[(i * BLK_M_PER_MMA + 1) * _INT_TO_2HALF_ + 1]); \
 	            } \
 	        } \
     }
