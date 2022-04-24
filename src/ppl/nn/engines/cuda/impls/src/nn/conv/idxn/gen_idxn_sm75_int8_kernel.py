@@ -56,7 +56,7 @@ class KernelInfo:
         self.cta_num = cta_y_num * cta_x_num
         self.cta_size = self.cta_num * self.WARP_SIZE
 
-        self.dAvn_size = self.warp_y / self.MMA_Y_HALF
+        self.dAvn_size = self.warp_y / self.MMA_Y
         self.dBvn_size = self.warp_x / self.MMA_X
 
     def GetCompGmemRatio(self):
@@ -154,7 +154,7 @@ class KernelInfo:
             f.write("#define LOAD_dAv1(_regA, _dAv1, _in_id, _in_off)    LOAD_dAv1_SIZE%d(_regA, _dAv1, _in_id, _in_off)\n" % self.dAvn_size)
             f.write("#define LOAD_dBv1(_regB, _dBv1, _dBv1_off)          LOAD_dBv1_SIZE%d(_regB, _dBv1, _dBv1_off)\n\n" % self.dBvn_size)
 
-            f.write("#define MMA_INSTS(_C, _A, _B)                       MMA_INST_1INT_%dx%d(_C, _A, _B)\n\n" % (self.dAvn_size / 2, self.dBvn_size))
+            f.write("#define MMA_INSTS(_C, _A, _B)                       MMA_INST_1INT_%dx%d(_C, _A, _B)\n\n" % (self.dAvn_size, self.dBvn_size))
         elif self.s_size == 32:
             f.write("#include \"idxn/int8/dmem_i2_macros.h\"\n\n")
             f.write("#include \"idxn/int8/imma8816_i2_macros.h\"\n\n")
@@ -162,7 +162,7 @@ class KernelInfo:
             f.write("#define LOAD_dAv2(_regA, _dAv2, _in_id, _in_off)    LOAD_dAv2_SIZE%d(_regA, _dAv2, _in_id, _in_off)\n" % self.dAvn_size)
             f.write("#define LOAD_dBv2(_regB, _dBv2, _dBv2_off)          LOAD_dBv2_SIZE%d(_regB, _dBv2, _dBv2_off)\n\n" % self.dBvn_size)
 
-            f.write("#define MMA_INSTS(_C, _A, _B)                       MMA_INST_2INT_%dx%d(_C, _A, _B)\n\n" % (self.dAvn_size / 2, self.dBvn_size))
+            f.write("#define MMA_INSTS(_C, _A, _B)                       MMA_INST_2INT_%dx%d(_C, _A, _B)\n\n" % (self.dAvn_size, self.dBvn_size))
         elif self.s_size == 64:
             f.write("#include \"idxn/int8/dmem_i4_macros.h\"\n\n")
             f.write("#include \"idxn/int8/imma8816_i4_macros.h\"\n\n")
@@ -170,7 +170,7 @@ class KernelInfo:
             f.write("#define LOAD_dAv4(_regA, _dAv4, _in_id, _in_off)    LOAD_dAv4_SIZE%d(_regA, _dAv4, _in_id, _in_off)\n" % self.dAvn_size)
             f.write("#define LOAD_dBv4(_regB, _dBv4, _dBv4_off)          LOAD_dBv4_SIZE%d(_regB, _dBv4, _dBv4_off)\n\n" % self.dBvn_size)
 
-            f.write("#define MMA_INSTS(_C, _A, _B)                       MMA_INST_4INT_%dx%d(_C, _A, _B)\n\n" % (self.dAvn_size / 2, self.dBvn_size))
+            f.write("#define MMA_INSTS(_C, _A, _B)                       MMA_INST_4INT_%dx%d(_C, _A, _B)\n\n" % (self.dAvn_size, self.dBvn_size))
 
         f.write("#include \"idxn/int8/imma8816_output_macros.h\"\n\n")
 

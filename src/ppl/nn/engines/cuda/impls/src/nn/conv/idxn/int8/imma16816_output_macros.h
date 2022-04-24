@@ -62,14 +62,14 @@
                 { \
                     AND_BIT8_V2(C, (Cv2_off + i) * _INT2_TO_2INT_); \
                     PACK_V2(C, (Cv2_off + i) * _INT2_TO_2INT_); \
-                    dCvHalf[_concatV2_off0 + dCv2_idy[0] * numFltV2 + dCv2_idx[i]] = CvHalf[(Cv2_off + i) * _INT2_TO_4HALF_]; \
+                    dCvHalf[concatV2_off0 + dCv2_idy[0] * numFltV2 + dCv2_idx[i]] = CvHalf[(Cv2_off + i) * _INT2_TO_4HALF_]; \
                 } \
                 \
                 if( dCv2YValid[1] && dCv2XValid[i] ) \
                 { \
                     AND_BIT8_V2(C, (Cv2_off + i + NUM_N_STEPS) * _INT2_TO_2INT_); \
                     PACK_V2(C, (Cv2_off + i + NUM_N_STEPS) * _INT2_TO_2INT_); \
-                    dCvHalf[_concatV2_off1 + dCv2_idy[1] * numFltV2 + dCv2_idx[i]] = CvHalf[(Cv2_off + i + NUM_N_STEPS) * _INT2_TO_4HALF_]; \
+                    dCvHalf[concatV2_off1 + dCv2_idy[1] * numFltV2 + dCv2_idx[i]] = CvHalf[(Cv2_off + i + NUM_N_STEPS) * _INT2_TO_4HALF_]; \
                 } \
             } \
             \
@@ -225,9 +225,6 @@
         { \
 	        if( _hasClip ) \
             { \
-                int * _rClipMax = (int *) &_clipMax; \
-                int * _rClipMin = (int *) &_clipMin; \
-                \
                 _Pragma("unroll") \
                 for(int i = 0; i < NUM_N_STEPS; i++) \
                 { \

@@ -301,7 +301,8 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
 #if defined(ENABLE_FUSE)
         float2 deScaleV2[NUM_N_STEPS];
-        GET_DEQUANTSCALE(deScale, dFltScale, inScale);
+        int2 * Cv2 = (int2 *) C;
+        GET_DEQUANTSCALE_V2(deScaleV2, dFltScale, inScale);
         DEQUANT_V2(fCv2, Cv2, deScaleV2);
 #endif
 
