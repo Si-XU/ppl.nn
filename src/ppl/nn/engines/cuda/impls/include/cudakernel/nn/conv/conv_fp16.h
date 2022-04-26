@@ -229,6 +229,7 @@ void PPLCUDAConvolutionForwardJitImp(
     fuse_param_t& fuse_param);
 
 double PPLCUDAConvolutionSelectKernelInt8(
+    int device_id,
     cudaStream_t &stream, 
     ppl::common::datatype_t type,
     int4* d_input,

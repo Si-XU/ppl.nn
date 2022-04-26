@@ -33,6 +33,7 @@
 
 #define WARP_SIZE               32
 #define _2HALF_TO_INT_          2
+#define _4CHAR_TO_INT_          4
 #define _4INT_TO_INT4_          4
 #define _INT_TO_4BYTE_          4
 #define _INT4_TO_4INT_          4
@@ -67,10 +68,12 @@ enum {
     CONV_2SPK_FS  = 3,
     CONV_IDXN_C2  = 4,
     CONV_IDXN_C4  = 5,
-    CONV_IDXN_C32 = 6,
-    CONV_SWZL_F1 = 7,
-    CONV_SWZL_F3 = 8,
-    CONV_SWZL_FN = 9,
+    CONV_IDXN_C8  = 6,
+    CONV_IDXN_C32 = 7,
+    CONV_IDXN_C64 = 8,
+    CONV_SWZL_F1 = 9,
+    CONV_SWZL_F3 = 10,
+    CONV_SWZL_FN = 11,
     CONV_KTYPE_NUM,
 };
 
@@ -121,6 +124,9 @@ struct kernel_info_t {
         lut_kptr = NULL;
         spk_kptr = NULL;
         idx_kptr = NULL;
+        int8_lut_kptr = NULL;
+        int8_spk_kptr = NULL;
+        int8_idx_kptr = NULL;
 
         tile_m_per_cta = -1;
         tile_n_per_cta = -1;
@@ -194,16 +200,16 @@ struct kernel_info_t {
         else if (strstr(kname_substrs[0].c_str(), "Int8"))
             kprec = ppl::common::DATATYPE_INT8;
 
-        if (ktype == CONV_IDXN_C2 || ktype == CONV_IDXN_C4 || ktype == CONV_IDXN_C32) {
+        if (ktype == CONV_IDXN_C2 || ktype == CONV_IDXN_C4 || ktype == CONV_IDXN_C8 || ktype == CONV_IDXN_C32 || ktype == CONV_IDXN_C64) {
             sscanf(kname_substrs[3].c_str(), "b%dx%d", &tile_m_per_cta, &tile_n_per_cta);
             sscanf(kname_substrs[4].c_str(), "w%dx%d", &tile_m_per_warp, &tile_n_per_warp);
             sscanf(kname_substrs[5].c_str(), "k%d",    &tile_k_per_cta);
             sscanf(kname_substrs[6].c_str(), "s%d",    &tile_k_per_step);
     
-            if(tile_k_per_step == 8)  flt_pad_size = 2;//fp16
+            if(tile_k_per_step == 8)  flt_pad_size = 2; // only for fp16
             else if(tile_k_per_step == 16)  flt_pad_size = 4;
             else if(tile_k_per_step == 32) flt_pad_size = 8;
-            else if(tile_k_per_step == 64) flt_pad_size = 16;//int8
+            else if(tile_k_per_step == 64) flt_pad_size = 16; // only for int8
             else flt_pad_size = -1;
     
             cta_size_in_thd = (tile_m_per_cta / tile_m_per_warp) * \
@@ -234,9 +240,19 @@ struct kernel_info_t {
                               (tile_k_per_cta / tile_k_per_set) *
                               WARP_SIZE;
 
-            int smem_a_v1 = tile_m_per_cta * tile_k_per_cta * buf_num / _2HALF_TO_INT_;
-            int smem_b_v1 = tile_n_per_cta * tile_k_per_cta * buf_num / _2HALF_TO_INT_;
-            int smem_r_v1 = tile_m_per_cta * tile_n_per_cta * (tile_k_per_cta / tile_k_per_set) / _2HALF_TO_INT_;
+            int smem_a_v1 = 0;
+            int smem_b_v1 = 0;
+            int smem_r_v1 = 0;
+
+            if (strstr(kname_substrs[0].c_str(), "Int8")) {
+                smem_a_v1 = tile_m_per_cta * tile_k_per_cta * buf_num / _4CHAR_TO_INT_;
+                smem_b_v1 = tile_n_per_cta * tile_k_per_cta * buf_num / _4CHAR_TO_INT_;
+                smem_r_v1 = tile_m_per_cta * tile_n_per_cta * (tile_k_per_cta / tile_k_per_set);
+            } else if (strstr(kname_substrs[0].c_str(), "Fp16")) {
+                smem_a_v1 = tile_m_per_cta * tile_k_per_cta * buf_num / _2HALF_TO_INT_;
+                smem_b_v1 = tile_n_per_cta * tile_k_per_cta * buf_num / _2HALF_TO_INT_;
+                smem_r_v1 = tile_m_per_cta * tile_n_per_cta * (tile_k_per_cta / tile_k_per_set) / _2HALF_TO_INT_;
+            }
 
             smem_size = Max(smem_a_v1 + smem_b_v1, smem_r_v1) * _INT_TO_4BYTE_;
         } else if( ktype == CONV_SWZL_F1 || ktype == CONV_SWZL_F3 || ktype == CONV_SWZL_FN ) {
@@ -254,17 +270,37 @@ struct kernel_info_t {
                               (tile_n_per_cta / tile_n_per_warp) * \
                               WARP_SIZE;
 
-            int smem_a_v1 = tile_m_per_cta * tile_k_per_cta * buf_num / _2HALF_TO_INT_;
-            int smem_b_v1 = tile_n_per_cta * tile_k_per_cta * buf_num / _2HALF_TO_INT_;
-
-            const int TILE_N_PER_MMA = 16;
-
+            int smem_a_v1 = 0;
+            int smem_b_v1 = 0;
             int smem_r_v1 = 0;
 
-            if(tile_m_per_warp == 8)
-                smem_r_v1 = tile_m_per_cta * TILE_N_PER_MMA * (cta_size_in_thd / WARP_SIZE) * 2 / _2HALF_TO_INT_;
-            else if (tile_m_per_warp == 16 || tile_m_per_warp == 32 || tile_m_per_warp ==64)
-                smem_r_v1 = tile_m_per_cta * TILE_N_PER_MMA * (cta_size_in_thd / WARP_SIZE) / _2HALF_TO_INT_;
+            if (strstr(kname_substrs[0].c_str(), "Int8")) {
+                smem_a_v1 = tile_m_per_cta * tile_k_per_cta * buf_num / _4CHAR_TO_INT_;
+                smem_b_v1 = tile_n_per_cta * tile_k_per_cta * buf_num / _4CHAR_TO_INT_;
+    
+                if (strstr(kname_substrs[1].c_str(), "imma16816")) {
+                    const int TILE_N_PER_MMA = 16;
+    
+                    smem_r_v1 = tile_m_per_cta * TILE_N_PER_MMA * (cta_size_in_thd / WARP_SIZE);
+                } else if (strstr(kname_substrs[1].c_str(), "imma8816")) {
+                    const int TILE_N_PER_MMA = 8;
+    
+                    if(tile_m_per_warp == 8)
+                        smem_r_v1 = tile_m_per_cta * TILE_N_PER_MMA * (cta_size_in_thd / WARP_SIZE) * 2;
+                    else if (tile_m_per_warp == 16 || tile_m_per_warp == 32 || tile_m_per_warp ==64)
+                        smem_r_v1 = tile_m_per_cta * TILE_N_PER_MMA * (cta_size_in_thd / WARP_SIZE);
+                }
+            } else if (strstr(kname_substrs[0].c_str(), "Fp16")) {
+                smem_a_v1 = tile_m_per_cta * tile_k_per_cta * buf_num / _2HALF_TO_INT_;
+                smem_b_v1 = tile_n_per_cta * tile_k_per_cta * buf_num / _2HALF_TO_INT_;
+    
+                const int TILE_N_PER_MMA = 16;
+    
+                if(tile_m_per_warp == 8)
+                    smem_r_v1 = tile_m_per_cta * TILE_N_PER_MMA * (cta_size_in_thd / WARP_SIZE) * 2 / _2HALF_TO_INT_;
+                else if (tile_m_per_warp == 16 || tile_m_per_warp == 32 || tile_m_per_warp ==64)
+                    smem_r_v1 = tile_m_per_cta * TILE_N_PER_MMA * (cta_size_in_thd / WARP_SIZE) / _2HALF_TO_INT_;
+            }
 
             smem_size = Max(smem_a_v1 + smem_b_v1, smem_r_v1) * _INT_TO_4BYTE_;
         }
@@ -384,6 +420,24 @@ struct kernel_info_t {
         return;
     }
 
+    void AdaptInt8LutKernelSMemSize()
+    {
+        if(smem_size <= MAX_STATIC_SMEM_SIZE_PER_CTA)
+            return;
+
+        cudaFuncSetAttribute(int8_lut_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
+        return;
+    }
+
+    void AdaptInt8SpkKernelSMemSize()
+    {
+        if(smem_size <= MAX_STATIC_SMEM_SIZE_PER_CTA)
+            return;
+
+        cudaFuncSetAttribute(int8_spk_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
+        return;
+    }
+
     bool CheckKernelTypeFeasible(int flt_height, int flt_width, int num_chl_per_grp, int splitk)
     {
         if (num_chl_per_grp > 0 && num_chl_per_grp <= 2) {
@@ -430,9 +484,9 @@ struct kernel_info_t {
 
     bool CheckKernelTypeFeasibleInt8(int flt_height, int flt_width, int num_chl_per_grp, int splitk)
     {
-        if (ktype == CONV_IDXN_C2 || ktype == CONV_IDXN_C4 || ktype == CONV_IDXN_C32) {
+        if (ktype == CONV_IDXN_C4 || ktype == CONV_IDXN_C8 || ktype == CONV_IDXN_C64) {
             if (num_chl_per_grp > 0 && num_chl_per_grp <= 4) {
-                if (ktype == CONV_IDXN_C2 && splitk == 1) {
+                if (ktype == CONV_IDXN_C4 && splitk == 1) {
                     int num_chl_per_grp_pad = Align(num_chl_per_grp, 4);
 
                     int kloop_num  = DivUp(flt_height * flt_width * num_chl_per_grp_pad, tile_k_per_cta);
@@ -442,27 +496,27 @@ struct kernel_info_t {
                 } else
                     return false;
             }
-        else if (num_chl_per_grp > 4 && num_chl_per_grp <= 8) {
-            if (ktype == CONV_IDXN_C4 && splitk == 1) {
-                int num_chl_per_grp_pad = Align(num_chl_per_grp, 8);
+            else if (num_chl_per_grp > 4 && num_chl_per_grp <= 8) {
+                if (ktype == CONV_IDXN_C8 && splitk == 1) {
+                    int num_chl_per_grp_pad = Align(num_chl_per_grp, 8);
 
-                int kloop_num  = DivUp(flt_height * flt_width * num_chl_per_grp_pad, tile_k_per_cta);
-                int kloop_time = DivUp(kloop_num * (tile_k_per_cta / flt_pad_size), cta_size_in_thd);
+                    int kloop_num  = DivUp(flt_height * flt_width * num_chl_per_grp_pad, tile_k_per_cta);
+                    int kloop_time = DivUp(kloop_num * (tile_k_per_cta / flt_pad_size), cta_size_in_thd);
 
-                return (kloop_time == 1);
-            } else
-                return false;
-        } else if (num_chl_per_grp > 8 && num_chl_per_grp <= 64) {
-            if (ktype == CONV_IDXN_C32 && splitk == 1) {
-                int num_chl_per_grp_pad = Align(num_chl_per_grp, 16);
+                    return (kloop_time == 1);
+                } else
+                    return false;
+            } else if (num_chl_per_grp > 8 && num_chl_per_grp <= 64) {
+                if (ktype == CONV_IDXN_C64 && splitk == 1) {
+                    int num_chl_per_grp_pad = Align(num_chl_per_grp, 16);
 
-                int kloop_num  = DivUp(flt_height * flt_width * num_chl_per_grp_pad, tile_k_per_cta);
-                int kloop_time = DivUp(kloop_num * (tile_k_per_cta / flt_pad_size), cta_size_in_thd);
+                    int kloop_num  = DivUp(flt_height * flt_width * num_chl_per_grp_pad, tile_k_per_cta);
+                    int kloop_time = DivUp(kloop_num * (tile_k_per_cta / flt_pad_size), cta_size_in_thd);
 
-                return (kloop_time == 1);
-            } else
-                return false;
-        }
+                    return (kloop_time == 1);
+                } else
+                    return false;
+            }
         } else if (flt_height == 1 && flt_width == 1) {
             return (ktype == CONV_2SPK_F1 || ktype == CONV_SWZL_F1) ? true : false;
         } else if (flt_height == 3 && flt_width == 3) {
@@ -629,11 +683,11 @@ void PPLCUDAConvolutionCvtBias(
     ppl::common::datatype_t type,
     conv_param_t &conv_param);
 
+// fp16 kernels
 void Initialize2spkSM75FP16ConvF1KernelContainer(std::vector<kernel_info_t> &kernel_container);
 void Initialize2spkSM75FP16ConvF3KernelContainer(std::vector<kernel_info_t> &kernel_container);
 void Initialize2spkSM75FP16ConvFNKernelContainer(std::vector<kernel_info_t> &kernel_container);
 void Initialize2spkSM75FP16ConvFSKernelContainer(std::vector<kernel_info_t> &kernel_container);
-
 void Initialize2spkSM80FP16ConvF1KernelContainer(std::vector<kernel_info_t> &kernel_container);
 void Initialize2spkSM80FP16ConvF3KernelContainer(std::vector<kernel_info_t> &kernel_container);
 void Initialize2spkSM80FP16ConvFNKernelContainer(std::vector<kernel_info_t> &kernel_container);
@@ -645,15 +699,28 @@ void InitializeIdxnSM80FP16ConvKernelContainer(std::vector<kernel_info_t> &kerne
 void InitializeSwzlSM75FP16ConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
 void InitializeSwzlSM75FP16ConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
 void InitializeSwzlSM75FP16ConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
-
 void InitializeSwzlSM80FP16ConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
 void InitializeSwzlSM80FP16ConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
 void InitializeSwzlSM80FP16ConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
 
-void InitializeInt82spkConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
-void InitializeInt82spkConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
-void InitializeInt82spkConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
-void InitializeInt82spkConvFSKernelContainer(std::vector<kernel_info_t> & kernel_container);
+// int8 kernels
+void Initialize2spkSM75Int8ConvF1KernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM75Int8ConvF3KernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM75Int8ConvFNKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM75Int8ConvFSKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80Int8ConvF1KernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80Int8ConvF3KernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80Int8ConvFNKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80Int8ConvFSKernelContainer(std::vector<kernel_info_t> &kernel_container);
 
-void InitializeInt8IdxnConvKernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeIdxnSM75Int8ConvKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void InitializeIdxnSM80Int8ConvKernelContainer(std::vector<kernel_info_t> &kernel_container);
+
+void InitializeSwzlSM75Int8ConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM75Int8ConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM75Int8ConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM80Int8ConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM80Int8ConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM80Int8ConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
+
 #endif
