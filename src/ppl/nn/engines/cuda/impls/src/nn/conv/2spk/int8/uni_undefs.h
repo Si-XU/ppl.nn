@@ -618,8 +618,8 @@
 // output macros
 /////////////////////////////////////////////////////
 
-#undef OUTPUT_PRC_INT8_V4
-#undef OUTPUT_PRC_INT4_V1
+#undef OUTPUT_BY_INT8_V4
+#undef OUTPUT_BY_INT4_V1
 
 #undef PACK_V4
 

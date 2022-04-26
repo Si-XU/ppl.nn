@@ -211,15 +211,18 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     /////////////////////////
     // ldg A and B registers
     int4 Rv4[Rv4_SIZE];
+#if defined(ENABLE_FUSE) || ((defined(ENABLE_SPLITF) || defined(ENABLE_SPLITK)) && (TILE_K_PER_CTA > TILE_K_PER_SET))
+    int * R = (int *) Rv4;
+#endif
+#if defined(ENABLE_FUSE)
+    float * fR = (float *) Rv4;
+#endif
+
 #if BUF_NUM <= 2
     const int4 ZEROv4 = {0, 0, 0, 0};
 
     int4 * reg_dAv4 = (int4 *) Rv4;
     int4 * reg_dBv4 = (int4 *) Rv4 + REG_dAv4_SIZE;
-#endif
-
-#if defined(ENABLE_FUSE) || ((defined(ENABLE_SPLITF) || defined(ENABLE_SPLITK)) && (TILE_K_PER_CTA > TILE_K_PER_SET))
-    int * R = (int *) Rv4;
 #endif
 
     /////////////////////////
@@ -573,9 +576,9 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
                         dCv4_idx;
 
 #if defined(ENABLE_FUSE)
-        float * fR = (float *) Rv4;
-        float deScale[4];
-        GET_DEQUANTSCALE(deScale, dFltScale, inScale);
+        float4 deScaleV4;
+        float* deScale = (float *) &deScaleV4;
+        GET_DEQUANTSCALE(deScaleV4, deScale, dFltScale, inScale);
         DEQUANT_V4(fR, R, deScale);
 #endif
 
@@ -603,9 +606,9 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #if defined(ENABLE_FUSE)
         AND_BIT8_V4(R, 0);
         PACK_V4(R, 0);
-        OUTPUT_PRC_INT8_V4(R);
+        OUTPUT_BY_INT8_V4(R);
 #elif defined(ENABLE_SPLITK) || defined(ENABLE_SPLITF)
-        OUTPUT_PRC_INT4_V1(Rv4);
+        OUTPUT_BY_INT4_V1(Rv4);
 #endif
 
         dCv4_idy += OUTPUT_SIZE_Y_IN_THD;

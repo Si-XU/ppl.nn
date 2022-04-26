@@ -35,7 +35,7 @@
             asm volatile("cvt.pack.sat.s8.s32.b32 %0, %1, %2, %3;\n": "=r"(_R[_R_off + 0]) : "r"(_R[_R_off + 1]), "r"(_R[_R_off + 0]), "r"(_R[_R_off + 2])); \
         }
 
-#define OUTPUT_PRC_INT8_V4(_R) \
+#define OUTPUT_BY_INT8_V4(_R) \
         { \
             if( dCv4XValid && dCv4YValid ) \
                 ((int*) dC)[concatV4_off + dCv4_off] = _R[0]; \
@@ -43,7 +43,7 @@
 
 #elif defined(ENABLE_SPLITK) || defined(ENABLE_SPLITF)
 
-#define OUTPUT_PRC_INT4_V1(_Rv4) \
+#define OUTPUT_BY_INT4_V1(_Rv4) \
         { \
             if( dCv4XValid && dCv4YValid ) \
             { \
@@ -57,12 +57,11 @@
 // quant interface
 //////////////////////////////////////////////////////
 
-#define GET_DEQUANTSCALE(_deScale, _dFltScale, _inScale) \
+#define GET_DEQUANTSCALE(_deScaleV4, _deScale, _dFltScale, _inScale) \
         { \
         	if(dCv4XValid && dCv4YValid) \
             { \
-                float4 * _deScaleV4 = (float4 *) _deScale; \
-                _deScaleV4[0] = ((float4 *) _dFltScale)[grp_id * numFltPerGrpPadV4 + dCv4_idx]; \
+                _deScaleV4 = ((float4 *) _dFltScale)[grp_id * numFltPerGrpPadV4 + dCv4_idx]; \
                 \
                 _deScale[0] *= _inScale; \
                 _deScale[1] *= _inScale; \
@@ -73,18 +72,18 @@
 
 #define DEQUANT_V4(_fR, _R, _deScale) \
         { \
-	        _fR[0] = _R[0] * _deScale[0]; \
-	        _fR[1] = _R[1] * _deScale[1]; \
-	        _fR[2] = _R[2] * _deScale[2]; \
-	        _fR[3] = _R[3] * _deScale[3]; \
+        	_fR[0] = _R[0] * _deScale[0]; \
+        	_fR[1] = _R[1] * _deScale[1]; \
+        	_fR[2] = _R[2] * _deScale[2]; \
+        	_fR[3] = _R[3] * _deScale[3]; \
         }
 
 #define QUANT_V4(_R, _fR, _quantScale) \
         { \
-        	   _R[0] = __float2int_rn(_fR[0] * _quantScale); \
-        	   _R[1] = __float2int_rn(_fR[1] * _quantScale); \
-        	   _R[2] = __float2int_rn(_fR[2] * _quantScale); \
-        	   _R[3] = __float2int_rn(_fR[3] * _quantScale); \
+           _R[0] = __float2int_rn(_fR[0] * _quantScale); \
+           _R[1] = __float2int_rn(_fR[1] * _quantScale); \
+           _R[2] = __float2int_rn(_fR[2] * _quantScale); \
+           _R[3] = __float2int_rn(_fR[3] * _quantScale); \
         }
 
 //////////////////////////////////////////////////////
