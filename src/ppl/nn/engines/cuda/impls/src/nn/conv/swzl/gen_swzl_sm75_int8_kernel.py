@@ -329,7 +329,7 @@ class LutHeaderFile:
         self.f.write("\n\n#include \"kernel_type.h\"\n\n")
 
     def AppendKernel(self, kname):
-        self.f.write("__global__ lut_kernel_t %s;\n" % kname)
+        self.f.write("__global__ int8_lut_kernel_t %s;\n" % kname)
 
     def Close(self):
         self.f.write("\n\n#endif\n")
@@ -350,7 +350,7 @@ class SpkHeaderFile:
         self.f.write("\n\n#include \"kernel_type.h\"\n\n")
 
     def AppendKernel(self, kname):
-        self.f.write("__global__ spk_kernel_t %s;\n" % kname)
+        self.f.write("__global__ int8_spk_kernel_t %s;\n" % kname)
 
     def Close(self):
         self.f.write("\n\n#endif\n")

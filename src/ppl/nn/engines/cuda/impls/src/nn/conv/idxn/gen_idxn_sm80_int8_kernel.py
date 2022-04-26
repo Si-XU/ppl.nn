@@ -208,7 +208,7 @@ class IdxHeaderFile:
         self.f.write("\n\n#include \"kernel_type.h\"\n\n")
 
     def AppendKernel(self, kname):
-        self.f.write("__global__ idx_kernel_t %s;\n" % kname)
+        self.f.write("__global__ int8_idx_kernel_t %s;\n" % kname)
 
     def Close(self):
         self.f.write("\n\n#endif\n")
