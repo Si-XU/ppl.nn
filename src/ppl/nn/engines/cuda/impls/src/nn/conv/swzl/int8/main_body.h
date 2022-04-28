@@ -66,8 +66,8 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
     uint out_tid   =  warp_idy * WARP_SIZE_IN_THD + local_tid;
 
-    uint cta_idx   = blockIdx.x;
-    uint cta_idy   = blockIdx.y;
+    uint cta_idx   = blockIdx.y;
+    uint cta_idy   = blockIdx.x;
 
 #if defined(ENABLE_SPLITK)
     uint grp_id    = blockIdx.z % numGrp;

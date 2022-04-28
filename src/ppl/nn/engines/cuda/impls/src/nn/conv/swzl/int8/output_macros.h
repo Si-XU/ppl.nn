@@ -42,7 +42,6 @@
             { \
                 if( dCv4YValid && dCv4XValid[i] ) \
                 { \
-                    AND_BIT8_V4(R, i * _INT4_TO_4INT_); \
                     PACK_V4(R, i * _INT4_TO_4INT_); \
                     ((int*) dC)[dCv4_base + concatV4_off[i]] = _R[i * _INT4_TO_4INT_]; \
                 } \
