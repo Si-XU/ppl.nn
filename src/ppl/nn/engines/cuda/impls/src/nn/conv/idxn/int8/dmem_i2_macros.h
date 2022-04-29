@@ -88,9 +88,9 @@
                             warp_idx  *  TILE_N_PER_MMA  + \
                              tid_y; \
             \
-            _fltNValid  =  _fltN_id < numFltPerGrpPad; \
+            _fltNValid  =  _fltN_id < numFltPerGrp; \
             \
-            _dBv2_off  =   grp_id   * fltHWCv8 * numFltPerGrpPad + \
+            _dBv2_off  =   grp_id   * fltHWCv8 * numFltPerGrp + \
                           _fltN_id  * fltHWCv8 + \
                            tid_x; \
         }

@@ -89,7 +89,7 @@
                 if( dCv2YValid[0] && dCv2XValid[i] ) \
                 { \
                     PACK_V2(outData[i], C, (Cv2_off + i) * _INT2_TO_2INT_); \
-                    dCvHalf[concatV2_off0 + dCv2_idy[0] * numFltV2 + dCv2_idx[i]] = outData[i]; \
+                    dCvHalf[concatV2_off0 + dCv2_idx[i]] = outData[i]; \
                 } \
             } \
             \

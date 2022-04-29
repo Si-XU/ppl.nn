@@ -109,7 +109,7 @@
                     _deScaleV2[i].y *= _inScale; \
                 } \
                 if( dCv2YValid[1] && dCv2XValid[i] ) { \
-                    _deScaleV2[i + NUM_N_STEPS] = ((float2 *)_dFltScale) [dCv2_idx[i + NUM_N_STEPS]]; \
+                    _deScaleV2[i + NUM_N_STEPS] = ((float2 *)_dFltScale) [dCv2_idx[i]]; \
                     _deScaleV2[i + NUM_N_STEPS].x *= _inScale; \
                     _deScaleV2[i + NUM_N_STEPS].y *= _inScale; \
                 } \
