@@ -627,8 +627,6 @@
 // quant macros
 ////////////////////////////////////////
 
-#undef AND_BIT8_V4
-
 #undef GET_DEQUANTSCALE
 #undef DEQUANT_V4
 #undef QUANT_V4

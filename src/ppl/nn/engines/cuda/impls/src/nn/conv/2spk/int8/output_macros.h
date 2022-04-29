@@ -19,14 +19,6 @@
 // output interface
 //////////////////////////////////////////////////////
 
-#define AND_BIT8_V4(_R, _R_off) \
-        { \
-            _R[_R_off + 0] = _R[_R_off + 0] & 0xff; \
-            _R[_R_off + 1] = _R[_R_off + 1] & 0xff; \
-            _R[_R_off + 2] = _R[_R_off + 2] & 0xff; \
-            _R[_R_off + 3] = _R[_R_off + 3] & 0xff; \
-        }
-
 #if defined(ENABLE_FUSE)
 
 #define PACK_V4(_R, _R_off) \

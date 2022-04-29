@@ -500,10 +500,6 @@
 #undef OUTPUT_BY_HALF_X1
 #undef OUTPUT_BY_HALF_X2
 
-#undef AND_BIT8_V1
-#undef AND_BIT8_V2
-#undef AND_BIT8_V4
-
 #undef PACK_V2
 #undef PACK_V4
 

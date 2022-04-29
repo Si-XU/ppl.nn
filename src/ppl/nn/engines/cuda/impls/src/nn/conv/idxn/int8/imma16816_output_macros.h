@@ -16,33 +16,9 @@
 // under the License.
 
 //////////////////////////////////////////////////////
-// pack output macros
-//////////////////////////////////////////////////////
-
-#define AND_BIT8_V1(_C, _Cv1_off) \
-        { \
-            _C[_Cv1_off] = _C[_Cv1_off] & 0xff; \
-        }
-
-#define AND_BIT8_V2(_C, _Cv1_off) \
-        { \
-            _C[_Cv1_off + 0] = _C[_Cv1_off + 0] & 0xff; \
-            _C[_Cv1_off + 1] = _C[_Cv1_off + 1] & 0xff; \
-        }
-
-#define AND_BIT8_V4(_C, _Cv1_off) \
-        { \
-            _C[_Cv1_off + 0] = _C[_Cv1_off + 0] & 0xff; \
-            _C[_Cv1_off + 1] = _C[_Cv1_off + 1] & 0xff; \
-            _C[_Cv1_off + 2] = _C[_Cv1_off + 2] & 0xff; \
-            _C[_Cv1_off + 3] = _C[_Cv1_off + 3] & 0xff; \
-        }
-
-//////////////////////////////////////////////////////
 // half output interface
 //////////////////////////////////////////////////////
 
-#if 0
 #define PACK_V2(_C, _Cv1_off) \
         { \
             asm volatile("cvt.pack.sat.s8.s32.b32 %0, %1, %2, 0;\n" : "=r"(_C[_Cv1_off + 0]) : "r"(_C[_Cv1_off + 1]), "r"(_C[_Cv1_off + 0]) ); \
@@ -54,22 +30,6 @@
             asm volatile("cvt.pack.sat.s8.s32.b32 %0, %1, %2, %3;\n": "=r"(_C[_Cv1_off + 0]) : "r"(_C[_Cv1_off + 1]), "r"(_C[_Cv1_off + 0]), "r"(_C[_Cv1_off + 2])); \
         }
 
-#endif
-
-#define PACK_V2(_outData, _C, _Cv1_off) \
-        { \
-            if(_C[_Cv1_off + 0] > 127) _C[_Cv1_off + 0] = 127; \
-            if(_C[_Cv1_off + 1] > 127) _C[_Cv1_off + 1] = 127; \
-            \
-            if(_C[_Cv1_off + 0] < -128) _C[_Cv1_off + 0] = -128; \
-            if(_C[_Cv1_off + 1] < -128) _C[_Cv1_off + 1] = -128; \
-            \
-            _C[_Cv1_off + 0] = (0xffu & (int8_t) _C[_Cv1_off + 0]); \
-            _C[_Cv1_off + 1] = (0xffu & (int8_t) _C[_Cv1_off + 1]) << 8; \
-            \
-            _outData = _C[_Cv1_off + 1] | _C[_Cv1_off + 0]; \
-        }
-
 #define OUTPUT_BY_HALF_X2() \
         { \
             _Pragma("unroll") \
@@ -77,14 +37,14 @@
             { \
                 if( dCv2YValid[0] && dCv2XValid[i] ) \
                 { \
-                    PACK_V2(outData[i], C, (Cv2_off + i) * _INT2_TO_2INT_); \
-                    dCvHalf[concatV2_off0 + dCv2_idy[0] * numFltV2 + dCv2_idx[i]] = outData[i]; \
+                    PACK_V2(C, (Cv2_off + i) * _INT2_TO_2INT_); \
+                    dCvHalf[concatV2_off0 + dCv2_idx[i]] = CvHalf[(Cv2_off + i) * _INT2_TO_4HALF_]; \
                 } \
                 \
                 if( dCv2YValid[1] && dCv2XValid[i] ) \
                 { \
-                    PACK_V2(outData[i + NUM_N_STEPS], C, (Cv2_off + i + NUM_N_STEPS) * _INT2_TO_2INT_); \
-                    dCvHalf[concatV2_off1 + dCv2_idy[1] * numFltV2 + dCv2_idx[i]] = outData[i + NUM_N_STEPS]; \
+                    PACK_V2(C, (Cv2_off + i + NUM_N_STEPS) * _INT2_TO_2INT_); \
+                    dCvHalf[concatV2_off1 + dCv2_idx[i]] = CvHalf[(Cv2_off + i + NUM_N_STEPS) * _INT2_TO_4HALF_]; \
                 } \
             } \
             \

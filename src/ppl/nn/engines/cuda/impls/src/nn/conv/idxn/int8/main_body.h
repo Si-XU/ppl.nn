@@ -28,7 +28,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     // results
     int C[C_ITEMS_PER_THD];
 
-    // int16_t *  CvHalf = (int16_t *)  C;
+    int16_t *  CvHalf = (int16_t *)  C;
     float2 *   fCv2   = (float2 *) C;
 
 #if TILE_K_PER_STEP == 16
@@ -302,8 +302,6 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #if defined(ENABLE_FUSE)
         float2 deScaleV2[NUM_N_STEPS];
         int2 * Cv2 = (int2 *) C;
-        int16_t outData[NUM_N_STEPS * BLK_M_PER_MMA];
-
         GET_DEQUANTSCALE_V2(deScaleV2, dFltScale, inScale);
         DEQUANT_V2(fCv2, Cv2, deScaleV2);
 #endif

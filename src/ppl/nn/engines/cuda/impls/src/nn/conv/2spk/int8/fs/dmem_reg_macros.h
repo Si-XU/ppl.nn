@@ -148,9 +148,9 @@
                             _step_id  * (TILE_N_PER_CTA / READ_dBv4_STEPS) + \
                              ldg_idy; \
             \
-            _fltNValid  =  _fltN_id < numFltPerGrpPad; \
+            _fltNValid  =  _fltN_id < numFltPerGrp; \
             \
-            _dBv4_off  =   grp_id   * numChlPerGrpPadV16 * fltHW  * numFltPerGrpPad + \
+            _dBv4_off  =   grp_id   * numChlPerGrpPadV16 * fltHW  * numFltPerGrp + \
                           _fltN_id  * numChlPerGrpPadV16 * fltHW  + \
                            spf_id   * numChlPerGrpPadV16 + \
                            fltCv16_id; \
