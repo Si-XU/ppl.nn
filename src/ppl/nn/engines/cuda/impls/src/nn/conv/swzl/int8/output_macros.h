@@ -34,7 +34,7 @@
             { \
                 if( dCv4YValid && dCv4XValid[i] ) \
                 { \
-                    PACK_V4(R, i * _INT4_TO_4INT_); \
+                    PACK_V4(_R, i * _INT4_TO_4INT_); \
                     ((int*) dC)[dCv4_base + concatV4_off[i]] = _R[i * _INT4_TO_4INT_]; \
                 } \
                 \
@@ -68,9 +68,9 @@
 
 #define GET_DEQUANTSCALE(_deScaleV4, _deScale, _dFltScale, _inScale) \
         { \
-        	if(dCv4XValid && dCv4YValid) \
+        	if(dCv4YValid) \
             { \
-                _deScaleV4 = ((float4 *) _dFltScale)[grp_id * numFltPerGrpPadV4 + dCv4_idy]; \
+                _deScaleV4 = ((float4 *) _dFltScale)[dCv4_base]; \
                 \
                 _deScale[0] *= _inScale; \
                 _deScale[1] *= _inScale; \
@@ -81,18 +81,26 @@
 
 #define DEQUANT_V4(_fR, _R, _deScale) \
         { \
-        	_fR[0] = _R[0] * _deScale[0]; \
-        	_fR[1] = _R[1] * _deScale[1]; \
-        	_fR[2] = _R[2] * _deScale[2]; \
-        	_fR[3] = _R[3] * _deScale[3]; \
+            _Pragma("unroll") \
+            for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
+            { \
+        	    _fR[i * _INT4_TO_4INT_ + 0] = _R[i * _INT4_TO_4INT_ + 0] * _deScale[0]; \
+        	    _fR[i * _INT4_TO_4INT_ + 1] = _R[i * _INT4_TO_4INT_ + 1] * _deScale[1]; \
+        	    _fR[i * _INT4_TO_4INT_ + 2] = _R[i * _INT4_TO_4INT_ + 2] * _deScale[2]; \
+        	    _fR[i * _INT4_TO_4INT_ + 3] = _R[i * _INT4_TO_4INT_ + 3] * _deScale[3]; \
+            } \
         }
 
 #define QUANT_V4(_R, _fR, _quantScale) \
         { \
-           _R[0] = __float2int_rn(_fR[0] * _quantScale); \
-           _R[1] = __float2int_rn(_fR[1] * _quantScale); \
-           _R[2] = __float2int_rn(_fR[2] * _quantScale); \
-           _R[3] = __float2int_rn(_fR[3] * _quantScale); \
+            _Pragma("unroll") \
+            for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
+            { \
+                _R[i * _INT4_TO_4INT_ + 0] = __float2int_rn(_fR[i * _INT4_TO_4INT_ + 0] * _quantScale); \
+                _R[i * _INT4_TO_4INT_ + 1] = __float2int_rn(_fR[i * _INT4_TO_4INT_ + 1] * _quantScale); \
+                _R[i * _INT4_TO_4INT_ + 2] = __float2int_rn(_fR[i * _INT4_TO_4INT_ + 2] * _quantScale); \
+                _R[i * _INT4_TO_4INT_ + 3] = __float2int_rn(_fR[i * _INT4_TO_4INT_ + 3] * _quantScale); \
+            } \
         }
 
 //////////////////////////////////////////////////////
@@ -101,9 +109,9 @@
 
 #define ADD_BIAS_V4(_hasBias, _bias) \
         { \
-            if( _hasBias ) \
+            if( _hasBias && dCv4YValid) \
             { \
-                int4 _biasV4 = ((int4 *)_bias)[grp_id * numFltPerGrpPadV4 + dCv4_idy]; \
+                int4 _biasV4 = ((int4 *)_bias)[dCv4_base]; \
 	            float* _fBias = (float *) &_biasV4; \
                 \
                 _Pragma("unroll") \
@@ -112,7 +120,7 @@
                     _Pragma("unroll") \
 	                for(int j = 0; j < _INT4_TO_4INT_; j++) \
                     { \
-	                    fR[i * _INT4_TO_4INT_ + j] = fR[i * _INT4_TO_4INT_ + j] + _fBias[j]; \
+	                    fR[i * _INT4_TO_4INT_ + j] += _fBias[j]; \
 	                } \
                 } \
             } \
@@ -209,7 +217,7 @@
                     } \
                     \
                     if (_hasPrelu == 2) { \
-                        int4 _scaleV4 = ((int4 *)_prelu)[grp_id * numFltPerGrpPadV4 + dCv4_idy]; \
+                        int4 _scaleV4 = ((int4 *)_prelu)[dCv4_base]; \
                         float * _fScale = (float *) &_scaleV4; \
                         \
                         _Pragma("unroll") \
