@@ -32,7 +32,7 @@ class KernelInfo:
                 "_w" + str(self.warp_y) + "x" + str(self.warp_x) + \
                 "_k" + str(self.k_size) + "_buf" + str(self.buf_size)
 
-        self.kname = "nvSwzlSm80Int8Conv_imma16832_nhwc_" + self.flt_size + self.kconfig
+        self.kname = "nvSwzlSm75Int8Conv_imma8816_nhwc_" + self.flt_size + self.kconfig
         self.fname = self.flt_size + "/swzl_"  + self.flt_size + self.kconfig + ".cu"
 
         self.CHAR_SIZE = 4
@@ -42,13 +42,13 @@ class KernelInfo:
         self.INT4_TO_16CHAR = 16
         self.INT4_TO_4INT = 4
         self.INT4_TO_16BYTE = 16
-        self.MMA_X = 16
-        self.MMA_K = 32
+        self.MMA_X = 8
+        self.MMA_K = 16
         self.MMA_Y = 8
         self.MMA_X_HALF = self.MMA_X / 2
         self.PB_PER_TURING_SM = 4
 
-        self.CPI_IMMA16832 = 8.06
+        self.CPI_IMMA8816 = 8.06
         self.CPI_L1_LDG128 = 8
         self.IMMA_LATENCY = 14
         self.LDSM1_LATENCY = 19
@@ -101,7 +101,11 @@ class KernelInfo:
     def GetSMemUsage(self):
         sm_a_v4 = self.cta_y * self.k_size * self.buf_size / self.INT4_TO_16CHAR
         sm_b_v4 = self.cta_x * self.k_size * self.buf_size / self.INT4_TO_16CHAR
-        sm_r_v4 = self.cta_y * self.MMA_X *  self.cta_num  / self.INT4_TO_4INT
+
+        if self.warp_y == 8:
+            sm_r_v4 = self.cta_y * self.MMA_X * self.cta_num * 2 / self.INT4_TO_4INT
+        elif self.warp_y == 16 or self.warp_y == 32 or self.warp_y == 64:
+            sm_r_v4 = self.cta_y * self.MMA_X * self.cta_num / self.INT4_TO_4INT
 
         return max(sm_a_v4 + sm_b_v4, sm_r_v4)
 
@@ -131,7 +135,7 @@ class KernelInfo:
     def GetCompMem2Ratio(self):
         pb_num_per_cta = self.cta_num if self.cta_num < self.PB_PER_TURING_SM else self.PB_PER_TURING_SM
 
-        cycles_comp = self.CPI_IMMA16832 * ( (self.cta_y / self.MMA_Y) * (self.cta_x / self.MMA_X) * (self.k_size / self.MMA_K) / pb_num_per_cta) + self.IMMA_LATENCY + self.LDSM1_LATENCY
+        cycles_comp = self.CPI_IMMA8816 * ( (self.cta_y / self.MMA_Y) * (self.cta_x / self.MMA_X) * (self.k_size / self.MMA_K) / pb_num_per_cta) + self.IMMA_LATENCY + self.LDSM1_LATENCY
 
         cycles_mem2 = self.CPI_L1_LDG128 * CeilDiv( (self.cta_y + self.cta_x) * self.k_size * self.CHAR_SIZE, (self.INT4_TO_16BYTE * self.WARP_SIZE) ) + self.DRAM_LATENCY + self.STS128_LATENCY
 
@@ -177,16 +181,22 @@ class KernelInfo:
         f.write("#define TILE_K_PER_CTA       %d\n" % self.k_size)
         f.write("#define TILE_K_PER_WARP      %d\n\n" % self.k_size)
 
-        f.write("#define OUTPUT_BLKS_PER_STEP %d\n\n" % (self.warp_y / 8))
+        if self.warp_y == 8:
+            f.write("#define OUTPUT_BLKS_PER_STEP %d\n\n" % (self.warp_y / 8))
+        elif self.warp_y ==16 or self.warp_y == 32 or self.warp_y == 64:
+            f.write("#define OUTPUT_BLKS_PER_STEP %d\n\n" % (self.warp_y / 16))
 
         f.write("#define READ_sRv4(_Rv4, _sm_base_v4, _sRv4_read)                     READ_sRv4_SIZE%d(_Rv4, _sm_base_v4, _sRv4_read)\n" % (self.warp_y / self.MMA_Y))
-        f.write("#define WRITE_sRv2(_sm_base_v2, _sRv2_write_base, _Cv2, _Cv2_off)    WRITE_sRv2_%dx2(_sm_base_v2, _sRv2_write_base, _Cv2, _Cv2_off)\n\n" % (self.warp_y / self.MMA_Y))
+        if self.warp_y == 8:
+            f.write("#define WRITE_sRv2(_sm_base_v2, _sRv2_write_base, _Cv2, _Cv2_off)    WRITE_sRv2_%dx2(_sm_base_v2, _sRv2_write_base, _Cv2, _Cv2_off)\n\n" % (self.warp_y / self.MMA_Y))
+        elif self.warp_y ==16 or self.warp_y == 32 or self.warp_y == 64:
+            f.write("#define WRITE_sRv2(_sm_base_v2, _sRv2_write_base, _Cv2, _Cv2_off)    WRITE_sRv2_%dx1(_sm_base_v2, _sRv2_write_base, _Cv2, _Cv2_off)\n\n" % (self.warp_y / self.MMA_Y))
 
         f.write("#define KERNEL_NAME %s\n\n" % self.kname)
 
         f.write("#define BUF_NUM %d\n\n" % self.buf_size)
 
-        f.write("#define USE_IMMA16832\n\n")
+        f.write("#define USE_IMMA8816\n\n")
 
         f.write("#include \"swzl/int8/const_macros.h\"\n\n")
         f.write("#include \"swzl/int8/%s/bound_macros.h\"\n\n" % self.flt_size)
@@ -198,14 +208,14 @@ class KernelInfo:
             f.write("#include \"swzl/int8/async_macros.h\"\n\n")
             f.write("#include \"swzl/int8/%s/dmem_async_macros.h\"\n\n" % self.flt_size)
 
-        f.write("#include \"swzl/int8/imma16832_macros.h\"\n\n")
+        f.write("#include \"swzl/int8/imma8816_macros.h\"\n\n")
         f.write("#include \"swzl/int8/reduce_macros.h\"\n\n")
         f.write("#include \"swzl/int8/smem_macros.h\"\n\n")
 
         f.write("#define MMA_INSTS(_C, _B, _A)           MMA_INST_%dx%d(_C, _B, _A)\n\n" % (self.warp_y / self.MMA_Y, self.warp_x / self.MMA_X))
 
-        f.write("#define READ_sAv1(_A, _sm_base_v1, _sAv1_read)          READ_sUv1_K2_1x%d(_A, _sm_base_v1, _sAv1_read)\n"   % (self.warp_y / self.MMA_Y))
-        f.write("#define READ_sBv1(_B, _sm_base_v1, _sBv1_read)          READ_sUv1_K2_2x%d(_B, _sm_base_v1, _sBv1_read)\n\n" % (self.warp_x / self.MMA_X_HALF / 2))
+        f.write("#define READ_sAv1(_A, _sm_base_v1, _sAv1_read)          READ_sUv1_K1_1x%d(_A, _sm_base_v1, _sAv1_read)\n"   % (self.warp_y / self.MMA_Y))
+        f.write("#define READ_sBv1(_B, _sm_base_v1, _sBv1_read)          READ_sUv1_K1_1x%d(_B, _sm_base_v1, _sBv1_read)\n\n" % (self.warp_x / self.MMA_X))
 
         if self.buf_size <= 2:
             if self.flt_size == "f1":
@@ -260,7 +270,7 @@ class KernelInfo:
 
         f.write("#include \"swzl/int8/output_macros.h\"\n\n")
 
-        f.write("#include \"swzl/int8/main_body16832.h\"\n\n")
+        f.write("#include \"swzl/int8/main_body8816.h\"\n\n")
 
         f.write("#include \"swzl/int8/uni_undefs.h\"\n\n")
 
@@ -275,12 +285,12 @@ class LutSourceFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#include  \"swzl/sm80/int8/%s_lut_kernels.h\"\n\n" % flt_size)
+        self.f.write("#include  \"swzl/sm75/int8/imma8816/%s_lut_kernels.h\"\n\n" % flt_size)
 
         self.f.write("#define ENABLE_FUSE\n\n")
 
     def AppendKernel(self, fname):
-        self.f.write("#include \"swzl/sm80/int8/%s\"\n" % fname)
+        self.f.write("#include \"swzl/sm75/int8/imma8816/%s\"\n" % fname)
 
     def Close(self):
         self.f.close()
@@ -294,12 +304,12 @@ class SpkSourceFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#include  \"swzl/sm80/int8/%s_spk_kernels.h\"\n\n" % flt_size)
+        self.f.write("#include  \"swzl/sm75/int8/imma8816/%s_spk_kernels.h\"\n\n" % flt_size)
 
         self.f.write("#define ENABLE_SPLITK\n\n")
 
     def AppendKernel(self, fname):
-        self.f.write("#include \"swzl/sm80/int8/%s\"\n" % fname)
+        self.f.write("#include \"swzl/sm75/int8/imma8816/%s\"\n" % fname)
 
     def Close(self):
         self.f.close()
@@ -313,8 +323,8 @@ class LutHeaderFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#ifndef __PPLCUDA_SWZL_SM80_INT8_16832_%s_LUT_KERNELS_H__\n" % flt_size.upper())
-        self.f.write("#define __PPLCUDA_SWZL_SM80_INT8_16832_%s_LUT_KERNELS_H__\n" % flt_size.upper())
+        self.f.write("#ifndef __PPLCUDA_SWZL_SM75_INT8_IMMA8816_%s_LUT_KERNELS_H__\n" % flt_size.upper())
+        self.f.write("#define __PPLCUDA_SWZL_SM75_INT8_IMMA8816_%s_LUT_KERNELS_H__\n" % flt_size.upper())
 
         self.f.write("\n\n#include \"kernel_type.h\"\n\n")
 
@@ -334,8 +344,8 @@ class SpkHeaderFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#ifndef __PPLCUDA_SWZL_SM80_INT8_16832_%s_SPK_KERNELS_H__\n" % flt_size.upper())
-        self.f.write("#define __PPLCUDA_SWZL_SM80_INT8_16832_%s_SPK_KERNELS_H__\n" % flt_size.upper())
+        self.f.write("#ifndef __PPLCUDA_SWZL_SM75_INT8_IMMA8816_%s_SPK_KERNELS_H__\n" % flt_size.upper())
+        self.f.write("#define __PPLCUDA_SWZL_SM75_INT8_IMMA8816_%s_SPK_KERNELS_H__\n" % flt_size.upper())
 
         self.f.write("\n\n#include \"kernel_type.h\"\n\n")
 
@@ -357,10 +367,10 @@ class InitFile:
 
         self.f.write("#include \"conv_common.h\"\n\n")
 
-        self.f.write("#include \"swzl/sm80/int8/%s_lut_kernels.h\"\n" % self.flt_size)
-        self.f.write("#include \"swzl/sm80/int8/%s_spk_kernels.h\"\n\n" % self.flt_size)
+        self.f.write("#include \"swzl/sm75/int8/imma8816/%s_lut_kernels.h\"\n" % self.flt_size)
+        self.f.write("#include \"swzl/sm75/int8/imma8816/%s_spk_kernels.h\"\n\n" % self.flt_size)
 
-        self.f.write("void InitializeSwzlSM80Int8Conv%sKernelContainer(std::vector<kernel_info_t> & kernel_container)\n{\n" % self.flt_size.upper())
+        self.f.write("void InitializeSwzlSM75Int8Imma8816Conv%sKernelContainer(std::vector<kernel_info_t> & kernel_container)\n{\n" % self.flt_size.upper())
 
     def AppendKernel(self, kname):
         self.f.write("\tADD_KERNEL(CONV_SWZL_%s, \"%s\", &%s, &%s, NULL);\n" % (self.flt_size.upper(), kname, kname, kname))
@@ -419,12 +429,12 @@ def GenAllKernels(parent_path):
         spk_source_file = SpkSourceFile(parent_path, flt_size)
 
         for buf_size in [1, 2, 3, 4, 5, 6]:
-            for k_size in [32, 64, 128]:
+            for k_size in [16, 32, 64]:
                 for warp_y in [8, 16, 32, 64]:
-                    for warp_x in [16, 32, 64, 128]:
+                    for warp_x in [8, 16, 32, 64, 128]:
                         for cta_y_num in [1, 2, 4]:
                             for cta_x_num in [1, 2, 4]:
-                                if warp_y == 8 and warp_x == 16:
+                                if warp_y == 8 and warp_x == 8:
                                     continue
                                 if warp_y == 64 and warp_x == 128:
                                     continue

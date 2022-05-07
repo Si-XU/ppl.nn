@@ -212,31 +212,42 @@ __inline__ void InitializeInt8ConvKernelContainer(std::vector<kernel_info_t> &g_
 {
     if (type == ppl::common::DATATYPE_INT8) {
 #ifndef PPLNN_ENABLE_CUDA_JIT
-        Initialize2spkSM75Int8ConvF1KernelContainer(g_int8_kvec);
-        Initialize2spkSM75Int8ConvF3KernelContainer(g_int8_kvec);
-        Initialize2spkSM75Int8ConvFNKernelContainer(g_int8_kvec);
-        Initialize2spkSM75Int8ConvFSKernelContainer(g_int8_kvec);
+        Initialize2spkSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
+        Initialize2spkSM75Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
+        Initialize2spkSM75Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
+        Initialize2spkSM75Int8Imma8816ConvFSKernelContainer(g_int8_kvec);
         printf("imma8816 2spk kernel size is %u\n", g_int8_kvec.size());
 
-        Initialize2spkSM80Int8ConvF1KernelContainer(g_int8_kvec);
-        Initialize2spkSM80Int8ConvF3KernelContainer(g_int8_kvec);
-        Initialize2spkSM80Int8ConvFNKernelContainer(g_int8_kvec);
-        Initialize2spkSM80Int8ConvFSKernelContainer(g_int8_kvec);
+        Initialize2spkSM80Int8Imma16816ConvF1KernelContainer(g_int8_kvec);
+        Initialize2spkSM80Int8Imma16816ConvF3KernelContainer(g_int8_kvec);
+        Initialize2spkSM80Int8Imma16816ConvFNKernelContainer(g_int8_kvec);
+        Initialize2spkSM80Int8Imma16816ConvFSKernelContainer(g_int8_kvec);
         printf("imma16816 2spk kernel size is %u\n", g_int8_kvec.size());
 
-        InitializeIdxnSM75Int8ConvKernelContainer(g_int8_kvec);
-        InitializeIdxnSM80Int8ConvKernelContainer(g_int8_kvec);
+        Initialize2spkSM80Int8Imma16832ConvF1KernelContainer(g_int8_kvec);
+        Initialize2spkSM80Int8Imma16832ConvF3KernelContainer(g_int8_kvec);
+        Initialize2spkSM80Int8Imma16832ConvFNKernelContainer(g_int8_kvec);
+        Initialize2spkSM80Int8Imma16832ConvFSKernelContainer(g_int8_kvec);
+        printf("imma16832 2spk kernel size is %u\n", g_int8_kvec.size());
+
+        InitializeIdxnSM75Int8Imma8816ConvKernelContainer(g_int8_kvec);
+        InitializeIdxnSM80Int8Imma16816ConvKernelContainer(g_int8_kvec);
         printf("imma idxn kernel size is %u\n", g_int8_kvec.size());
 
-        InitializeSwzlSM75Int8ConvF1KernelContainer(g_int8_kvec);
-        InitializeSwzlSM75Int8ConvF3KernelContainer(g_int8_kvec);
-        InitializeSwzlSM75Int8ConvFNKernelContainer(g_int8_kvec);
+        InitializeSwzlSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
+        InitializeSwzlSM75Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
+        InitializeSwzlSM75Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
         printf("imma8816 swzl kernel size is %u\n", g_int8_kvec.size());
 
-        InitializeSwzlSM80Int8ConvF1KernelContainer(g_int8_kvec);
-        InitializeSwzlSM80Int8ConvF3KernelContainer(g_int8_kvec);
-        InitializeSwzlSM80Int8ConvFNKernelContainer(g_int8_kvec);
+        InitializeSwzlSM80Int8Imma16816ConvF1KernelContainer(g_int8_kvec);
+        InitializeSwzlSM80Int8Imma16816ConvF3KernelContainer(g_int8_kvec);
+        InitializeSwzlSM80Int8Imma16816ConvFNKernelContainer(g_int8_kvec);
         printf("imma16816 swl kernel size is %u\n", g_int8_kvec.size());
+
+        InitializeSwzlSM80Int8Imma16832ConvF1KernelContainer(g_int8_kvec);
+        InitializeSwzlSM80Int8Imma16832ConvF3KernelContainer(g_int8_kvec);
+        InitializeSwzlSM80Int8Imma16832ConvFNKernelContainer(g_int8_kvec);
+        printf("imma16832 swl kernel size is %u\n", g_int8_kvec.size());
 #endif
     }
     is_g_int8_kvec_initialized = true;

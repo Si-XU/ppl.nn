@@ -34,7 +34,7 @@ class KernelInfo:
                 "_w" + str(self.warp_y) + "x" + str(self.warp_x) + \
                 "_k" + str(self.k_size) + "_s" + str(self.s_size) + "_buf" + str(self.buf_size)
 
-        self.kname = "nv2spkSm75Int8Conv_imma8816_nhwc_" + self.flt_size + self.kconfig
+        self.kname = "nv2spkSm80Int8Conv_imma16816_nhwc_" + self.flt_size + self.kconfig
         self.fname = self.flt_size + "/2spk_"  + self.flt_size + self.kconfig + ".cu"
 
         self.CHAR_SIZE = 4
@@ -44,13 +44,13 @@ class KernelInfo:
         self.INT_TO_4CHAR = 4
         self.INT4_TO_4INT = 4
         self.INT4_TO_16BYTE = 16
-        self.MMA_Y = 8
+        self.MMA_Y = 16
         self.MMA_K = 16
         self.MMA_X = 8
         self.MMA_Y_HALF = self.MMA_Y / 2
         self.PB_PER_TURING_SM = 4
 
-        self.CPI_IMMA8816 = 8.06
+        self.CPI_IMMA16816 = 8.06
         self.CPI_L1_LDG128 = 8
         self.IMMA_LATENCY = 14
         self.LDSM1_LATENCY = 19
@@ -136,7 +136,7 @@ class KernelInfo:
     def GetCompMem2Ratio(self):
         pb_num_per_cta = self.cta_num if self.cta_num < self.PB_PER_TURING_SM else self.PB_PER_TURING_SM
 
-        cycles_comp = self.CPI_IMMA8816 * ( (self.cta_y / self.MMA_Y) * (self.cta_x / self.MMA_X) * (self.k_size / self.MMA_K) / pb_num_per_cta) + self.IMMA_LATENCY + self.LDSM1_LATENCY
+        cycles_comp = self.CPI_IMMA16816 * ( (self.cta_y / self.MMA_Y) * (self.cta_x / self.MMA_X) * (self.k_size / self.MMA_K) / pb_num_per_cta) + self.IMMA_LATENCY + self.LDSM1_LATENCY
 
         cycles_mem2 = self.CPI_L1_LDG128 * CeilDiv( (self.cta_y + self.cta_x) * self.k_size * self.CHAR_SIZE, (self.INT4_TO_16BYTE * self.WARP_SIZE) ) + self.DRAM_LATENCY + self.STS128_LATENCY
 
@@ -199,7 +199,7 @@ class KernelInfo:
 
         f.write("#define BUF_NUM %d\n\n" % self.buf_size)
 
-        f.write("#define USE_IMMA8816\n\n")
+        f.write("#define USE_IMMA16816\n\n")
 
         f.write("#include \"2spk/int8/const_macros.h\"\n\n")
         f.write("#include \"2spk/int8/%s/bound_macros.h\"\n\n" % self.flt_size)
@@ -211,16 +211,16 @@ class KernelInfo:
             f.write("#include \"2spk/int8/async_macros.h\"\n\n")
             f.write("#include \"2spk/int8/%s/dmem_async_macros.h\"\n\n" % self.flt_size)
 
-        f.write("#include \"2spk/int8/imma8816_macros.h\"\n\n")
+        f.write("#include \"2spk/int8/imma16816_macros.h\"\n\n")
         f.write("#include \"2spk/int8/reduce_macros.h\"\n\n")
         f.write("#include \"2spk/int8/smem_macros.h\"\n\n")
 
         f.write("#define MMA_INSTS(_C, _A, _B)           MMA_INST_%dx%d(_C, _A, _B)\n\n" % (self.warp_y / self.MMA_Y, self.warp_x / self.MMA_X))
 
-        f.write("#define READ_sAv1(_A, _sm_base_v1, _sAv1_read)          READ_sUv1_K1_1x%d(_A, _sm_base_v1, _sAv1_read)\n"   % (self.warp_y / self.MMA_Y))
+        f.write("#define READ_sAv1(_A, _sm_base_v1, _sAv1_read)          READ_sUv1_K1_2x%d(_A, _sm_base_v1, _sAv1_read)\n"   % (self.warp_y / self.MMA_Y_HALF / 2))
         f.write("#define READ_sBv1(_B, _sm_base_v1, _sBv1_read)          READ_sUv1_K1_1x%d(_B, _sm_base_v1, _sBv1_read)\n\n" % (self.warp_x / self.MMA_X))
 
-        f.write("#define WRITE_sRv2(_sm_base_v2, _sRv2_write_base, _C)   WRITE_sRv2_%dx%d(_sm_base_v2, _sRv2_write_base, _C)\n\n" % (self.warp_y / self.MMA_Y, self.warp_x /self.MMA_X))
+        f.write("#define WRITE_sRv2(_sm_base_v2, _sRv2_write_base, _C)   WRITE_sRv2_%dx%d(_sm_base_v2, _sRv2_write_base, _C)\n\n" % (self.warp_y / self.MMA_Y_HALF, self.warp_x /self.MMA_X))
 
         if self.buf_size <= 2:
             if self.flt_size == "f1" or self.flt_size == "fs":
@@ -274,7 +274,7 @@ class KernelInfo:
 
         f.write("#include \"2spk/int8/output_macros.h\"\n\n")
 
-        f.write("#include \"2spk/int8/main_body8816.h\"\n\n")
+        f.write("#include \"2spk/int8/main_body16816.h\"\n\n")
 
         f.write("#include \"2spk/int8/uni_undefs.h\"\n\n")
 
@@ -289,7 +289,7 @@ class LutSourceFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#include  \"2spk/sm75/int8/%s_lut_kernels.h\"\n\n" % flt_size)
+        self.f.write("#include  \"2spk/sm80/int8/imma16816/%s_lut_kernels.h\"\n\n" % flt_size)
 
         if self.flt_size == "f1" or self.flt_size == "f3" or self.flt_size == "fn":
             self.f.write("#define ENABLE_FUSE\n\n")
@@ -298,7 +298,7 @@ class LutSourceFile:
 
 
     def AppendKernel(self, fname):
-        self.f.write("#include \"2spk/sm75/int8/%s\"\n" % fname)
+        self.f.write("#include \"2spk/sm80/int8/imma16816/%s\"\n" % fname)
 
     def Close(self):
         self.f.close()
@@ -312,7 +312,7 @@ class SpkSourceFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#include  \"2spk/sm75/int8/%s_spk_kernels.h\"\n\n" % flt_size)
+        self.f.write("#include  \"2spk/sm80/int8/imma16816/%s_spk_kernels.h\"\n\n" % flt_size)
 
         if self.flt_size == "fs":
             self.f.write("#define ENABLE_SPLITF\n\n")
@@ -320,7 +320,7 @@ class SpkSourceFile:
         self.f.write("#define ENABLE_SPLITK\n\n")
 
     def AppendKernel(self, fname):
-        self.f.write("#include \"2spk/sm75/int8/%s\"\n" % fname)
+        self.f.write("#include \"2spk/sm80/int8/imma16816/%s\"\n" % fname)
 
     def Close(self):
         self.f.close()
@@ -334,8 +334,8 @@ class LutHeaderFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#ifndef __PPLCUDA_2SPK_SM75_INT8_8816_%s_LUT_KERNELS_H__\n" % flt_size.upper())
-        self.f.write("#define __PPLCUDA_2SPK_SM75_INT8_8816_%s_LUT_KERNELS_H__\n" % flt_size.upper())
+        self.f.write("#ifndef __PPLCUDA_2SPK_SM80_INT8_IMMA16816_%s_LUT_KERNELS_H__\n" % flt_size.upper())
+        self.f.write("#define __PPLCUDA_2SPK_SM80_INT8_IMMA16816_%s_LUT_KERNELS_H__\n" % flt_size.upper())
 
         self.f.write("\n\n#include \"kernel_type.h\"\n\n")
 
@@ -355,8 +355,8 @@ class SpkHeaderFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#ifndef __PPLCUDA_2SPK_SM75_INT8_8816_%s_SPK_KERNELS_H__\n" % flt_size.upper())
-        self.f.write("#define __PPLCUDA_2SPK_SM75_INT8_8816_%s_SPK_KERNELS_H__\n" % flt_size.upper())
+        self.f.write("#ifndef __PPLCUDA_2SPK_SM80_INT8_IMMA16816_%s_SPK_KERNELS_H__\n" % flt_size.upper())
+        self.f.write("#define __PPLCUDA_2SPK_SM80_INT8_IMMA16816_%s_SPK_KERNELS_H__\n" % flt_size.upper())
 
         self.f.write("\n\n#include \"kernel_type.h\"\n\n")
 
@@ -378,10 +378,10 @@ class InitFile:
 
         self.f.write("#include \"conv_common.h\"\n\n")
 
-        self.f.write("#include \"2spk/sm75/int8/%s_lut_kernels.h\"\n" % self.flt_size)
-        self.f.write("#include \"2spk/sm75/int8/%s_spk_kernels.h\"\n\n" % self.flt_size)
+        self.f.write("#include \"2spk/sm80/int8/imma16816/%s_lut_kernels.h\"\n" % self.flt_size)
+        self.f.write("#include \"2spk/sm80/int8/imma16816/%s_spk_kernels.h\"\n\n" % self.flt_size)
 
-        self.f.write("void Initialize2spkSM75Int8Conv%sKernelContainer(std::vector<kernel_info_t> & kernel_container)\n{\n" % self.flt_size.upper())
+        self.f.write("void Initialize2spkSM80Int8Imma16816Conv%sKernelContainer(std::vector<kernel_info_t> & kernel_container)\n{\n" % self.flt_size.upper())
 
     def AppendKernel(self, kname):
         self.f.write("\tADD_KERNEL(CONV_2SPK_%s, \"%s\", &%s, &%s, NULL);\n" % (self.flt_size.upper(), kname, kname, kname))

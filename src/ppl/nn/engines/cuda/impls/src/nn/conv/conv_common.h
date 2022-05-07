@@ -278,7 +278,7 @@ struct kernel_info_t {
                 smem_a_v1 = tile_m_per_cta * tile_k_per_cta * buf_num / _4CHAR_TO_INT_;
                 smem_b_v1 = tile_n_per_cta * tile_k_per_cta * buf_num / _4CHAR_TO_INT_;
     
-                if (strstr(kname_substrs[1].c_str(), "imma16816")) {
+                if (strstr(kname_substrs[1].c_str(), "imma16816") || strstr(kname_substrs[1].c_str(), "imma16832") ) {
                     const int TILE_N_PER_MMA = 16;
     
                     smem_r_v1 = tile_m_per_cta * TILE_N_PER_MMA * (cta_size_in_thd / WARP_SIZE);
@@ -684,43 +684,51 @@ void PPLCUDAConvolutionCvtBias(
     conv_param_t &conv_param);
 
 // fp16 kernels
-void Initialize2spkSM75FP16ConvF1KernelContainer(std::vector<kernel_info_t> &kernel_container);
-void Initialize2spkSM75FP16ConvF3KernelContainer(std::vector<kernel_info_t> &kernel_container);
-void Initialize2spkSM75FP16ConvFNKernelContainer(std::vector<kernel_info_t> &kernel_container);
-void Initialize2spkSM75FP16ConvFSKernelContainer(std::vector<kernel_info_t> &kernel_container);
-void Initialize2spkSM80FP16ConvF1KernelContainer(std::vector<kernel_info_t> &kernel_container);
-void Initialize2spkSM80FP16ConvF3KernelContainer(std::vector<kernel_info_t> &kernel_container);
-void Initialize2spkSM80FP16ConvFNKernelContainer(std::vector<kernel_info_t> &kernel_container);
-void Initialize2spkSM80FP16ConvFSKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM75FP16Hmma1688ConvF1KernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM75FP16Hmma1688ConvF3KernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM75FP16Hmma1688ConvFNKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM75FP16Hmma1688ConvFSKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80FP16Hmma16816ConvF1KernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80FP16Hmma16816ConvF3KernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80FP16Hmma16816ConvFNKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80FP16Hmma16816ConvFSKernelContainer(std::vector<kernel_info_t> &kernel_container);
 
-void InitializeIdxnSM75FP16ConvKernelContainer(std::vector<kernel_info_t> &kernel_container);
-void InitializeIdxnSM80FP16ConvKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void InitializeIdxnSM75FP16Hmma1688ConvKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void InitializeIdxnSM80FP16Hmma16816ConvKernelContainer(std::vector<kernel_info_t> &kernel_container);
 
-void InitializeSwzlSM75FP16ConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
-void InitializeSwzlSM75FP16ConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
-void InitializeSwzlSM75FP16ConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
-void InitializeSwzlSM80FP16ConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
-void InitializeSwzlSM80FP16ConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
-void InitializeSwzlSM80FP16ConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM75FP16Hmma1688ConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM75FP16Hmma1688ConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM75FP16Hmma1688ConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM80FP16Hmma16816ConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM80FP16Hmma16816ConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM80FP16Hmma16816ConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
 
 // int8 kernels
-void Initialize2spkSM75Int8ConvF1KernelContainer(std::vector<kernel_info_t> &kernel_container);
-void Initialize2spkSM75Int8ConvF3KernelContainer(std::vector<kernel_info_t> &kernel_container);
-void Initialize2spkSM75Int8ConvFNKernelContainer(std::vector<kernel_info_t> &kernel_container);
-void Initialize2spkSM75Int8ConvFSKernelContainer(std::vector<kernel_info_t> &kernel_container);
-void Initialize2spkSM80Int8ConvF1KernelContainer(std::vector<kernel_info_t> &kernel_container);
-void Initialize2spkSM80Int8ConvF3KernelContainer(std::vector<kernel_info_t> &kernel_container);
-void Initialize2spkSM80Int8ConvFNKernelContainer(std::vector<kernel_info_t> &kernel_container);
-void Initialize2spkSM80Int8ConvFSKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM75Int8Imma8816ConvF1KernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM75Int8Imma8816ConvF3KernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM75Int8Imma8816ConvFNKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM75Int8Imma8816ConvFSKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80Int8Imma16816ConvF1KernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80Int8Imma16816ConvF3KernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80Int8Imma16816ConvFNKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80Int8Imma16816ConvFSKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80Int8Imma16832ConvF1KernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80Int8Imma16832ConvF3KernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80Int8Imma16832ConvFNKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void Initialize2spkSM80Int8Imma16832ConvFSKernelContainer(std::vector<kernel_info_t> &kernel_container);
 
-void InitializeIdxnSM75Int8ConvKernelContainer(std::vector<kernel_info_t> &kernel_container);
-void InitializeIdxnSM80Int8ConvKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void InitializeIdxnSM75Int8Imma8816ConvKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void InitializeIdxnSM80Int8Imma16816ConvKernelContainer(std::vector<kernel_info_t> &kernel_container);
+void InitializeIdxnSM80Int8Imma16832ConvKernelContainer(std::vector<kernel_info_t> &kernel_container);
 
-void InitializeSwzlSM75Int8ConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
-void InitializeSwzlSM75Int8ConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
-void InitializeSwzlSM75Int8ConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
-void InitializeSwzlSM80Int8ConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
-void InitializeSwzlSM80Int8ConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
-void InitializeSwzlSM80Int8ConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM75Int8Imma8816ConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM75Int8Imma8816ConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM75Int8Imma8816ConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM80Int8Imma16816ConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM80Int8Imma16816ConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM80Int8Imma16816ConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM80Int8Imma16832ConvF1KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM80Int8Imma16832ConvF3KernelContainer(std::vector<kernel_info_t> & kernel_container);
+void InitializeSwzlSM80Int8Imma16832ConvFNKernelContainer(std::vector<kernel_info_t> & kernel_container);
 
 #endif

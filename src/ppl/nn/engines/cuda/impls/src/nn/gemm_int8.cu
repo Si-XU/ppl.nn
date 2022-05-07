@@ -94,8 +94,9 @@ void init_f1_int8_kvec(std::vector<kernel_info_t> &g_int8_kvec, ppl::common::dat
 #ifndef PPLNN_ENABLE_CUDA_JIT
     if (type == ppl::common::DATATYPE_INT8) {
         // InitializeInt82spkConvF1KernelContainer(g_int8_kvec);
-        Initialize2spkSM75Int8ConvF1KernelContainer(g_int8_kvec);
-        Initialize2spkSM80Int8ConvF1KernelContainer(g_int8_kvec);
+        Initialize2spkSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
+        Initialize2spkSM80Int8Imma16816ConvF1KernelContainer(g_int8_kvec);
+        Initialize2spkSM80Int8Imma16832ConvF1KernelContainer(g_int8_kvec);
     }
     is_g_int8_kvec_set = true;
 #endif

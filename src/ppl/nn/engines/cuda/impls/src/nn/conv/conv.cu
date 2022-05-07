@@ -198,26 +198,26 @@ __inline__ void InitializeFP16ConvKernelContainer(std::vector<kernel_info_t> &g_
 {
     if (type == ppl::common::DATATYPE_FLOAT16) {
 #ifndef PPLNN_ENABLE_CUDA_JIT
-        Initialize2spkSM75FP16ConvF1KernelContainer(g_fp16_kvec);
-        Initialize2spkSM75FP16ConvF3KernelContainer(g_fp16_kvec);
-        Initialize2spkSM75FP16ConvFNKernelContainer(g_fp16_kvec);
-        Initialize2spkSM75FP16ConvFSKernelContainer(g_fp16_kvec);
+        Initialize2spkSM75FP16Hmma1688ConvF1KernelContainer(g_fp16_kvec);
+        Initialize2spkSM75FP16Hmma1688ConvF3KernelContainer(g_fp16_kvec);
+        Initialize2spkSM75FP16Hmma1688ConvFNKernelContainer(g_fp16_kvec);
+        Initialize2spkSM75FP16Hmma1688ConvFSKernelContainer(g_fp16_kvec);
 
-        Initialize2spkSM80FP16ConvF1KernelContainer(g_fp16_kvec);
-        Initialize2spkSM80FP16ConvF3KernelContainer(g_fp16_kvec);
-        Initialize2spkSM80FP16ConvFNKernelContainer(g_fp16_kvec);
-        Initialize2spkSM80FP16ConvFSKernelContainer(g_fp16_kvec);
+        Initialize2spkSM80FP16Hmma16816ConvF1KernelContainer(g_fp16_kvec);
+        Initialize2spkSM80FP16Hmma16816ConvF3KernelContainer(g_fp16_kvec);
+        Initialize2spkSM80FP16Hmma16816ConvFNKernelContainer(g_fp16_kvec);
+        Initialize2spkSM80FP16Hmma16816ConvFSKernelContainer(g_fp16_kvec);
 
-        InitializeIdxnSM75FP16ConvKernelContainer(g_fp16_kvec);
-        InitializeIdxnSM80FP16ConvKernelContainer(g_fp16_kvec);
+        InitializeIdxnSM75FP16Hmma1688ConvKernelContainer(g_fp16_kvec);
+        InitializeIdxnSM80FP16Hmma16816ConvKernelContainer(g_fp16_kvec);
 
-        InitializeSwzlSM75FP16ConvF1KernelContainer(g_fp16_kvec);
-        InitializeSwzlSM75FP16ConvF3KernelContainer(g_fp16_kvec);
-        InitializeSwzlSM75FP16ConvFNKernelContainer(g_fp16_kvec);
+        InitializeSwzlSM75FP16Hmma1688ConvF1KernelContainer(g_fp16_kvec);
+        InitializeSwzlSM75FP16Hmma1688ConvF3KernelContainer(g_fp16_kvec);
+        InitializeSwzlSM75FP16Hmma1688ConvFNKernelContainer(g_fp16_kvec);
 
-        InitializeSwzlSM80FP16ConvF1KernelContainer(g_fp16_kvec);
-        InitializeSwzlSM80FP16ConvF3KernelContainer(g_fp16_kvec);
-        InitializeSwzlSM80FP16ConvFNKernelContainer(g_fp16_kvec);
+        InitializeSwzlSM80FP16Hmma16816ConvF1KernelContainer(g_fp16_kvec);
+        InitializeSwzlSM80FP16Hmma16816ConvF3KernelContainer(g_fp16_kvec);
+        InitializeSwzlSM80FP16Hmma16816ConvFNKernelContainer(g_fp16_kvec);
 #endif
     }
 
