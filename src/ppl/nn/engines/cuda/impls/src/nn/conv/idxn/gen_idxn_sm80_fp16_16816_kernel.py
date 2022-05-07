@@ -30,12 +30,12 @@ class KernelInfo:
                 "_w" + str(self.warp_y) + "x" + str(self.warp_x) + \
                 "_k" + str(self.k_size) + "_s" + str(self.s_size)
 
-        self.kname = "nvIdxnSm75Fp16Conv_hmma1688_nhwc" + self.kconfig
+        self.kname = "nvIdxnSm80Fp16Conv_hmma16816_nhwc" + self.kconfig
         self.fname = "kernels" + "/idxn"  + self.kconfig + ".cu"
 
         self.WARP_SIZE = 32
         self.MMA_Y = 16
-        self.MMA_K = 8
+        self.MMA_K = 16
         self.MMA_X = 8
         self.MMA_Y_HALF = self.MMA_Y / 2
 
@@ -44,7 +44,7 @@ class KernelInfo:
         self.HALF_SIZE = 2
         self.PB_PER_TURING_SM = 4
 
-        self.CPI_HMMA1688 = 8.06
+        self.CPI_HMMA16816 = 8.06
         self.CPI_L1_LDG128 = 8
         self.HMMA_LATENCY = 14
         self.DRAM_LATENCY = 220
@@ -62,7 +62,7 @@ class KernelInfo:
     def GetCompGmemRatio(self):
         pb_num_per_cta = self.cta_num if self.cta_num < self.PB_PER_TURING_SM else self.PB_PER_TURING_SM
 
-        cycles_hmma = (self.CPI_HMMA1688 * (self.cta_y / self.MMA_Y) * (self.cta_x / self.MMA_X) * (self.s_size / self.MMA_K) / pb_num_per_cta) + self.HMMA_LATENCY
+        cycles_hmma = (self.CPI_HMMA16816 * (self.cta_y / self.MMA_Y) * (self.cta_x / self.MMA_X) * (self.s_size / self.MMA_K) / pb_num_per_cta) + self.HMMA_LATENCY
 
         cycles_ldg = self.CPI_L1_LDG128 * CeilDiv( (self.cta_y + self.cta_x) * self.s_size * self.HALF_SIZE, (self.INT4_TO_16BYTE * self.WARP_SIZE) ) + self.DRAM_LATENCY
 
@@ -84,10 +84,7 @@ class KernelInfo:
 
         mma_m_num_x2 = mma_m_num * 2 # for 16x8x8 shape
 
-        if self.s_size == 8: # c2 type
-            reg_a_v1 = mma_m_num_x2 * 1
-            reg_b_v1 = mma_n_num    * 1
-        elif self.s_size == 16: # c4 type
+        if self.s_size == 16: # c4 type
             reg_a_v1 = mma_m_num_x2 * 2
             reg_b_v1 = mma_n_num    * 2
         elif self.s_size == 32: # c8 type
@@ -143,17 +140,9 @@ class KernelInfo:
 
         f.write("#include \"idxn/fp16/const_macros.h\"\n\n")
 
-        if self.s_size == 8:
-            f.write("#include \"idxn/fp16/dmem_i1_macros.h\"\n\n")
-            f.write("#include \"idxn/fp16/hmma1688_i1_macros.h\"\n\n")
-
-            f.write("#define LOAD_dAv1(_regA, _dAv1, _in_id, _in_off)    LOAD_dAv1_SIZE%d(_regA, _dAv1, _in_id, _in_off)\n" % self.dAvn_size)
-            f.write("#define LOAD_dBv1(_regB, _dBv1, _dBv1_off)          LOAD_dBv1_SIZE%d(_regB, _dBv1, _dBv1_off)\n\n" % self.dBvn_size)
-
-            f.write("#define MMA_INSTS(_C, _A, _B)                       MMA_INST_1INT_%dx%d(_C, _A, _B)\n\n" % (self.dAvn_size / 2, self.dBvn_size))
-        elif self.s_size == 16:
+        if self.s_size == 16:
             f.write("#include \"idxn/fp16/dmem_i2_macros.h\"\n\n")
-            f.write("#include \"idxn/fp16/hmma1688_i2_macros.h\"\n\n")
+            f.write("#include \"idxn/fp16/hmma16816_i2_macros.h\"\n\n")
 
             f.write("#define LOAD_dAv2(_regA, _dAv2, _in_id, _in_off)    LOAD_dAv2_SIZE%d(_regA, _dAv2, _in_id, _in_off)\n" % self.dAvn_size)
             f.write("#define LOAD_dBv2(_regB, _dBv2, _dBv2_off)          LOAD_dBv2_SIZE%d(_regB, _dBv2, _dBv2_off)\n\n" % self.dBvn_size)
@@ -161,7 +150,7 @@ class KernelInfo:
             f.write("#define MMA_INSTS(_C, _A, _B)                       MMA_INST_2INT_%dx%d(_C, _A, _B)\n\n" % (self.dAvn_size / 2, self.dBvn_size))
         elif self.s_size == 32:
             f.write("#include \"idxn/fp16/dmem_i4_macros.h\"\n\n")
-            f.write("#include \"idxn/fp16/hmma1688_i4_macros.h\"\n\n")
+            f.write("#include \"idxn/fp16/hmma16816_i4_macros.h\"\n\n")
 
             f.write("#define LOAD_dAv4(_regA, _dAv4, _in_id, _in_off)    LOAD_dAv4_SIZE%d(_regA, _dAv4, _in_id, _in_off)\n" % self.dAvn_size)
             f.write("#define LOAD_dBv4(_regB, _dBv4, _dBv4_off)          LOAD_dBv4_SIZE%d(_regB, _dBv4, _dBv4_off)\n\n" % self.dBvn_size)
@@ -181,12 +170,12 @@ class IdxSourceFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#include  \"idxn/sm75/fp16/idxn_kernels.h\"\n\n")
+        self.f.write("#include  \"idxn/sm80/fp16/idxn_kernels.h\"\n\n")
 
         self.f.write("#define ENABLE_FUSE\n\n")
 
     def AppendKernel(self, fname):
-        self.f.write("#include \"idxn/sm75/fp16/%s\"\n" % fname)
+        self.f.write("#include \"idxn/sm80/fp16/%s\"\n" % fname)
 
     def Close(self):
         self.f.close()
@@ -198,8 +187,8 @@ class IdxHeaderFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#ifndef __PPLCUDA_IDXN_SM75_FP16_KERNELS_H__\n")
-        self.f.write("#define __PPLCUDA_IDXN_SM75_FP16_KERNELS_H__\n")
+        self.f.write("#ifndef __PPLCUDA_IDXN_SM80_FP16_16816_KERNELS_H__\n")
+        self.f.write("#define __PPLCUDA_IDXN_SM80_FP16_16816_KERNELS_H__\n")
 
         self.f.write("\n\n#include \"kernel_type.h\"\n\n")
 
@@ -219,14 +208,12 @@ class InitFile:
 
         self.f.write("#include \"conv_common.h\"\n\n")
 
-        self.f.write("#include \"idxn/sm75/fp16/idxn_kernels.h\"\n\n")
+        self.f.write("#include \"idxn/sm80/fp16/idxn_kernels.h\"\n\n")
 
-        self.f.write("void InitializeIdxnSM75FP16ConvKernelContainer(std::vector<kernel_info_t> & kernel_container)\n{\n")
+        self.f.write("void InitializeIdxnSM80FP16ConvKernelContainer(std::vector<kernel_info_t> & kernel_container)\n{\n")
 
     def AppendKernel(self, s_size, kname):
-        if s_size == 8:
-            self.f.write("\tADD_KERNEL(CONV_IDXN_C2, \"%s\", NULL, NULL, &%s);\n" % (kname, kname))
-        elif s_size == 16:
+        if s_size == 16:
             self.f.write("\tADD_KERNEL(CONV_IDXN_C4, \"%s\", NULL, NULL, &%s);\n" % (kname, kname))
         elif s_size == 32:
             self.f.write("\tADD_KERNEL(CONV_IDXN_C32, \"%s\", NULL, NULL, &%s);\n" % (kname, kname))
@@ -281,7 +268,7 @@ def GenAllKernels(parent_path):
     if not os.path.exists(path):
         os.makedirs(path)
 
-    for s_size in [8, 16, 32]:
+    for s_size in [16, 32]:
         for k_num in [1, 2]:
             for warp_y in [16, 32, 64, 128]:
                 for warp_x in [8, 16, 32, 64]:
