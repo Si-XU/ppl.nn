@@ -140,17 +140,9 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
     uint sRowWt_id  =  (set_widx * TILE_N_V8_PER_WARP) / SMEM_ROW_V8_SIZE;
 #if (SET_SIZE_Y_IN_WARP * INTER_SET_REDUCE_RATIO * WARP_SIZE_IN_THD / TILE_N_V4_PER_WARP) == 2
-#if defined(USE_IMMA16816)
-    uint sRowWt_off = ((set_widx * TILE_N_V8_PER_WARP) ^ ((mma_idy % TILE_M_PER_MMA_8TH) / N_ROWS_PER_SMEM_ROW)
-#elif defined(USE_IMMA8816)
     uint sRowWt_off = ((set_widx * TILE_N_V8_PER_WARP) ^ ((mma_idy % TILE_M_PER_MMA_QTR) / N_ROWS_PER_SMEM_ROW)
-#endif
 #else
-#if defined(USE_IMMA16816)
-    uint sRowWt_off = ((set_widx * TILE_N_V8_PER_WARP) ^ ((mma_idy % TILE_M_PER_MMA_QTR) / N_ROWS_PER_SMEM_ROW)
-#elif defined(USE_IMMA8816)
     uint sRowWt_off = ((set_widx * TILE_N_V8_PER_WARP) ^ ((mma_idy % TILE_M_PER_MMA_HALF) / N_ROWS_PER_SMEM_ROW)
-#endif
 #endif
                        ) % SMEM_ROW_V8_SIZE;
 
@@ -169,17 +161,10 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     uint sIntra_off =  sRowRd_off % TILE_N_V4_PER_MMA;
     uint sInter_off =  sRowRd_off / TILE_N_V4_PER_MMA;
 
-#if defined(USE_IMMA16816)
-    uint sRv4_read  = (sMmaRd_idy / TILE_M_PER_MMA_QTR)  * TILE_N_V4_PER_CTA    * TILE_M_PER_MMA_QTR  +
-                      (sMmaRd_idy % TILE_M_PER_MMA_QTR)  * TILE_N_V4_PER_CTA    +
-                       sRowRd_id  * SMEM_ROW_V4_SIZE     +
-                    (((sMmaRd_idy % TILE_M_PER_MMA_QTR)  / N_ROWS_PER_SMEM_ROW) ^ sInter_off)         * TILE_N_V4_PER_MMA +
-#elif defined(USE_IMMA8816)
     uint sRv4_read  = (sMmaRd_idy / TILE_M_PER_MMA_HALF) * TILE_N_V4_PER_CTA    * TILE_M_PER_MMA_HALF +
                       (sMmaRd_idy % TILE_M_PER_MMA_HALF) * TILE_N_V4_PER_CTA    +
                        sRowRd_id  * SMEM_ROW_V4_SIZE     +
                     (((sMmaRd_idy % TILE_M_PER_MMA_HALF) / N_ROWS_PER_SMEM_ROW) ^ sInter_off)         * TILE_N_V4_PER_MMA +
-#endif
                        sIntra_off;
 
     ///////////////////////////////////////////////////
