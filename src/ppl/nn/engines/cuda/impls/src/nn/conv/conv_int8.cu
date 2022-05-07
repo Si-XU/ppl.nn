@@ -216,38 +216,31 @@ __inline__ void InitializeInt8ConvKernelContainer(std::vector<kernel_info_t> &g_
         Initialize2spkSM75Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
         Initialize2spkSM75Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
         Initialize2spkSM75Int8Imma8816ConvFSKernelContainer(g_int8_kvec);
-        printf("imma8816 2spk kernel size is %u\n", g_int8_kvec.size());
 
         Initialize2spkSM80Int8Imma16816ConvF1KernelContainer(g_int8_kvec);
         Initialize2spkSM80Int8Imma16816ConvF3KernelContainer(g_int8_kvec);
         Initialize2spkSM80Int8Imma16816ConvFNKernelContainer(g_int8_kvec);
         Initialize2spkSM80Int8Imma16816ConvFSKernelContainer(g_int8_kvec);
-        printf("imma16816 2spk kernel size is %u\n", g_int8_kvec.size());
 
         Initialize2spkSM80Int8Imma16832ConvF1KernelContainer(g_int8_kvec);
         Initialize2spkSM80Int8Imma16832ConvF3KernelContainer(g_int8_kvec);
         Initialize2spkSM80Int8Imma16832ConvFNKernelContainer(g_int8_kvec);
         Initialize2spkSM80Int8Imma16832ConvFSKernelContainer(g_int8_kvec);
-        printf("imma16832 2spk kernel size is %u\n", g_int8_kvec.size());
 
         InitializeIdxnSM75Int8Imma8816ConvKernelContainer(g_int8_kvec);
         InitializeIdxnSM80Int8Imma16816ConvKernelContainer(g_int8_kvec);
-        printf("imma idxn kernel size is %u\n", g_int8_kvec.size());
 
         InitializeSwzlSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
         InitializeSwzlSM75Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
         InitializeSwzlSM75Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
-        printf("imma8816 swzl kernel size is %u\n", g_int8_kvec.size());
 
         InitializeSwzlSM80Int8Imma16816ConvF1KernelContainer(g_int8_kvec);
         InitializeSwzlSM80Int8Imma16816ConvF3KernelContainer(g_int8_kvec);
         InitializeSwzlSM80Int8Imma16816ConvFNKernelContainer(g_int8_kvec);
-        printf("imma16816 swl kernel size is %u\n", g_int8_kvec.size());
 
         InitializeSwzlSM80Int8Imma16832ConvF1KernelContainer(g_int8_kvec);
         InitializeSwzlSM80Int8Imma16832ConvF3KernelContainer(g_int8_kvec);
         InitializeSwzlSM80Int8Imma16832ConvFNKernelContainer(g_int8_kvec);
-        printf("imma16832 swl kernel size is %u\n", g_int8_kvec.size());
 #endif
     }
     is_g_int8_kvec_initialized = true;
@@ -521,7 +514,7 @@ void PPLCUDAConvolutionForwardImpInt8(
     int num_chl_per_grp_pad = Align(num_chl_per_grp, pad_size);
     int num_flt_per_grp_pad = Align(num_flt_per_grp, pad_size);
 
-    printf("kernel name: %u, %u, %u, %s\n", kid, splitk, splitf, g_int8_kvec[kid].kname.c_str());
+    // printf("kernel name: %u, %u, %u, %s\n", kid, splitk, splitf, g_int8_kvec[kid].kname.c_str());
 
     int in_hw  = conv_param.in_height * conv_param.in_width;
     int flt_hw = conv_param.flt_height * conv_param.flt_width;

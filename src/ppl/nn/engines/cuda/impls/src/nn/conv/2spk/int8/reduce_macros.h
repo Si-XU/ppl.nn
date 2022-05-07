@@ -114,7 +114,7 @@
             _sm_base_v2[_sRv2_write + (sRowWt_off ^ 0x7) * TILE_N_V2_PER_MMA] = _Cv2[_Cv2_off + 7]; \
         }
 
-#if defined(USE_IMMA16816)
+#if defined(USE_IMMA16816) || defined(USE_IMMA16832)
 
 /////////////////////////
 // tile_n_per_warp = 8

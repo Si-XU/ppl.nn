@@ -207,7 +207,7 @@
             READ_sUv1_SIZE4(_reg, 12, _smp_base_v1, _sUv1_read + TILE_K_V4_PER_CTA * WARP_SIZE_IN_THD * 3); \
         }
 
-#elif defined(USE_HMMA16832)
+#elif defined(USE_IMMA16832)
 
 #define REG_sAv1_SIZE   (TILE_M_V2_PER_THD * _K32_TO_2K16_)
 #define REG_sBv1_SIZE   (TILE_N_V1_PER_THD * _K32_TO_2K16_)
