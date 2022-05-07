@@ -19,9 +19,7 @@
 // kernel list macros
 ////////////////////////////////////////
 
-#undef BASE_KPARAM_LIST
-#undef RELU_KPARAM_LIST
-#undef FUSE_KPARAM_LIST
+#undef SPK_KPARAM_LIST
 #undef TOTAL_KPARAM_LIST
 
 ////////////////////////////////////////
@@ -137,6 +135,9 @@
 #undef SMEM_ROW_V8_SIZE
 #undef SMEM_ROW_BYTE_SIZE
 #undef SMEM_ROW_BIT_SIZE
+
+#undef _K32_TO_2K16_
+#undef _K64_TO_4K16_
 
 ////////////////////////////////////////
 // mma size macros
@@ -596,6 +597,16 @@
 #undef READ_sUv1_K1_2x4
 #undef READ_sUv1_K1_2x8
 
+#undef READ_sUv1_K2_1x1
+#undef READ_sUv1_K2_1x2
+#undef READ_sUv1_K2_1x4
+#undef READ_sUv1_K2_1x8
+
+#undef READ_sUv1_K2_2x1
+#undef READ_sUv1_K2_2x2
+#undef READ_sUv1_K2_2x4
+#undef READ_sUv1_K2_2x8
+
 #undef READ_sAv1
 #undef READ_sBv1
 
@@ -603,8 +614,8 @@
 // output macros
 /////////////////////////////////////////////////////
 
-#undef OUTPUT_PRC_INT8_V4
-#undef OUTPUT_PRC_INT4_V1
+#undef OUTPUT_BY_INT8_V4
+#undef OUTPUT_BY_INT4_V1
 
 #undef PACK_V4
 

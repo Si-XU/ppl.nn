@@ -270,7 +270,7 @@ class KernelInfo:
 
         f.write("#include \"swzl/int8/output_macros.h\"\n\n")
 
-        f.write("#include \"swzl/int8/main_body.h\"\n\n")
+        f.write("#include \"swzl/int8/main_body8816.h\"\n\n")
 
         f.write("#include \"swzl/int8/uni_undefs.h\"\n\n")
 

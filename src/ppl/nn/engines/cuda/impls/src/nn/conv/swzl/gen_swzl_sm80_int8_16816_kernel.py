@@ -260,7 +260,7 @@ class KernelInfo:
 
         f.write("#include \"swzl/int8/output_macros.h\"\n\n")
 
-        f.write("#include \"swzl/int8/main_body.h\"\n\n")
+        f.write("#include \"swzl/int8/main_body16816.h\"\n\n")
 
         f.write("#include \"swzl/int8/uni_undefs.h\"\n\n")
 
@@ -419,7 +419,7 @@ def GenAllKernels(parent_path):
         spk_source_file = SpkSourceFile(parent_path, flt_size)
 
         for buf_size in [1, 2, 3, 4, 5, 6]:
-            for k_size in [16, 32, 64]:
+            for k_size in [16, 32, 64, 128]:
                 for warp_y in [8, 16, 32, 64]:
                     for warp_x in [16, 32, 64, 128]:
                         for cta_y_num in [1, 2, 4]:

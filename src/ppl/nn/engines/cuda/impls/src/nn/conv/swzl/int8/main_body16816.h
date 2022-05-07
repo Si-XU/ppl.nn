@@ -21,7 +21,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(SPK_KPARAM_LIST)
 __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST)
 #endif
 {
-#if (__CUDA_ARCH__ >= 750) && (__CUDACC_VER_MAJOR__  * 1000  + __CUDACC_VER_MINOR__ * 10  >= 10020)
+#if (__CUDA_ARCH__ >= 800) && (__CUDACC_VER_MAJOR__  * 1000  + __CUDACC_VER_MINOR__ * 10  >= 10020)
     ///////////////////////////////////////////////////
     // definition section
     ///////////////////////////////////////////////////
@@ -104,11 +104,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
                        warp_idx * TILE_N_V1_PER_WARP +
                        out_tid  / TILE_M_V4_PER_CTA;
 
-#if TILE_M_PER_WARP == 8
-    bool dCv4YValid =  (dCv4_idy < numFltPerGrpPadV4) & ((out_tid / TILE_M_V4_PER_CTA) < TILE_N_PER_MMA * _2MMA_);
-#elif TILE_M_PER_WARP == 16 || TILE_M_PER_WARP == 32 || TILE_M_PER_WARP == 64
     bool dCv4YValid =  (dCv4_idy < numFltPerGrpPadV4) & ((out_tid / TILE_M_V4_PER_CTA) < TILE_N_PER_MMA);
-#endif
 
 #pragma unroll
     for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++)
@@ -131,18 +127,10 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     uint mma_idx    =  local_tid >> MMA_SIZE_Y_IN_BITS;
 
     uint sRowWt_id  =  (warp_idy * TILE_M_V8_PER_WARP) / SMEM_ROW_V8_SIZE;
-#if defined(USE_IMMA16816)
     uint sRowWt_off = ((warp_idy * TILE_M_V8_PER_WARP) ^ ((mma_idx % TILE_N_PER_MMA_QTR) / M_ROWS_PER_SMEM_ROW)
-#elif defined(USE_IMMA8816)
-    uint sRowWt_off = ((warp_idy * TILE_M_V8_PER_WARP) ^ ((mma_idx % TILE_N_PER_MMA_HALF) / M_ROWS_PER_SMEM_ROW)
-#endif
                        ) % SMEM_ROW_V8_SIZE;
 
-#if TILE_M_PER_WARP == 8
-    uint sRv2_write =  warp_idx   * TILE_M_V2_PER_CTA    * TILE_N_V1_PER_MMA    * _2MMA_    +
-#elif TILE_M_PER_WARP == 16 || TILE_M_PER_WARP == 32 || TILE_M_PER_WARP == 64
     uint sRv2_write =  warp_idx   * TILE_M_V2_PER_CTA    * TILE_N_V1_PER_MMA    +
-#endif
                        mma_idx    * TILE_M_V2_PER_CTA    +
                        sRowWt_id  * SMEM_ROW_V2_SIZE     +
                        mma_idy;
@@ -156,22 +144,11 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     uint sIntra_off =  sRowRd_off % TILE_M_V4_PER_MMA;
     uint sInter_off =  sRowRd_off / TILE_M_V4_PER_MMA;
 
-#if TILE_M_PER_WARP == 8
-    uint sRv4_read  =  warp_idx                          * TILE_M_V4_PER_CTA    * TILE_N_PER_MMA          * _2MMA_   +
-#elif TILE_M_PER_WARP == 16 || TILE_M_PER_WARP == 32 || TILE_M_PER_WARP == 64
     uint sRv4_read  =  warp_idx                          * TILE_M_V4_PER_CTA    * TILE_N_PER_MMA          +
-#endif
-#if defined(USE_IMMA16816)
                       (sMmaRd_idx / TILE_N_PER_MMA_QTR)  * TILE_M_V4_PER_CTA    * TILE_N_PER_MMA_QTR      +
                       (sMmaRd_idx % TILE_N_PER_MMA_QTR)  * TILE_M_V4_PER_CTA    +
                        sRowRd_id  * SMEM_ROW_V4_SIZE     +
                     (((sMmaRd_idx % TILE_N_PER_MMA_QTR)  / M_ROWS_PER_SMEM_ROW) ^ sInter_off)         * TILE_M_V4_PER_MMA +
-#elif defined(USE_IMMA8816)
-                      (sMmaRd_idx / TILE_N_PER_MMA_HALF) * TILE_M_V4_PER_CTA    * TILE_N_PER_MMA_HALF     +
-                      (sMmaRd_idx % TILE_N_PER_MMA_HALF) * TILE_M_V4_PER_CTA    +
-                       sRowRd_id  * SMEM_ROW_V4_SIZE     +
-                    (((sMmaRd_idx % TILE_N_PER_MMA_HALF) / M_ROWS_PER_SMEM_ROW) ^ sInter_off)         * TILE_M_V4_PER_MMA +
-#endif
                        sIntra_off;
 
     ///////////////////////////////////////////////////
@@ -314,9 +291,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
                        lds_idx    * _INT4_TO_4INT_;
 
     uint sBv1_read  =  warp_idx   * TILE_N_PER_WARP        * TILE_K_V4_PER_CTA +
-#if TILE_N_PER_WARP == 8
-                      (lds_idy    % WARP_SIZE_IN_THD_QTR)  * TILE_K_V4_PER_CTA +
-#elif TILE_N_PER_WARP == 16
+#if TILE_N_PER_WARP == 16
                       (lds_idy    % WARP_SIZE_IN_THD_HALF) * TILE_K_V4_PER_CTA +
 #elif TILE_N_PER_WARP == 32 || TILE_N_PER_WARP == 64 || TILE_N_PER_WARP == 128
                        lds_idy    * TILE_K_V4_PER_CTA      +
@@ -586,17 +561,10 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
 #endif
 
-#if TILE_M_PER_WARP == 8
-#pragma unroll
-    for(int s = 0; s < OUTPUT_STEPS / _2MMA_; s++)
-    {
-        WRITE_sRv2(sm_base_v2, sRv2_write, Cv2, s * BLK_N_PER_MMA * NUM_M_STEPS * _2MMA_);
-#elif TILE_M_PER_WARP == 16 || TILE_M_PER_WARP == 32 || TILE_M_PER_WARP == 64
 #pragma unroll
     for(int s = 0; s < OUTPUT_STEPS; s++)
     {
         WRITE_sRv2(sm_base_v2, sRv2_write, Cv2, s * BLK_N_PER_MMA * NUM_M_STEPS);
-#endif
 
         __syncthreads();
 
