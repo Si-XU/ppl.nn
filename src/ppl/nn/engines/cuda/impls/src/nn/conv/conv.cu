@@ -331,8 +331,6 @@ double PPLCUDAConvolutionSelectKernel(
     cudaDeviceProp device_prop;
     cudaGetDeviceProperties(&device_prop, device_id);
 
-    int device_arch = device_prop.major * 10 + device_prop.minor;
-
     if (!is_g_fp16_kvec_initialized)
         InitializeFP16ConvKernelContainer(g_fp16_kvec, type);
 
@@ -412,10 +410,10 @@ double PPLCUDAConvolutionSelectKernel(
             if (!g_fp16_kvec[kid].CheckKernelTypeFeasible(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk))
                 continue;
 
-            if (!g_fp16_kvec[kid].CheckSMemSizeFeasible(device_arch))
+            if (!g_fp16_kvec[kid].CheckSMemSizeFeasible(device_prop))
                 continue;
 
-            if (!g_fp16_kvec[kid].CheckGpuArchFeasible(device_arch))
+            if (!g_fp16_kvec[kid].CheckGpuArchFeasible(device_prop))
                 continue;
 
             if (!g_fp16_kvec[kid].CheckSplitkFeasible(num_chl_per_grp, splitk))
@@ -542,6 +540,7 @@ double PPLCUDAConvolutionSelectKernel(
 }
 
 void PPLCUDAConvolutionForwardImp(
+    int device_id,
     cudaStream_t &stream,
     ppl::common::datatype_t type,
     int4 *d_input,
@@ -916,6 +915,7 @@ ppl::common::RetCode PPLCUDAConvolutionPredictKernel(
 }
 
 float AlgoForwardTime(
+    int device_id,
     cudaStream_t &stream,
     std::vector<string> name,
     string code,
@@ -953,7 +953,7 @@ float AlgoForwardTime(
         cudaEventRecord(begin, stream);
         for (int i = 0; i < times; i++) {
             PPLCUDAConvolutionForwardJitImp(
-                stream, function, type, d_input, d_flt, d_output, bias, d_temp_buf, algo_param[n], conv_param, fuse_param);
+                device_id, stream, function, type, d_input, d_flt, d_output, bias, d_temp_buf, algo_param[n], conv_param, fuse_param);
         }
         cudaEventRecord(end, stream);
         cudaEventSynchronize(begin);
@@ -1125,13 +1125,14 @@ double PPLCUDAConvolutionJitSelectKernel(
     }
     int index = 0;
     std::vector<const char *> compile_params;
-    elapsed = AlgoForwardTime(stream, knames, total_source, index, compile_params, device_id, true, type, d_input, d_flt, d_output, bias, d_temp_buf, params, conv_param, fuse_param, workspace);
+    elapsed = AlgoForwardTime(device_id, stream, knames, total_source, index, compile_params, device_id, true, type, d_input, d_flt, d_output, bias, d_temp_buf, params, conv_param, fuse_param, workspace);
 
     algo_param                         = params[index];
     return elapsed;
 }
 
 void PPLCUDAConvolutionForwardJitImp(
+    int device_id,
     cudaStream_t &stream,
     CUfunction function,
     ppl::common::datatype_t type,

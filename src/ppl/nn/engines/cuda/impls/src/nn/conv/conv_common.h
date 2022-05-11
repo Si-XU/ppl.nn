@@ -102,7 +102,8 @@ struct kernel_info_t {
 
     std::string kname;
 
-    int karch;
+    int karch_major;
+    int karch_minor;
     ppl::common::datatype_t kprec;
 
     conv_ktype_t ktype;
@@ -118,7 +119,8 @@ struct kernel_info_t {
     {
         kname    = "";
         kid      = -1;
-        karch    = 1000;
+        karch_major = 100;
+        karch_minor = 100;
         kprec    = ppl::common::DATATYPE_UNKNOWN;
         ktype    = CONV_KTYPE_NUM;
         lut_kptr = NULL;
@@ -190,10 +192,13 @@ struct kernel_info_t {
             kname_substrs.push_back(substr);
         }
 
-        if (strstr(kname_substrs[0].c_str(), "Sm80"))
-            karch = 80;
-        else if (strstr(kname_substrs[0].c_str(), "Sm75"))
-            karch = 75;
+        if (strstr(kname_substrs[0].c_str(), "Sm80")) {
+            karch_major = 8;
+            karch_minor = 0;
+        } else if (strstr(kname_substrs[0].c_str(), "Sm75")) {
+            karch_major = 7;
+            karch_minor = 5;
+        }
 
         if (strstr(kname_substrs[0].c_str(), "Fp16"))
             kprec = ppl::common::DATATYPE_FLOAT16;
@@ -386,20 +391,20 @@ struct kernel_info_t {
         return false;
     }
 
-    bool CheckSMemSizeFeasible(int device_arch)
+    bool CheckSMemSizeFeasible(cudaDeviceProp& device_prop)
     {
-        if (device_arch == 75)
+        if (device_prop.major == 7 && device_prop.minor == 5)
             return (smem_size <= SM75_MAX_DYN_SMEM_SIZE_PER_CTA);
 
-        if (device_arch == 80)
+        if (device_prop.major == 8 && device_prop.minor == 0)
             return (smem_size <= SM80_MAX_DYN_SMEM_SIZE_PER_CTA);
 
         return false;
     }
 
-    bool CheckGpuArchFeasible(int device_arch)
+    bool CheckGpuArchFeasible(cudaDeviceProp& device_prop)
     {
-        return (device_arch >= karch);
+        return device_prop.major > karch_major || (device_prop.major == karch_major && device_prop.minor >= karch_minor);
     }
 
     void AdaptLutKernelSMemSize()

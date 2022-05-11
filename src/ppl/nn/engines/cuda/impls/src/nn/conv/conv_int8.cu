@@ -216,38 +216,32 @@ __inline__ void InitializeInt8ConvKernelContainer(std::vector<kernel_info_t> &g_
         Initialize2spkSM75Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
         Initialize2spkSM75Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
         Initialize2spkSM75Int8Imma8816ConvFSKernelContainer(g_int8_kvec);
-        // printf("imma8816 2spk kernel size is %u\n", g_int8_kvec.size());
+
+        InitializeIdxnSM75Int8Imma8816ConvKernelContainer(g_int8_kvec);
+
+        InitializeSwzlSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
+        InitializeSwzlSM75Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
+        InitializeSwzlSM75Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
 
         Initialize2spkSM80Int8Imma16816ConvF1KernelContainer(g_int8_kvec);
         Initialize2spkSM80Int8Imma16816ConvF3KernelContainer(g_int8_kvec);
         Initialize2spkSM80Int8Imma16816ConvFNKernelContainer(g_int8_kvec);
         Initialize2spkSM80Int8Imma16816ConvFSKernelContainer(g_int8_kvec);
-        // printf("imma16816 2spk kernel size is %u\n", g_int8_kvec.size());
 
         Initialize2spkSM80Int8Imma16832ConvF1KernelContainer(g_int8_kvec);
         Initialize2spkSM80Int8Imma16832ConvF3KernelContainer(g_int8_kvec);
         Initialize2spkSM80Int8Imma16832ConvFNKernelContainer(g_int8_kvec);
         Initialize2spkSM80Int8Imma16832ConvFSKernelContainer(g_int8_kvec);
-        // printf("imma16832 2spk kernel size is %u\n", g_int8_kvec.size());
 
-        InitializeIdxnSM75Int8Imma8816ConvKernelContainer(g_int8_kvec);
         InitializeIdxnSM80Int8Imma16816ConvKernelContainer(g_int8_kvec);
-        // printf("imma idxn kernel size is %u\n", g_int8_kvec.size());
-
-        InitializeSwzlSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
-        InitializeSwzlSM75Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
-        InitializeSwzlSM75Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
-        // printf("imma8816 swzl kernel size is %u\n", g_int8_kvec.size());
 
         InitializeSwzlSM80Int8Imma16816ConvF1KernelContainer(g_int8_kvec);
         InitializeSwzlSM80Int8Imma16816ConvF3KernelContainer(g_int8_kvec);
         InitializeSwzlSM80Int8Imma16816ConvFNKernelContainer(g_int8_kvec);
-        // printf("imma16816 swl kernel size is %u\n", g_int8_kvec.size());
 
         InitializeSwzlSM80Int8Imma16832ConvF1KernelContainer(g_int8_kvec);
         InitializeSwzlSM80Int8Imma16832ConvF3KernelContainer(g_int8_kvec);
         InitializeSwzlSM80Int8Imma16832ConvFNKernelContainer(g_int8_kvec);
-        // printf("imma16832 swl kernel size is %u\n", g_int8_kvec.size());
 #endif
     }
     is_g_int8_kvec_initialized = true;
@@ -277,8 +271,6 @@ double PPLCUDAConvolutionSelectKernelInt8(
 {
     cudaDeviceProp device_prop;
     cudaGetDeviceProperties(&device_prop, device_id);
-
-    int device_arch = device_prop.major * 10 + device_prop.minor;
 
     if(!is_g_int8_kvec_initialized)
         InitializeInt8ConvKernelContainer(g_int8_kvec, type);
@@ -358,10 +350,10 @@ double PPLCUDAConvolutionSelectKernelInt8(
 
             if(!g_int8_kvec[kid].CheckKernelTypeFeasibleInt8(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk)) continue;
 
-            if (!g_int8_kvec[kid].CheckSMemSizeFeasible(device_arch))
+            if (!g_int8_kvec[kid].CheckSMemSizeFeasible(device_prop))
                 continue;
 
-            if (!g_int8_kvec[kid].CheckGpuArchFeasible(device_arch))
+            if (!g_int8_kvec[kid].CheckGpuArchFeasible(device_prop))
                 continue;
 
             if(!g_int8_kvec[kid].CheckSplitkFeasible(num_chl_per_grp, splitk))
@@ -494,6 +486,7 @@ double PPLCUDAConvolutionSelectKernelInt8(
 }
 
 void PPLCUDAConvolutionForwardImpInt8(
+        int device_id,
         cudaStream_t &stream, 
         ppl::common::datatype_t type,
         int4* d_input,
@@ -740,6 +733,7 @@ ppl::common::RetCode PPLCUDAConvolutionPredictKernelInt8(
 }
 
 float AlgoForwardTimeInt8(
+    int device_id,
     cudaStream_t &stream,
     std::vector<string> name,
     string code,
@@ -928,13 +922,14 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
     }
     int index = 0;
     std::vector<const char *> compile_params;
-    elapsed = AlgoForwardTimeInt8(stream, knames, total_source, index, compile_params, device_id, true, type, d_input, d_flt, d_output, bias, d_temp_buf, params, conv_param, quant_param, fuse_param, workspace);
+    elapsed = AlgoForwardTimeInt8(device_id, stream, knames, total_source, index, compile_params, device_id, true, type, d_input, d_flt, d_output, bias, d_temp_buf, params, conv_param, quant_param, fuse_param, workspace);
 
     algo_param                         = params[index];
     return elapsed;
 }
 
 void PPLCUDAConvolutionForwardJitImpInt8(
+    int device_id,
     cudaStream_t &stream,
     CUfunction function,
     ppl::common::datatype_t type,

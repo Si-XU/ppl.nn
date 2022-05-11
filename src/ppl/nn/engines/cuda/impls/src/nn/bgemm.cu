@@ -368,7 +368,7 @@ double PPLCUDABgemmJITSelectKernel(
 
     int index = 0;
     std::vector<const char *> compile_params;
-    elapsed = AlgoForwardTime(stream, knames, total_source, index, compile_params, device_id, true, type, (int4 *)input, (int4 *)weight, (int4 *)output, (int4 *)bias, (int4 *)temp_buffer, params, conv_param, fuse_param, workspace);
+    elapsed = AlgoForwardTime(device_id, stream, knames, total_source, index, compile_params, device_id, true, type, (int4 *)input, (int4 *)weight, (int4 *)output, (int4 *)bias, (int4 *)temp_buffer, params, conv_param, fuse_param, workspace);
 
     algo_param = params[index];
     return elapsed;
@@ -390,8 +390,6 @@ double PPLCUDABgemmSelectKernel(
 {
     cudaDeviceProp device_prop;
     cudaGetDeviceProperties(&device_prop, device_id);
-
-    int device_arch = device_prop.major * 10 + device_prop.minor;
 
     auto type = weight_shape->GetDataType();
     if (!is_g_fp16_kvec_set)
@@ -446,10 +444,10 @@ double PPLCUDABgemmSelectKernel(
         int cta_size_in_thd = g_fp16_kvec[kid].cta_size_in_thd;
         int smem_size       = g_fp16_kvec[kid].smem_size;
 
-        if (!g_fp16_kvec[kid].CheckSMemSizeFeasible(device_arch))
+        if (!g_fp16_kvec[kid].CheckSMemSizeFeasible(device_prop))
                 continue;
 
-        if (!g_fp16_kvec[kid].CheckGpuArchFeasible(device_arch))
+        if (!g_fp16_kvec[kid].CheckGpuArchFeasible(device_prop))
                 continue;
 
         g_fp16_kvec[kid].AdaptLutKernelSMemSize();
@@ -502,6 +500,7 @@ double PPLCUDABgemmSelectKernel(
 
 // (B, M, K_pad) * (B, N, K_pad) = (B, M, N_pad)
 ppl::common::RetCode PPLCUDABgemmForwardImp(
+    int device_id,
     const cudaStream_t &stream,
     ppl::nn::cuda::CUDAModule *module,
     const ppl::nn::TensorShape *input_shape,

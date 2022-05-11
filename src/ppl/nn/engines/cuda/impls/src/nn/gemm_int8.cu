@@ -253,7 +253,7 @@ double PPLCUDAGemmJITSelectKernelInt8(
 
    int index = 0;
    std::vector<const char *> compile_params;
-   elapsed = AlgoForwardTimeInt8(stream, knames, total_source, index, compile_params, device_id, true, type, (int4 *)input, (int4 *)weight, (int4 *)output, (int4 *)bias, (int4 *)temp_buffer, params, conv_param, quant_param, fuse_param, workspace);
+   elapsed = AlgoForwardTimeInt8(device_id, stream, knames, total_source, index, compile_params, device_id, true, type, (int4 *)input, (int4 *)weight, (int4 *)output, (int4 *)bias, (int4 *)temp_buffer, params, conv_param, quant_param, fuse_param, workspace);
 
    algo_param = params[index];
    return elapsed;
@@ -277,8 +277,6 @@ double PPLCUDAGemmSelectKernelInt8(
 {
     cudaDeviceProp device_prop;
     cudaGetDeviceProperties(&device_prop, device_id);
-
-    int device_arch = device_prop.major * 10 + device_prop.minor;
 
     auto type = weight_shape->GetDataType();
     if (!is_g_int8_kvec_set)
@@ -327,10 +325,10 @@ double PPLCUDAGemmSelectKernelInt8(
         int cta_size_in_thd = g_int8_kvec[kid].cta_size_in_thd;
         int smem_size = g_int8_kvec[kid].smem_size;
 
-        if (!g_int8_kvec[kid].CheckSMemSizeFeasible(device_arch))
+        if (!g_int8_kvec[kid].CheckSMemSizeFeasible(device_prop))
                 continue;
 
-        if (!g_int8_kvec[kid].CheckGpuArchFeasible(device_arch))
+        if (!g_int8_kvec[kid].CheckGpuArchFeasible(device_prop))
                 continue;
 
         g_int8_kvec[kid].AdaptInt8LutKernelSMemSize();
