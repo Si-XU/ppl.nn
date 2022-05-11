@@ -439,7 +439,7 @@ def GenAllKernels(parent_path):
         lut_source_file = LutSourceFile(parent_path, flt_size)
         spk_source_file = SpkSourceFile(parent_path, flt_size)
 
-        for buf_size in [1, 2, 3, 4, 5, 6]:
+        for buf_size in [1, 2]:
             for s_size in [16, 32, 64]:
                 for k_num in [1, 2, 4]:
                     for warp_y in [16, 32, 64, 128]:

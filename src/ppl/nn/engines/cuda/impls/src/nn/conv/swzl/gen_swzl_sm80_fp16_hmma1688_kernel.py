@@ -32,7 +32,7 @@ class KernelInfo:
                 "_w" + str(self.warp_y) + "x" + str(self.warp_x) + \
                 "_k" + str(self.k_size) + "_buf" + str(self.buf_size)
 
-        self.kname = "nvSwzlSm75Fp16Conv_hmma1688_nhwc_" + self.flt_size + self.kconfig
+        self.kname = "nvSwzlSm80Fp16Conv_hmma1688_nhwc_" + self.flt_size + self.kconfig
         self.fname = self.flt_size + "/swzl_"  + self.flt_size + self.kconfig + ".cu"
 
         self.HALF_SIZE = 2
@@ -285,12 +285,12 @@ class LutSourceFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#include  \"swzl/sm75/fp16/hmma1688/%s_lut_kernels.h\"\n\n" % flt_size)
+        self.f.write("#include  \"swzl/sm80/fp16/hmma1688/%s_lut_kernels.h\"\n\n" % flt_size)
 
         self.f.write("#define ENABLE_FUSE\n\n")
 
     def AppendKernel(self, fname):
-        self.f.write("#include \"swzl/sm75/fp16/hmma1688/%s\"\n" % fname)
+        self.f.write("#include \"swzl/sm80/fp16/hmma1688/%s\"\n" % fname)
 
     def Close(self):
         self.f.close()
@@ -304,12 +304,12 @@ class SpkSourceFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#include  \"swzl/sm75/fp16/hmma1688/%s_spk_kernels.h\"\n\n" % flt_size)
+        self.f.write("#include  \"swzl/sm80/fp16/hmma1688/%s_spk_kernels.h\"\n\n" % flt_size)
 
         self.f.write("#define ENABLE_SPLITK\n\n")
 
     def AppendKernel(self, fname):
-        self.f.write("#include \"swzl/sm75/fp16/hmma1688/%s\"\n" % fname)
+        self.f.write("#include \"swzl/sm80/fp16/hmma1688/%s\"\n" % fname)
 
     def Close(self):
         self.f.close()
@@ -323,8 +323,8 @@ class LutHeaderFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#ifndef __PPLCUDA_SWZL_SM75_FP16_HMMA1688_%s_LUT_KERNELS_H__\n" % flt_size.upper())
-        self.f.write("#define __PPLCUDA_SWZL_SM75_FP16_HMMA1688_%s_LUT_KERNELS_H__\n" % flt_size.upper())
+        self.f.write("#ifndef __PPLCUDA_SWZL_SM80_FP16_HMMA1688_%s_LUT_KERNELS_H__\n" % flt_size.upper())
+        self.f.write("#define __PPLCUDA_SWZL_SM80_FP16_HMMA1688_%s_LUT_KERNELS_H__\n" % flt_size.upper())
 
         self.f.write("\n\n#include \"kernel_type.h\"\n\n")
 
@@ -344,8 +344,8 @@ class SpkHeaderFile:
 
         self.f = open(os.path.join(self.path, self.fname), "w")
 
-        self.f.write("#ifndef __PPLCUDA_SWZL_SM75_FP16_HMMA1688_%s_SPK_KERNELS_H__\n" % flt_size.upper())
-        self.f.write("#define __PPLCUDA_SWZL_SM75_FP16_HMMA1688_%s_SPK_KERNELS_H__\n" % flt_size.upper())
+        self.f.write("#ifndef __PPLCUDA_SWZL_SM80_FP16_HMMA1688_%s_SPK_KERNELS_H__\n" % flt_size.upper())
+        self.f.write("#define __PPLCUDA_SWZL_SM80_FP16_HMMA1688_%s_SPK_KERNELS_H__\n" % flt_size.upper())
 
         self.f.write("\n\n#include \"kernel_type.h\"\n\n")
 
@@ -367,10 +367,10 @@ class InitFile:
 
         self.f.write("#include \"conv_common.h\"\n\n")
 
-        self.f.write("#include \"swzl/sm75/fp16/hmma1688/%s_lut_kernels.h\"\n" % self.flt_size)
-        self.f.write("#include \"swzl/sm75/fp16/hmma1688/%s_spk_kernels.h\"\n\n" % self.flt_size)
+        self.f.write("#include \"swzl/sm80/fp16/hmma1688/%s_lut_kernels.h\"\n" % self.flt_size)
+        self.f.write("#include \"swzl/sm80/fp16/hmma1688/%s_spk_kernels.h\"\n\n" % self.flt_size)
 
-        self.f.write("void InitializeSwzlSM75FP16Hmma1688Conv%sKernelContainer(std::vector<kernel_info_t> & kernel_container)\n{\n" % self.flt_size.upper())
+        self.f.write("void InitializeSwzlSM80FP16Hmma1688Conv%sKernelContainer(std::vector<kernel_info_t> & kernel_container)\n{\n" % self.flt_size.upper())
 
     def AppendKernel(self, kname):
         self.f.write("\tADD_KERNEL(CONV_SWZL_%s, \"%s\", &%s, &%s, NULL);\n" % (self.flt_size.upper(), kname, kname, kname))
@@ -428,7 +428,7 @@ def GenAllKernels(parent_path):
         lut_source_file = LutSourceFile(parent_path, flt_size)
         spk_source_file = SpkSourceFile(parent_path, flt_size)
 
-        for buf_size in [1, 2]:
+        for buf_size in [3, 4, 5, 6]:
             for k_size in [8, 16, 32, 64]:
                 for warp_y in [8, 16, 32, 64]:
                     for warp_x in [16, 32, 64, 128]:

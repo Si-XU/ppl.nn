@@ -216,6 +216,7 @@ __inline__ void InitializeInt8ConvKernelContainer(std::vector<kernel_info_t> &g_
     if(type == ppl::common::DATATYPE_INT8) {
 #ifndef PPLNN_ENABLE_CUDA_JIT
         if (device_prop.major == 7 && device_prop.minor == 5) {
+            // sm75 kernels
             Initialize2spkSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
             Initialize2spkSM75Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
             Initialize2spkSM75Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
@@ -227,6 +228,7 @@ __inline__ void InitializeInt8ConvKernelContainer(std::vector<kernel_info_t> &g_
             InitializeSwzlSM75Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
             InitializeSwzlSM75Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
         } else if (device_prop.major > 8 || (device_prop.major == 8 && device_prop.minor >= 0)) {
+            // sm75 kernels
             Initialize2spkSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
             Initialize2spkSM75Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
             Initialize2spkSM75Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
@@ -237,6 +239,16 @@ __inline__ void InitializeInt8ConvKernelContainer(std::vector<kernel_info_t> &g_
             InitializeSwzlSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
             InitializeSwzlSM75Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
             InitializeSwzlSM75Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
+
+            // sm80 kernels
+            Initialize2spkSM80Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
+            Initialize2spkSM80Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
+            Initialize2spkSM80Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
+            Initialize2spkSM80Int8Imma8816ConvFSKernelContainer(g_int8_kvec);
+
+            InitializeSwzlSM80Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
+            InitializeSwzlSM80Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
+            InitializeSwzlSM80Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
 
             Initialize2spkSM80Int8Imma16816ConvF1KernelContainer(g_int8_kvec);
             Initialize2spkSM80Int8Imma16816ConvF3KernelContainer(g_int8_kvec);

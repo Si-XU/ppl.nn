@@ -100,6 +100,8 @@ void init_f1_int8_kvec(std::vector<kernel_info_t> &g_int8_kvec, int device_id, p
             Initialize2spkSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
         } else if (device_prop.major > 8 || (device_prop.major == 8 && device_prop.minor >= 0)) {
             Initialize2spkSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
+
+            Initialize2spkSM80Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
             Initialize2spkSM80Int8Imma16816ConvF1KernelContainer(g_int8_kvec);
             Initialize2spkSM80Int8Imma16832ConvF1KernelContainer(g_int8_kvec);
         }
