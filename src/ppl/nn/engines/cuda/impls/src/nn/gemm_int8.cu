@@ -95,7 +95,7 @@ void init_f1_int8_kvec(std::vector<kernel_info_t> &g_int8_kvec, int device_id, p
     cudaGetDeviceProperties(&device_prop, device_id);
 
 #ifndef PPLNN_ENABLE_CUDA_JIT
-    if (type == ppl::common::DATATYPE_FLOAT16) {
+    if(type == ppl::common::DATATYPE_INT8) {
         if (device_prop.major == 7 && device_prop.minor == 5) {
             Initialize2spkSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
         } else if (device_prop.major > 8 || (device_prop.major == 8 && device_prop.minor >= 0)) {
