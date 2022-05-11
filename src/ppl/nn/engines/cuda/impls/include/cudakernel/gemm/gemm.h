@@ -69,6 +69,7 @@ double PPLCUDAGemmSelectKernel(
     algo_param_t& algo_param);
 
 ppl::common::RetCode PPLCUDAGemmForwardImp(
+    int device_id,
     const cudaStream_t& stream,
     ppl::nn::cuda::CUDAModule* module,
     const ppl::nn::TensorShape* input_shape,
@@ -139,6 +140,7 @@ double PPLCUDAGemmSelectKernelInt8(
     algo_param_t &algo_param);
 
 ppl::common::RetCode PPLCUDAGemmForwardImpInt8(
+    int device_id,
     const cudaStream_t &stream,
     ppl::nn::cuda::CUDAModule *module,
     const ppl::nn::TensorShape *input_shape,

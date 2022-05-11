@@ -89,7 +89,7 @@ extern bool is_g_fp16_kvec_set;
         fuse_param.has_concat, concat_offset_v8,                      \
         concat_stride_v8
 
-extern void init_f1_kvec(std::vector<kernel_info_t> &g_fp16_kvec, ppl::common::datatype_t type);
+extern void init_f1_kvec(std::vector<kernel_info_t> &g_fp16_kvec, int device_id, ppl::common::datatype_t type);
 
 uint64_t PPLBgemmCUDAGetBufSize(
     const ppl::nn::TensorShape *input_shape,
@@ -393,7 +393,7 @@ double PPLCUDABgemmSelectKernel(
 
     auto type = weight_shape->GetDataType();
     if (!is_g_fp16_kvec_set)
-        init_f1_kvec(g_fp16_kvec, type);
+        init_f1_kvec(g_fp16_kvec, device_id, type);
 
     int pad_size = GetPadSize(type);
 
@@ -517,7 +517,7 @@ ppl::common::RetCode PPLCUDABgemmForwardImp(
     auto type = weight_shape->GetDataType();
 #ifndef PPLNN_ENABLE_CUDA_JIT
     if (!is_g_fp16_kvec_set)
-        init_f1_kvec(g_fp16_kvec, type);
+        init_f1_kvec(g_fp16_kvec, device_id, type);
 #endif
     int pad_size = GetPadSize(type);
     //int transA   = param.transA;

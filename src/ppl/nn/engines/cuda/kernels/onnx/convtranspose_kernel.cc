@@ -54,7 +54,7 @@ ppl::common::RetCode ConvTransposeKernel::DoExecute(KernelExecContext* ctx) {
         b_data = B->GetBufferPtr<float>();
     }
     CUDAModule* module = static_cast<CUDAModule*>(this->GetCommonParam()->module);
-    status = PPLCUDAConvTransposeForward(GetStream(), module, X->GetShape(), X->GetBufferPtr(), W->GetBufferPtr(), b_data,
+    status = PPLCUDAConvTransposeForward(GetDeviceId(), GetStream(), module, X->GetShape(), X->GetBufferPtr(), W->GetBufferPtr(), b_data,
                                          &param_->param, param_->extra_param.algo_info, tmp_buffer, Y->GetShape(), Y->GetBufferPtr());
 
     return status;

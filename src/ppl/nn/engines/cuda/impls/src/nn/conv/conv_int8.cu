@@ -208,42 +208,58 @@ static bool is_g_int8_kvec_initialized = false;
 
 static std::unordered_map<size_t, algo_param_t> g_conv_shape_hash;
 
-__inline__ void InitializeInt8ConvKernelContainer(std::vector<kernel_info_t> &g_int8_kvec, ppl::common::datatype_t type)
+__inline__ void InitializeInt8ConvKernelContainer(std::vector<kernel_info_t> &g_int8_kvec, int device_id, ppl::common::datatype_t type)
 {
-    if (type == ppl::common::DATATYPE_INT8) {
+    cudaDeviceProp device_prop;
+    cudaGetDeviceProperties(&device_prop, device_id);
+
+    if(type == ppl::common::DATATYPE_INT8) {
 #ifndef PPLNN_ENABLE_CUDA_JIT
-        Initialize2spkSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
-        Initialize2spkSM75Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
-        Initialize2spkSM75Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
-        Initialize2spkSM75Int8Imma8816ConvFSKernelContainer(g_int8_kvec);
+        if (device_prop.major == 7 && device_prop.minor == 5) {
+            Initialize2spkSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
+            Initialize2spkSM75Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
+            Initialize2spkSM75Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
+            Initialize2spkSM75Int8Imma8816ConvFSKernelContainer(g_int8_kvec);
 
-        InitializeIdxnSM75Int8Imma8816ConvKernelContainer(g_int8_kvec);
+            InitializeIdxnSM75Int8Imma8816ConvKernelContainer(g_int8_kvec);
 
-        InitializeSwzlSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
-        InitializeSwzlSM75Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
-        InitializeSwzlSM75Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
+            InitializeSwzlSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
+            InitializeSwzlSM75Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
+            InitializeSwzlSM75Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
+        } else if (device_prop.major > 8 || (device_prop.major == 8 && device_prop.minor >= 0)) {
+            Initialize2spkSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
+            Initialize2spkSM75Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
+            Initialize2spkSM75Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
+            Initialize2spkSM75Int8Imma8816ConvFSKernelContainer(g_int8_kvec);
 
-        Initialize2spkSM80Int8Imma16816ConvF1KernelContainer(g_int8_kvec);
-        Initialize2spkSM80Int8Imma16816ConvF3KernelContainer(g_int8_kvec);
-        Initialize2spkSM80Int8Imma16816ConvFNKernelContainer(g_int8_kvec);
-        Initialize2spkSM80Int8Imma16816ConvFSKernelContainer(g_int8_kvec);
+            Initialize2spkSM80Int8Imma16816ConvF1KernelContainer(g_int8_kvec);
+            Initialize2spkSM80Int8Imma16816ConvF3KernelContainer(g_int8_kvec);
+            Initialize2spkSM80Int8Imma16816ConvFNKernelContainer(g_int8_kvec);
+            Initialize2spkSM80Int8Imma16816ConvFSKernelContainer(g_int8_kvec);
 
-        Initialize2spkSM80Int8Imma16832ConvF1KernelContainer(g_int8_kvec);
-        Initialize2spkSM80Int8Imma16832ConvF3KernelContainer(g_int8_kvec);
-        Initialize2spkSM80Int8Imma16832ConvFNKernelContainer(g_int8_kvec);
-        Initialize2spkSM80Int8Imma16832ConvFSKernelContainer(g_int8_kvec);
+            Initialize2spkSM80Int8Imma16832ConvF1KernelContainer(g_int8_kvec);
+            Initialize2spkSM80Int8Imma16832ConvF3KernelContainer(g_int8_kvec);
+            Initialize2spkSM80Int8Imma16832ConvFNKernelContainer(g_int8_kvec);
+            Initialize2spkSM80Int8Imma16832ConvFSKernelContainer(g_int8_kvec);
 
-        InitializeIdxnSM80Int8Imma16816ConvKernelContainer(g_int8_kvec);
+            InitializeIdxnSM75Int8Imma8816ConvKernelContainer(g_int8_kvec);
+            InitializeIdxnSM80Int8Imma16816ConvKernelContainer(g_int8_kvec);
 
-        InitializeSwzlSM80Int8Imma16816ConvF1KernelContainer(g_int8_kvec);
-        InitializeSwzlSM80Int8Imma16816ConvF3KernelContainer(g_int8_kvec);
-        InitializeSwzlSM80Int8Imma16816ConvFNKernelContainer(g_int8_kvec);
+            InitializeSwzlSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
+            InitializeSwzlSM75Int8Imma8816ConvF3KernelContainer(g_int8_kvec);
+            InitializeSwzlSM75Int8Imma8816ConvFNKernelContainer(g_int8_kvec);
 
-        InitializeSwzlSM80Int8Imma16832ConvF1KernelContainer(g_int8_kvec);
-        InitializeSwzlSM80Int8Imma16832ConvF3KernelContainer(g_int8_kvec);
-        InitializeSwzlSM80Int8Imma16832ConvFNKernelContainer(g_int8_kvec);
+            InitializeSwzlSM80Int8Imma16816ConvF1KernelContainer(g_int8_kvec);
+            InitializeSwzlSM80Int8Imma16816ConvF3KernelContainer(g_int8_kvec);
+            InitializeSwzlSM80Int8Imma16816ConvFNKernelContainer(g_int8_kvec);
+
+            InitializeSwzlSM80Int8Imma16832ConvF1KernelContainer(g_int8_kvec);
+            InitializeSwzlSM80Int8Imma16832ConvF3KernelContainer(g_int8_kvec);
+            InitializeSwzlSM80Int8Imma16832ConvFNKernelContainer(g_int8_kvec);
+        }
 #endif
     }
+
     is_g_int8_kvec_initialized = true;
 }
 
@@ -273,7 +289,7 @@ double PPLCUDAConvolutionSelectKernelInt8(
     cudaGetDeviceProperties(&device_prop, device_id);
 
     if(!is_g_int8_kvec_initialized)
-        InitializeInt8ConvKernelContainer(g_int8_kvec, type);
+        InitializeInt8ConvKernelContainer(g_int8_kvec, device_id, type);
 
     size_t conv_shape_hash = GetConvShapeHashKey(conv_param);
 
@@ -500,7 +516,7 @@ void PPLCUDAConvolutionForwardImpInt8(
         fuse_param_t &fuse_param)
 {
     if(!is_g_int8_kvec_initialized)
-        InitializeInt8ConvKernelContainer(g_int8_kvec, type);
+        InitializeInt8ConvKernelContainer(g_int8_kvec, device_id, type);
 
     unsigned int kid = algo_param.kid;
     unsigned int splitk = algo_param.splitk;

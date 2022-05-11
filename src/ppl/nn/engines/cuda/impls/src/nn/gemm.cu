@@ -87,12 +87,19 @@ bool is_g_fp16_kvec_set = false;
         fuse_param.has_concat, concat_offset_v8,                      \
         concat_stride_v8
 
-void init_f1_kvec(std::vector<kernel_info_t> &g_fp16_kvec, ppl::common::datatype_t type)
+void init_f1_kvec(std::vector<kernel_info_t> &g_fp16_kvec, int device_id, ppl::common::datatype_t type)
 {
+    cudaDeviceProp device_prop;
+    cudaGetDeviceProperties(&device_prop, device_id);
+
 #ifndef PPLNN_ENABLE_CUDA_JIT
     if (type == ppl::common::DATATYPE_FLOAT16) {
-        Initialize2spkSM75FP16Hmma1688ConvF1KernelContainer(g_fp16_kvec);
-        Initialize2spkSM80FP16Hmma16816ConvF1KernelContainer(g_fp16_kvec);
+        if (device_prop.major == 7 && device_prop.minor == 5) {
+            Initialize2spkSM75FP16Hmma1688ConvF1KernelContainer(g_fp16_kvec);
+        } else if (device_prop.major > 8 || (device_prop.major == 8 && device_prop.minor >= 0)) {
+            Initialize2spkSM75FP16Hmma1688ConvF1KernelContainer(g_fp16_kvec);
+            Initialize2spkSM80FP16Hmma16816ConvF1KernelContainer(g_fp16_kvec);
+        }
     }
     is_g_fp16_kvec_set = true;
 #endif
@@ -372,7 +379,7 @@ double PPLCUDAGemmSelectKernel(
 
     auto type = weight_shape->GetDataType();
     if (!is_g_fp16_kvec_set)
-        init_f1_kvec(g_fp16_kvec, type);
+        init_f1_kvec(g_fp16_kvec, device_id, type);
 
     int pad_size = GetPadSize(type);
     int transA   = param.transA;
@@ -483,6 +490,7 @@ ppl::common::RetCode PPLCUDAGemvForwardImp(
     const fuse_param_t &fuse_param);
 
 ppl::common::RetCode PPLCUDAGemmForwardImp(
+    int device_id,
     const cudaStream_t &stream,
     ppl::nn::cuda::CUDAModule *module,
     const ppl::nn::TensorShape *input_shape,
@@ -500,7 +508,7 @@ ppl::common::RetCode PPLCUDAGemmForwardImp(
     auto type = weight_shape->GetDataType();
 #ifndef PPLNN_ENABLE_CUDA_JIT
     if (!is_g_fp16_kvec_set)
-        init_f1_kvec(g_fp16_kvec, type);
+        init_f1_kvec(g_fp16_kvec, device_id, type);
 #endif
     int pad_size = GetPadSize(type);
     int transA   = param.transA;

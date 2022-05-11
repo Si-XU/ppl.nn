@@ -194,30 +194,46 @@ static bool is_g_fp16_kvec_initialized = false;
 
 static std::unordered_map<size_t, algo_param_t> g_conv_shape_hash;
 
-__inline__ void InitializeFP16ConvKernelContainer(std::vector<kernel_info_t> &g_fp16_kvec, ppl::common::datatype_t type)
+__inline__ void InitializeFP16ConvKernelContainer(std::vector<kernel_info_t> &g_fp16_kvec, int device_id, ppl::common::datatype_t type)
 {
+    cudaDeviceProp device_prop;
+    cudaGetDeviceProperties(&device_prop, device_id);
+
     if (type == ppl::common::DATATYPE_FLOAT16) {
 #ifndef PPLNN_ENABLE_CUDA_JIT
-        Initialize2spkSM75FP16Hmma1688ConvF1KernelContainer(g_fp16_kvec);
-        Initialize2spkSM75FP16Hmma1688ConvF3KernelContainer(g_fp16_kvec);
-        Initialize2spkSM75FP16Hmma1688ConvFNKernelContainer(g_fp16_kvec);
-        Initialize2spkSM75FP16Hmma1688ConvFSKernelContainer(g_fp16_kvec);
+        if (device_prop.major == 7 && device_prop.minor == 5) {
+            Initialize2spkSM75FP16Hmma1688ConvF1KernelContainer(g_fp16_kvec);
+            Initialize2spkSM75FP16Hmma1688ConvF3KernelContainer(g_fp16_kvec);
+            Initialize2spkSM75FP16Hmma1688ConvFNKernelContainer(g_fp16_kvec);
+            Initialize2spkSM75FP16Hmma1688ConvFSKernelContainer(g_fp16_kvec);
 
-        Initialize2spkSM80FP16Hmma16816ConvF1KernelContainer(g_fp16_kvec);
-        Initialize2spkSM80FP16Hmma16816ConvF3KernelContainer(g_fp16_kvec);
-        Initialize2spkSM80FP16Hmma16816ConvFNKernelContainer(g_fp16_kvec);
-        Initialize2spkSM80FP16Hmma16816ConvFSKernelContainer(g_fp16_kvec);
+            InitializeIdxnSM75FP16Hmma1688ConvKernelContainer(g_fp16_kvec);
 
-        InitializeIdxnSM75FP16Hmma1688ConvKernelContainer(g_fp16_kvec);
-        InitializeIdxnSM80FP16Hmma16816ConvKernelContainer(g_fp16_kvec);
+            InitializeSwzlSM75FP16Hmma1688ConvF1KernelContainer(g_fp16_kvec);
+            InitializeSwzlSM75FP16Hmma1688ConvF3KernelContainer(g_fp16_kvec);
+            InitializeSwzlSM75FP16Hmma1688ConvFNKernelContainer(g_fp16_kvec);
+        } else if (device_prop.major > 8 || (device_prop.major == 8 && device_prop.minor >= 0)) {
+            Initialize2spkSM75FP16Hmma1688ConvF1KernelContainer(g_fp16_kvec);
+            Initialize2spkSM75FP16Hmma1688ConvF3KernelContainer(g_fp16_kvec);
+            Initialize2spkSM75FP16Hmma1688ConvFNKernelContainer(g_fp16_kvec);
+            Initialize2spkSM75FP16Hmma1688ConvFSKernelContainer(g_fp16_kvec);
 
-        InitializeSwzlSM75FP16Hmma1688ConvF1KernelContainer(g_fp16_kvec);
-        InitializeSwzlSM75FP16Hmma1688ConvF3KernelContainer(g_fp16_kvec);
-        InitializeSwzlSM75FP16Hmma1688ConvFNKernelContainer(g_fp16_kvec);
+            Initialize2spkSM80FP16Hmma16816ConvF1KernelContainer(g_fp16_kvec);
+            Initialize2spkSM80FP16Hmma16816ConvF3KernelContainer(g_fp16_kvec);
+            Initialize2spkSM80FP16Hmma16816ConvFNKernelContainer(g_fp16_kvec);
+            Initialize2spkSM80FP16Hmma16816ConvFSKernelContainer(g_fp16_kvec);
 
-        InitializeSwzlSM80FP16Hmma16816ConvF1KernelContainer(g_fp16_kvec);
-        InitializeSwzlSM80FP16Hmma16816ConvF3KernelContainer(g_fp16_kvec);
-        InitializeSwzlSM80FP16Hmma16816ConvFNKernelContainer(g_fp16_kvec);
+            InitializeIdxnSM75FP16Hmma1688ConvKernelContainer(g_fp16_kvec);
+            InitializeIdxnSM80FP16Hmma16816ConvKernelContainer(g_fp16_kvec);
+
+            InitializeSwzlSM75FP16Hmma1688ConvF1KernelContainer(g_fp16_kvec);
+            InitializeSwzlSM75FP16Hmma1688ConvF3KernelContainer(g_fp16_kvec);
+            InitializeSwzlSM75FP16Hmma1688ConvFNKernelContainer(g_fp16_kvec);
+
+            InitializeSwzlSM80FP16Hmma16816ConvF1KernelContainer(g_fp16_kvec);
+            InitializeSwzlSM80FP16Hmma16816ConvF3KernelContainer(g_fp16_kvec);
+            InitializeSwzlSM80FP16Hmma16816ConvFNKernelContainer(g_fp16_kvec);
+        }
 #endif
     }
 
@@ -332,7 +348,7 @@ double PPLCUDAConvolutionSelectKernel(
     cudaGetDeviceProperties(&device_prop, device_id);
 
     if (!is_g_fp16_kvec_initialized)
-        InitializeFP16ConvKernelContainer(g_fp16_kvec, type);
+        InitializeFP16ConvKernelContainer(g_fp16_kvec, device_id, type);
 
     size_t conv_shape_hash = GetConvShapeHashKey(conv_param);
 
@@ -553,7 +569,7 @@ void PPLCUDAConvolutionForwardImp(
     fuse_param_t &fuse_param)
 {
     if (!is_g_fp16_kvec_initialized)
-        InitializeFP16ConvKernelContainer(g_fp16_kvec, type);
+        InitializeFP16ConvKernelContainer(g_fp16_kvec, device_id, type);
 
     unsigned int kid    = algo_param.kid;
     unsigned int splitk = algo_param.splitk;

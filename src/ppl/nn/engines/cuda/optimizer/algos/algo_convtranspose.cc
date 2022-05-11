@@ -189,7 +189,8 @@ RetCode ConvTransposeAlgorithm::ModifyParam(ir::Node* node, OptKernelOptions& op
             return status;
         }
 
-        PPLCUDAConvTransposeCvt(stream, filter_input_buffer.addr, filter_temp_buffer.addr, weight_constat_info.GetBufferDesc().addr,
+        int device_id = options.device->GetDeviceId();
+        PPLCUDAConvTransposeCvt(device_id, stream, filter_input_buffer.addr, filter_temp_buffer.addr, weight_constat_info.GetBufferDesc().addr,
                                 &shape_in1, &attr_param_.param);
 
         options.info->constants.emplace(preedge_id, std::move(weight_constat_info));

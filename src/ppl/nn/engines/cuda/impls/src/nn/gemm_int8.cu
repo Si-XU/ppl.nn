@@ -89,14 +89,20 @@ static bool is_g_int8_kvec_set = false;
         fuse_param.has_concat,         concat_offset_v8,                   \
         concat_stride_v8
 
-void init_f1_int8_kvec(std::vector<kernel_info_t> &g_int8_kvec, ppl::common::datatype_t type)
+void init_f1_int8_kvec(std::vector<kernel_info_t> &g_int8_kvec, int device_id, ppl::common::datatype_t type)
 {
+    cudaDeviceProp device_prop;
+    cudaGetDeviceProperties(&device_prop, device_id);
+
 #ifndef PPLNN_ENABLE_CUDA_JIT
-    if (type == ppl::common::DATATYPE_INT8) {
-        // InitializeInt82spkConvF1KernelContainer(g_int8_kvec);
-        Initialize2spkSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
-        Initialize2spkSM80Int8Imma16816ConvF1KernelContainer(g_int8_kvec);
-        Initialize2spkSM80Int8Imma16832ConvF1KernelContainer(g_int8_kvec);
+    if (type == ppl::common::DATATYPE_FLOAT16) {
+        if (device_prop.major == 7 && device_prop.minor == 5) {
+            Initialize2spkSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
+        } else if (device_prop.major > 8 || (device_prop.major == 8 && device_prop.minor >= 0)) {
+            Initialize2spkSM75Int8Imma8816ConvF1KernelContainer(g_int8_kvec);
+            Initialize2spkSM80Int8Imma16816ConvF1KernelContainer(g_int8_kvec);
+            Initialize2spkSM80Int8Imma16832ConvF1KernelContainer(g_int8_kvec);
+        }
     }
     is_g_int8_kvec_set = true;
 #endif
@@ -280,7 +286,7 @@ double PPLCUDAGemmSelectKernelInt8(
 
     auto type = weight_shape->GetDataType();
     if (!is_g_int8_kvec_set)
-        init_f1_int8_kvec(g_int8_kvec, type);
+        init_f1_int8_kvec(g_int8_kvec, device_id, type);
 
     int pad_size = GetPadSize(type);
     int transA   = param.transA;
@@ -387,6 +393,7 @@ ppl::common::RetCode PPLCUDAGemvForwardImpInt8(
     const fuse_param_t &fuse_param);
 
 ppl::common::RetCode PPLCUDAGemmForwardImpInt8(
+    int device_id,
     const cudaStream_t &stream,
     ppl::nn::cuda::CUDAModule *module,
     const ppl::nn::TensorShape *input_shape,
@@ -406,7 +413,7 @@ ppl::common::RetCode PPLCUDAGemmForwardImpInt8(
     float alpha  = param.alpha;
 #ifndef PPLNN_ENABLE_CUDA_JIT
     if (!is_g_int8_kvec_set)
-        init_f1_int8_kvec(g_int8_kvec, type);
+        init_f1_int8_kvec(g_int8_kvec, device_id, type);
 #endif
     int pad_size = GetPadSize(type);
     int transA   = param.transA;

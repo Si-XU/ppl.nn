@@ -325,6 +325,7 @@ T* RemovePadding(
 }
 
 ppl::common::RetCode PPLCUDAConvTransposeCvt(
+    int device_id,
     cudaStream_t stream,
     const void* in_filter,
     void* temp_buffer,
@@ -363,7 +364,8 @@ ppl::common::RetCode PPLCUDAConvTransposeCvt(
     a_shape.Reshape({padK, M});
     out_a_shape.Reshape({padM, padK});
 
-    ppl::common::RetCode status = PPLCUDATransposeForwardImp(stream,
+    ppl::common::RetCode status = PPLCUDATransposeForwardImp(device_id,
+                                                             stream,
                                                              trans_param,
                                                              &a_shape,
                                                              cvt_filter,
@@ -373,6 +375,7 @@ ppl::common::RetCode PPLCUDAConvTransposeCvt(
 }
 
 ppl::common::RetCode PPLCUDAConvTransposeForward(
+    int device_id,
     cudaStream_t stream,
     ppl::nn::cuda::CUDAModule* module,
     ppl::nn::TensorShape* input_shape,
@@ -448,7 +451,8 @@ ppl::common::RetCode PPLCUDAConvTransposeForward(
             int offset_out = n * num_filters * out_height * out_width;
             cuda_matrix_padding<__half>(stream, ((__half*)input) + offset_in, K, N, pad_in_data, padK, padN);
 
-            PPLCUDATransposeForwardImp(stream,
+            PPLCUDATransposeForwardImp(device_id,
+                                       stream,
                                        trans_param,
                                        &b_shape,
                                        pad_in_data,
@@ -458,7 +462,7 @@ ppl::common::RetCode PPLCUDAConvTransposeForward(
             // NT
             ppl::nn::TensorShape a_shape, b_shape, c_shape;
             // input transpose KxN -> NxK    weight transpose KxM -> MxK
-            PPLCUDAGemmForwardImp(stream, module, &out_a_shape, trans_filter, &out_b_shape, trans_in_data, NULL, &c_shape, pad_out_data, gemm_param, NULL, fuse_param, algo_param);
+            PPLCUDAGemmForwardImp(device_id, stream, module, &out_a_shape, trans_filter, &out_b_shape, trans_in_data, NULL, &c_shape, pad_out_data, gemm_param, NULL, fuse_param, algo_param);
 
             __half* tmp = RemovePadding<__half>(stream, pad_out_data, out_data, M, padN, N);
             ppl_col2im_gpu<__half>(stream, (const __half*)tmp, num_filters, out_height, out_width, kernel_h, kernel_w, pad_h, pad_w, stride_h, stride_w, hole_h, hole_w, height, width, 0.f, ((__half*)output) + offset_out);
