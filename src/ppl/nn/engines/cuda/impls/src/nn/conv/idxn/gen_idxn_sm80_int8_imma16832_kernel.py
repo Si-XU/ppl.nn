@@ -44,7 +44,7 @@ class KernelInfo:
         self.INT8_SIZE = 1
         self.PB_PER_TURING_SM = 4
 
-        self.CPI_IMMA16832 = 8.06
+        self.CPI_IMMA16832 = 8.06 * 2
         self.CPI_L1_LDG128 = 8
         self.IMMA_LATENCY = 14
         self.DRAM_LATENCY = 220

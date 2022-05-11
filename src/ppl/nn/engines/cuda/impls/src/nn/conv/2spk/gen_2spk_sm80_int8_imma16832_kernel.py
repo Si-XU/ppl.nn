@@ -50,7 +50,7 @@ class KernelInfo:
         self.MMA_Y_HALF = self.MMA_Y / 2
         self.PB_PER_TURING_SM = 4
 
-        self.CPI_IMMA16832 = 8.06
+        self.CPI_IMMA16832 = 8.06 * 2
         self.CPI_L1_LDG128 = 8
         self.IMMA_LATENCY = 14
         self.LDSM1_LATENCY = 19
