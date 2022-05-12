@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.14)
 project(PPLCUDAKernel)
 
-set(_NVCC_FLAGS )
-if(CUDA_VERSION_MAJOR VERSION_GREATER_EQUAL "10")
-    # TODO: fix here! _NVCC_FLAGS will be assigned to all cuda files including SM75_SRC and SM80_SRC files
-    #set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_75,code=sm_75")
-    set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_80,code=sm_80")
-endif()
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${_NVCC_FLAGS}")
+#set(_NVCC_FLAGS )
+#if(CUDA_VERSION_MAJOR VERSION_GREATER_EQUAL "10")
+#    # TODO: fix here!
+#    #set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_75,code=sm_75")
+#    #set(_NVCC_FLAGS "${_NVCC_FLAGS} -gencode arch=compute_80,code=sm_80")
+#endif()
+#set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${_NVCC_FLAGS}")
 
 set(PPLCUDA_COMPILE_DEFINITIONS)
 
@@ -89,9 +89,6 @@ set(PPLNN_FRAMEWORK_INCLUDE_DIRECTORIES ${PPLNN_SOURCE_DIR}/include ${PPLNN_SOUR
 add_library(sm75_cuda_kernels OBJECT ${SM75_SRC})
 add_library(sm80_cuda_kernels OBJECT ${SM80_SRC})
 
-target_compile_features(sm75_cuda_kernels PRIVATE cxx_std_11)
-target_compile_features(sm80_cuda_kernels PRIVATE cxx_std_11)
-
 set_target_properties(sm75_cuda_kernels PROPERTIES COMPILE_FLAGS "-gencode arch=compute_75,code=sm_75")
 set_target_properties(sm80_cuda_kernels PROPERTIES COMPILE_FLAGS "-gencode arch=compute_80,code=sm_80")
 
@@ -129,6 +126,7 @@ file(GLOB CUDA_SRC ${CUDA_SRC} src/nn/depthwise/*.cu)
 
 add_library(pplkernelcuda_static STATIC ${CUDA_SRC})
 target_compile_features(pplkernelcuda_static PRIVATE cxx_std_11)
+set_target_properties(pplkernelcuda_static PROPERTIES COMPILE_FLAGS "-gencode arch=compute_75,code=sm_75")
 
 target_include_directories(pplkernelcuda_static PUBLIC
     include
