@@ -90,8 +90,8 @@ double TuringHMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
         PPLCUDAConvolutionLoadAlgoParam(attr_param_.extra_param.algo_info);
         return 0.0f;
     } else { // Give the default kernel
-        attr_param_.extra_param.algo_info.algo_name = "nv2spkConv_hmma1688_nhwc_fn_b128x128_w64x64_k32_s32_buf1";
-        attr_param_.extra_param.algo_info.kid = 5100;
+        attr_param_.extra_param.algo_info.algo_name = "nvSwzlSm75Fp16Conv_hmma1688_nhwc_fn_b256x32_w64x32_k64_buf2";
+        attr_param_.extra_param.algo_info.kid = 5727;
         attr_param_.extra_param.algo_info.splitk = 1;
         attr_param_.extra_param.algo_info.splitf = 1;
         PPLCUDAConvolutionLoadAlgoParam(attr_param_.extra_param.algo_info);
