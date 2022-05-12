@@ -23,39 +23,39 @@
         int4* dA,                                        \
         int4* dB,                                        \
         int4* dC,                                        \
-        int kLoopNum,          int kOffNumPad,           \
-        int inHW,              int outHW,                \
-        int fltHW,             int outNHW,               \
-        int inHeight,          int inWidth,              \
-        int inNum,             int numGrp,               \
-        int numChl,            int numChlPerGrp,         \
-        int imgChlPerGrpPad,   int fltChlPerGrpPad,      \
+        int kloop_num,          int koff_num_pad,           \
+        int in_hw,              int out_hw,                \
+        int flt_hw,             int out_nhw,               \
+        int in_height,          int in_width,              \
+        int in_num,             int num_grp,               \
+        int numChl,            int num_chl_per_grp,         \
+        int img_chl_per_grp_pad,   int flt_chl_per_grp_pad,      \
         int fltHeight,         int fltWidth,             \
-        int numFltPerGrp,      int numFltPerGrpPad,      \
-        int outHeight,         int outWidth,             \
-        int strideHeight,      int strideWidth,          \
-        int padHeight,         int padWidth,             \
-        int holeHeight,        int holeWidth,            \
-        int  hasBias,          const int4* bias,         \
-        float inScale,         void * dFltScale,         \
-        float outScale,        float preScale,           \
-        int  hasRelu,          const float clipMin,      \
-	    bool hasClip,          const float clipMax,      \
-        int  hasPrelu,         const void * prelu,       \
-        bool hasElt,           const int4* preData,      \
-        int  hasEltRelu,       const float eltClipMin,   \
-	    bool hasEltClip,       const float eltClipMax,   \
-        int  hasEltPrelu,      const void * eltPrelu,    \
-        const float leaky,     const float eltLeaky,     \
-        bool hasConcat,        int concatOffsetV4,       \
-        int concatStrideV4
+        int num_flt_per_grp,      int num_flt_per_grp_pad,      \
+        int out_height,         int out_width,             \
+        int stride_height,      int stride_width,          \
+        int pad_height,         int pad_width,             \
+        int hole_height,        int hole_width,            \
+        int  has_bias,          const int4* bias,         \
+        float in_scale,         void * d_flt_scale,         \
+        float out_scale,        float pre_scale,           \
+        int  has_relu,          const float clip_min,      \
+	    bool has_clip,          const float clip_max,      \
+        int  has_prelu,         const void * prelu,       \
+        bool has_elt,           const int4* pre_data,      \
+        int  has_elt_relu,       const float elt_clip_min,   \
+	    bool has_elt_clip,       const float elt_clip_max,   \
+        int  has_elt_prelu,      const void * elt_prelu,    \
+        const float leaky,     const float elt_leaky,     \
+        bool has_concat,        int concat_offset_v4,       \
+        int concat_stride_v4
 
 ////////////////////////////////////////
 // align functions
 ////////////////////////////////////////
 
 #define Align(x, y)   (((x) + (y) - 1) / (y) * (y))
-#define CeilDiv(x, y) (((x) + (y) - 1) / (y))
+#define DivUp(x, y) (((x) + (y) - 1) / (y))
 
 #define Min(x, y)     (((x) < (y)) ? (x) : (y))
 #define Max(x, y)     (((x) > (y)) ? (x) : (y))
@@ -64,9 +64,9 @@
 // boundary check
 ////////////////////////////////////////
 
-#define WidthInRange(_w)     ( (_w < inWidth)  && (_w >= 0) )
-#define HeightInRange(_h)    ( (_h < inHeight) && (_h >= 0) )
-#define BatchInRange(_b)     ( (_b < inNum) )
+#define WidthInRange(_w)     ( (_w < in_width)  && (_w >= 0) )
+#define HeightInRange(_h)    ( (_h < in_height) && (_h >= 0) )
+#define BatchInRange(_b)     ( (_b < in_num) )
 
 ////////////////////////////////////////
 // constant cta size macros

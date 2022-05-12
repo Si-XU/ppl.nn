@@ -35,54 +35,54 @@
             _Pragma("unroll") \
             for(int i = 0; i < NUM_N_STEPS; i++) \
             { \
-                if( dCv2YValid[0] && dCv2XValid[i] ) \
+                if( dCv2_y_valid[0] && dCv2_x_valid[i] ) \
                 { \
                     PACK_V2(C, (Cv2_off + i) * _INT2_TO_2INT_); \
-                    dCvHalf[concatV2_off0 + dCv2_idx[i]] = CvHalf[(Cv2_off + i) * _INT2_TO_4HALF_]; \
+                    dCvHalf[concat_v2_off0 + dCv2_idx[i]] = CvHalf[(Cv2_off + i) * _INT2_TO_4HALF_]; \
                 } \
             } \
             \
             dCv2_idy[0]  += TILE_M_PER_STEP; \
-            dCv2YValid[0] = (dCv2_idy[0] < outNHW); \
+            dCv2_y_valid[0] = (dCv2_idy[0] < out_nhw); \
         }
 
 //////////////////////////////////////////////////////
 // quant interface
 //////////////////////////////////////////////////////
 
-#define GET_DEQUANTSCALE_V2(_deScaleV2, _dFltScale, _inScale) \
+#define GET_DEQUANTSCALE_V2(_de_scale_v2, _d_flt_scale, _in_scale) \
         { \
             _Pragma("unroll") \
             for(int i = 0; i < NUM_N_STEPS; i++) \
             { \
-                if( dCv2YValid[0] && dCv2XValid[i] ) { \
-                    _deScaleV2[i] = ((float2 *)_dFltScale) [dCv2_idx[i]]; \
-                    _deScaleV2[i].x *= _inScale; \
-                    _deScaleV2[i].y *= _inScale; \
+                if( dCv2_y_valid[0] && dCv2_x_valid[i] ) { \
+                    _de_scale_v2[i] = ((float2 *)_d_flt_scale) [dCv2_idx[i]]; \
+                    _de_scale_v2[i].x *= _in_scale; \
+                    _de_scale_v2[i].y *= _in_scale; \
                 } \
 	        } \
         }
 
-#define DEQUANT_V2(_fCv2, _Cv2, _deScaleV2) \
+#define DEQUANT_V2(_fCv2, _Cv2, _de_scale_v2) \
         { \
             _Pragma("unroll") \
             for(int i = 0; i < NUM_N_STEPS; i++) \
             { \
-                if( dCv2YValid[0] && dCv2XValid[i] ) { \
-                    _fCv2[Cv2_off + i].x = _Cv2[Cv2_off + i].x * _deScaleV2[i].x; \
-                    _fCv2[Cv2_off + i].y = _Cv2[Cv2_off + i].y * _deScaleV2[i].y; \
+                if( dCv2_y_valid[0] && dCv2_x_valid[i] ) { \
+                    _fCv2[Cv2_off + i].x = _Cv2[Cv2_off + i].x * _de_scale_v2[i].x; \
+                    _fCv2[Cv2_off + i].y = _Cv2[Cv2_off + i].y * _de_scale_v2[i].y; \
                 } \
 	        } \
         }
 
-#define QUANT_V2(_Cv2, _fCv2, _quantScale) \
+#define QUANT_V2(_Cv2, _fCv2, _quant_scale) \
         { \
             _Pragma("unroll") \
             for(int i = 0; i < NUM_N_STEPS; i++) \
             { \
-                if( dCv2YValid[0] && dCv2XValid[i] ) { \
-                    _Cv2[Cv2_off + i].x = __float2int_rn(_fCv2[Cv2_off + i].x * _quantScale); \
-                    _Cv2[Cv2_off + i].y = __float2int_rn(_fCv2[Cv2_off + i].y * _quantScale); \
+                if( dCv2_y_valid[0] && dCv2_x_valid[i] ) { \
+                    _Cv2[Cv2_off + i].x = __float2int_rn(_fCv2[Cv2_off + i].x * _quant_scale); \
+                    _Cv2[Cv2_off + i].y = __float2int_rn(_fCv2[Cv2_off + i].y * _quant_scale); \
                 } \
 	        } \
         }
@@ -91,17 +91,17 @@
 // bias macros
 //////////////////////////////////////////////////////
 
-#define ADD_BIAS_V2(_hasBias, _bias) \
+#define ADD_BIAS_V2(_has_bias, _bias) \
         { \
-            if( _hasBias ) \
+            if( _has_bias ) \
             { \
                 _Pragma("unroll") \
                 for(int i = 0; i < NUM_N_STEPS; i++) \
                 { \
-                    if( dCv2YValid[0] && dCv2XValid[i] ) { \
-                        float2 f2Bias = ((float2 *)_bias) [dCv2_idx[i]]; \
-                        fCv2[Cv2_off + i].x += f2Bias.x; \
-                        fCv2[Cv2_off + i].y += f2Bias.y; \
+                    if( dCv2_y_valid[0] && dCv2_x_valid[i] ) { \
+                        float2 f2_bias = ((float2 *)_bias) [dCv2_idx[i]]; \
+                        fCv2[Cv2_off + i].x += f2_bias.x; \
+                        fCv2[Cv2_off + i].y += f2_bias.y; \
                     } \
                 } \
             } \
@@ -111,14 +111,14 @@
 // relu macros
 //////////////////////////////////////////////////////
 
-#define FUSE_RELU_V2(_hasRelu) \
+#define FUSE_RELU_V2(_has_relu) \
         { \
-	        if( _hasRelu == 1) \
+	        if( _has_relu == 1) \
             { \
                 _Pragma("unroll") \
                 for(int i = 0; i < NUM_N_STEPS; i++) \
                 { \
-                    if( dCv2YValid[0] && dCv2XValid[i] ) { \
+                    if( dCv2_y_valid[0] && dCv2_x_valid[i] ) { \
                         fCv2[Cv2_off + i].x = Max(fCv2[Cv2_off + i].x, _FLOAT_ZERO_); \
                         fCv2[Cv2_off + i].y = Max(fCv2[Cv2_off + i].y, _FLOAT_ZERO_); \
                     } \
@@ -127,25 +127,25 @@
         }
 
 #if 0
-#define FUSE_RELU_V2(_hasRelu) \
+#define FUSE_RELU_V2(_has_relu) \
         { \
-	        if( _hasRelu == 1) \
+	        if( _has_relu == 1) \
             { \
                 _Pragma("unroll") \
                 for(int i = 0; i < NUM_N_STEPS; i++) \
                 { \
-                    if( dCv2YValid[0] && dCv2XValid[i] ) { \
+                    if( dCv2_y_valid[0] && dCv2_x_valid[i] ) { \
                         fCv2[Cv2_off + i].x = Max(fCv2[Cv2_off + i].x, _FLOAT_ZERO_); \
                         fCv2[Cv2_off + i].y = Max(fCv2[Cv2_off + i].y, _FLOAT_ZERO_); \
                     } \
 	            } \
 	        } \
-            else if( _hasRelu == 2) \
+            else if( _has_relu == 2) \
             { \
                 _Pragma("unroll") \
                 for(int i = 0; i < NUM_N_STEPS; i++) \
                 { \
-                    if( dCv2YValid[0] && dCv2XValid[i] ) { \
+                    if( dCv2_y_valid[0] && dCv2_x_valid[i] ) { \
                         fCv2[Cv2_off + i].x = __expf(fCv2[Cv2_off + i].x) / (_FLOAT_ONE_ + __expf(fCv2[Cv2_off + i].x)); \
                         fCv2[Cv2_off + i].y = __expf(fCv2[Cv2_off + i].y) / (_FLOAT_ONE_ + __expf(fCv2[Cv2_off + i].y)); \
                     } \
@@ -158,18 +158,18 @@
 // clip macros
 //////////////////////////////////////////////////////
 
-#define FUSE_CLIP_V2(_hasClip, _clipMax, _clipMin) \
+#define FUSE_CLIP_V2(_has_clip, _clip_max, _clip_min) \
         { \
-	        if( _hasClip ) \
+	        if( _has_clip ) \
             { \
                 _Pragma("unroll") \
                 for(int i = 0; i < NUM_N_STEPS; i++) \
                 { \
-                    if( dCv2YValid[0] && dCv2XValid[i] ) { \
-                        fCv2[Cv2_off + i].x = Min(fCv2[Cv2_off + i].x, _clipMax); \
-                        fCv2[Cv2_off + i].y = Min(fCv2[Cv2_off + i].y, _clipMax); \
-                        fCv2[Cv2_off + i].x = Max(fCv2[Cv2_off + i].x, _clipMin); \
-                        fCv2[Cv2_off + i].y = Max(fCv2[Cv2_off + i].y, _clipMin); \
+                    if( dCv2_y_valid[0] && dCv2_x_valid[i] ) { \
+                        fCv2[Cv2_off + i].x = Min(fCv2[Cv2_off + i].x, _clip_max); \
+                        fCv2[Cv2_off + i].y = Min(fCv2[Cv2_off + i].y, _clip_max); \
+                        fCv2[Cv2_off + i].x = Max(fCv2[Cv2_off + i].x, _clip_min); \
+                        fCv2[Cv2_off + i].y = Max(fCv2[Cv2_off + i].y, _clip_min); \
                     } \
 	            } \
 	        } \
@@ -179,56 +179,56 @@
 // prelu macros
 //////////////////////////////////////////////////////
 
-#define FUSE_PRELU_V2(_hasPrelu, _prelu, _leaky) \
+#define FUSE_PRELU_V2(_has_prelu, _prelu, _leaky) \
         { \
-	        if( _hasPrelu == 1) \
+	        if( _has_prelu == 1) \
             { \
                 _Pragma("unroll") \
                 for(int i = 0; i < NUM_N_STEPS; i++) \
                 { \
-                    if( dCv2YValid[0] && dCv2XValid[i] && fCv2[Cv2_off + i].x < _FLOAT_ZERO_) \
+                    if( dCv2_y_valid[0] && dCv2_x_valid[i] && fCv2[Cv2_off + i].x < _FLOAT_ZERO_) \
                         fCv2[Cv2_off + i].x *= _leaky; \
-                    if( dCv2YValid[0] && dCv2XValid[i] && fCv2[Cv2_off + i].y < _FLOAT_ZERO_) \
+                    if( dCv2_y_valid[0] && dCv2_x_valid[i] && fCv2[Cv2_off + i].y < _FLOAT_ZERO_) \
                         fCv2[Cv2_off + i].y *= _leaky; \
 	            } \
 	        } \
             \
-	        if( _hasPrelu == 2) \
+	        if( _has_prelu == 2) \
             { \
                 int2 _scaleV2[NUM_N_STEPS]; \
-                float * _fScale = (float *) _scaleV2;\
+                float * _f_scale = (float *) _scaleV2;\
                 \
                 _Pragma("unroll") \
                 for(int i = 0; i < NUM_N_STEPS; i++) \
-                    _scaleV2[i] = dCv2XValid[i] ? ((int2 *)_prelu)[dCv2_idx[i]] : {0, 0}; \
+                    _scaleV2[i] = dCv2_x_valid[i] ? ((int2 *)_prelu)[dCv2_idx[i]] : {0, 0}; \
                 \
                 _Pragma("unroll") \
                 for(int i = 0; i < NUM_N_STEPS; i++) \
                 { \
-                    if( dCv2YValid[0] && dCv2XValid[i] && fCv2[Cv2_off + i].x < _FLOAT_ZERO_ ) \
-                        fCv2[Cv2_off + i].x *= _fScale[i * _INT2_TO_2INT_ + 0]; \
-                    if( dCv2YValid[0] && dCv2XValid[i] && fCv2[Cv2_off + i].y < _FLOAT_ZERO_ ) \
-                        fCv2[Cv2_off + i].y *= _fScale[i * _INT2_TO_2INT_ + 1]; \
+                    if( dCv2_y_valid[0] && dCv2_x_valid[i] && fCv2[Cv2_off + i].x < _FLOAT_ZERO_ ) \
+                        fCv2[Cv2_off + i].x *= _f_scale[i * _INT2_TO_2INT_ + 0]; \
+                    if( dCv2_y_valid[0] && dCv2_x_valid[i] && fCv2[Cv2_off + i].y < _FLOAT_ZERO_ ) \
+                        fCv2[Cv2_off + i].y *= _f_scale[i * _INT2_TO_2INT_ + 1]; \
 	            } \
 	        } \
-	        if( _hasPrelu == 3) \
+	        if( _has_prelu == 3) \
             { \
                 int2 _scaleV2[NUM_N_STEPS]; \
-                float * _fScale = (float *) _scaleV2;\
+                float * _f_scale = (float *) _scaleV2;\
                 \
                 _Pragma("unroll") \
                 for(int i = 0; i < NUM_N_STEPS; i++) \
                 { \
-                    _scaleV2[i] = (dCv2YValid[0] && dCv2XValid[i]) ? ((int2 *)_prelu)[dCv2_idy[0] * numFltV2 + dCv2_idx[i]] : {0, 0}; \
+                    _scaleV2[i] = (dCv2_y_valid[0] && dCv2_x_valid[i]) ? ((int2 *)_prelu)[dCv2_idy[0] * num_flt_v2 + dCv2_idx[i]] : {0, 0}; \
                 } \
                 \
                 _Pragma("unroll") \
                 for(int i = 0; i < NUM_N_STEPS; i++) \
                 { \
-                    if( dCv2YValid[0] && dCv2XValid[i] && fCv2[Cv2_off + i].x < _FLOAT_ZERO_ ) \
-                        fCv2[Cv2_off + i].x *= _fScale[i * _INT2_TO_2INT_ + 0]; \
-                    if( dCv2YValid[0] && dCv2XValid[i] && fCv2[Cv2_off + i].y < _FLOAT_ZERO_ ) \
-                        fCv2[Cv2_off + i].y *= _fScale[i * _INT2_TO_2INT_ + 1]; \
+                    if( dCv2_y_valid[0] && dCv2_x_valid[i] && fCv2[Cv2_off + i].x < _FLOAT_ZERO_ ) \
+                        fCv2[Cv2_off + i].x *= _f_scale[i * _INT2_TO_2INT_ + 0]; \
+                    if( dCv2_y_valid[0] && dCv2_x_valid[i] && fCv2[Cv2_off + i].y < _FLOAT_ZERO_ ) \
+                        fCv2[Cv2_off + i].y *= _f_scale[i * _INT2_TO_2INT_ + 1]; \
 	            } \
 	        } \
     }
@@ -237,19 +237,19 @@
 // eltwise macros
 //////////////////////////////////////////////////////
 
-#define FUSE_ELT_V2(_hasElt, _preData) \
+#define FUSE_ELT_V2(_has_elt, _pre_data) \
         { \
-	        if( _hasElt ) \
+	        if( _has_elt ) \
             { \
                 _Pragma("unroll") \
                 for(int i = 0; i < NUM_N_STEPS; i++) \
                 { \
-                    if(dCv2YValid[0] && dCv2XValid[i] ) { \
-                        int16_t  _eltV2 = ((int16_t*) _preData) [dCv2_idy[0] * numFltV2 + dCv2_idx[i]]; \
-                        int8_t * _eltV1 = (int8_t *) &_eltV2; \
+                    if(dCv2_y_valid[0] && dCv2_x_valid[i] ) { \
+                        int16_t  elt_v2 = ((int16_t*) _pre_data) [dCv2_idy[0] * num_flt_v2 + dCv2_idx[i]]; \
+                        int8_t * elt_v1 = (int8_t *) &elt_v2; \
                         \
-                        fCv2[Cv2_off + i].x += (int)_eltV1[0] * preScale; \
-                        fCv2[Cv2_off + i].y += (int)_eltV1[1] * preScale; \
+                        fCv2[Cv2_off + i].x += (int)elt_v1[0] * pre_scale; \
+                        fCv2[Cv2_off + i].y += (int)elt_v1[1] * pre_scale; \
                     } \
 	            } \
 	        } \
@@ -259,12 +259,12 @@
 // concat macros
 //////////////////////////////////////////////////////
 
-#define SET_CONCAT_OFF_V2(_has_concat, _concatV2_off0) \
+#define SET_CONCAT_OFF_V2(_has_concat, _concat_v2_off0) \
         { \
-            _concatV2_off0 = dCv2_idy[0] * numFltV2; \
+            _concat_v2_off0 = dCv2_idy[0] * num_flt_v2; \
             if (_has_concat) { \
-                if (dCv2YValid[0]) \
-                    _concatV2_off0 = concatOffsetV4 * _INT4_TO_8HALF_ + dCv2_idy[0] * concatStrideV4 * _INT4_TO_8HALF_; \
+                if (dCv2_y_valid[0]) \
+                    _concat_v2_off0 = concat_offset_v4 * _INT4_TO_8HALF_ + dCv2_idy[0] * concat_stride_v4 * _INT4_TO_8HALF_; \
             } \
         }
 
