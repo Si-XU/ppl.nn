@@ -23,62 +23,62 @@
         int4* dA,                                        \
         int4* dB,                                        \
         int4* dC,                                        \
-        int kLoopNum,                                    \
-        struct lut_t cInLut,  int cInLutSize,            \
-        struct lut_t cFltLut, int cFltLutSize,           \
-        int numChlPerSpkHead,  int numChlPerSpkTail,     \
-        int inHW,              int outHW,                \
-        int fltHW,             int splitK,               \
-        int inHeight,          int inWidth,              \
-        int inNum,             int numGrp,               \
-        int numChlPerGrp,      int numChlPerGrpPad,      \
+        int kloop_num,                                    \
+        struct lut_t in_lut,  int in_lut_size,            \
+        struct lut_t flt_lut, int flt_lut_size,           \
+        int num_chl_per_spk_head,  int num_chl_per_spk_tail,     \
+        int in_hw,              int out_hw,                \
+        int flt_hw,             int splitk,               \
+        int in_height,          int in_width,              \
+        int in_num,             int num_grp,               \
+        int num_chl_per_grp,      int num_chl_per_grp_pad,      \
         int fltHeight,         int fltWidth,             \
-        int numFltPerGrp,      int numFltPerGrpPad,      \
-        int outHeight,         int outWidth,             \
-        int strideHeight,      int strideWidth,          \
-        int padHeight,         int padWidth,             \
-        int holeHeight,        int holeWidth,            \
-        int hasBias,           int* bias,                \
-	    float inScale,         void *dFltScale
+        int num_flt_per_grp,      int num_flt_per_grp_pad,      \
+        int out_height,         int out_width,             \
+        int stride_height,      int stride_width,          \
+        int pad_height,         int pad_width,             \
+        int hole_height,        int hole_width,            \
+        int has_bias,           int* bias,                \
+	    float in_scale,         void *d_flt_scale
 
 #define TOTAL_KPARAM_LIST \
         int4* dA,                                        \
         int4* dB,                                        \
         int4* dC,                                        \
-        int kLoopNum,                                    \
-        struct lut_t cInLut,  int cInLutSize,            \
-        struct lut_t cFltLut, int cFltLutSize,           \
-        int inHW,              int outHW,                \
-        int fltHW,             int splitK,               \
-        int inHeight,          int inWidth,              \
-        int inNum,             int numGrp,               \
-        int numChlPerGrp,      int numChlPerGrpPad,      \
+        int kloop_num,                                    \
+        struct lut_t in_lut,  int in_lut_size,            \
+        struct lut_t flt_lut, int flt_lut_size,           \
+        int in_hw,              int out_hw,                \
+        int flt_hw,             int splitk,               \
+        int in_height,          int in_width,              \
+        int in_num,             int num_grp,               \
+        int num_chl_per_grp,      int num_chl_per_grp_pad,      \
         int fltHeight,         int fltWidth,             \
-        int numFltPerGrp,      int numFltPerGrpPad,      \
-        int outHeight,         int outWidth,             \
-        int strideHeight,      int strideWidth,          \
-        int padHeight,         int padWidth,             \
-        int holeHeight,        int holeWidth,            \
-        int  hasBias,          const int4* bias,         \
-        float inScale,         void * dFltScale,         \
-        float outScale,        float preScale,           \
-        int  hasRelu,          const float clipMin,      \
-        bool hasClip,          const float clipMax,      \
-        int  hasPrelu,         const void * prelu,       \
-        bool hasElt,           const int4* preData,      \
-        int  hasEltRelu,       const float eltClipMin,   \
-        bool hasEltClip,       const float eltClipMax,   \
-        int  hasEltPrelu,      const void * eltPrelu,    \
-        const float leaky,     const float eltLeaky,     \
-        bool hasConcat,        int concatOffsetV4,       \
-        int concatStrideV4
+        int num_flt_per_grp,      int num_flt_per_grp_pad,      \
+        int out_height,         int out_width,             \
+        int stride_height,      int stride_width,          \
+        int pad_height,         int pad_width,             \
+        int hole_height,        int hole_width,            \
+        int  has_bias,          const int4* bias,         \
+        float in_scale,         void * d_flt_scale,         \
+        float out_scale,        float pre_scale,           \
+        int  has_relu,          const float clip_min,      \
+        bool has_clip,          const float clip_max,      \
+        int  has_prelu,         const void * prelu,       \
+        bool has_elt,           const int4* pre_data,      \
+        int  has_elt_relu,       const float elt_clip_min,   \
+        bool has_elt_clip,       const float elt_clip_max,   \
+        int  has_elt_prelu,      const void * elt_prelu,    \
+        const float leaky,     const float elt_leaky,     \
+        bool has_concat,        int concat_offset_v4,       \
+        int concat_stride_v4
 
 ////////////////////////////////////////
 // align functions
 ////////////////////////////////////////
 
 #define Align(x, y)   (((x) + (y) - 1) / (y) * (y))
-#define CeilDiv(x, y) (((x) + (y) - 1) / (y))
+#define DivUp(x, y) (((x) + (y) - 1) / (y))
 
 #define Min(x, y)     (((x) < (y)) ? (x) : (y))
 #define Max(x, y)     (((x) > (y)) ? (x) : (y))
@@ -87,8 +87,8 @@
 // boundary check
 ////////////////////////////////////////
 
-#define WidthInRange(_w)     ( (_w >= 0) && (_w < inWidth) )
-#define HeightInRange(_h)    ( (_h >= 0) && (_h < inHeight) )
+#define WidthInRange(_w)     ( (_w >= 0) && (_w < in_width) )
+#define HeightInRange(_h)    ( (_h >= 0) && (_h < in_height) )
 
 ////////////////////////////////////////
 // constant cta size macros
@@ -488,9 +488,9 @@
 
 #endif
 
-#define FWD_LUT(_cLut_id) \
+#define FWD_LUT(_lut_id) \
         { \
-            _cLut_id = (_cLut_id == fltHW) ? 1 : _cLut_id + 1; \
+            _lut_id = (_lut_id == flt_hw) ? 1 : _lut_id + 1; \
         }
 
 ////////////////////////////////////////

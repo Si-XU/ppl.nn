@@ -29,15 +29,15 @@
 
 #define OUTPUT_BY_INT8_V4(_R) \
         { \
-            if( dCv4XValid && dCv4YValid ) \
-                ((int*) dC)[concatV4_off + dCv4_off] = _R[0]; \
+            if( dCv4_x_valid && dCv4_y_valid ) \
+                ((int*) dC)[concat_v4_off + dCv4_off] = _R[0]; \
         }
 
 #elif defined(ENABLE_SPLITK) || defined(ENABLE_SPLITF)
 
 #define OUTPUT_BY_INT4_V1(_Rv4) \
         { \
-            if( dCv4XValid && dCv4YValid ) \
+            if( dCv4_x_valid && dCv4_y_valid ) \
             { \
                 ((int4 *)dC)[ dCv4_off ] = _Rv4[0]; \
             } \
@@ -49,45 +49,45 @@
 // quant interface
 //////////////////////////////////////////////////////
 
-#define GET_DEQUANTSCALE(_deScaleV4, _deScale, _dFltScale, _inScale) \
+#define GET_DEQUANTSCALE(_de_scale_v4, _de_scale, _d_flt_scale, _in_scale) \
         { \
-        	if(dCv4XValid && dCv4YValid) \
+        	if(dCv4_x_valid && dCv4_y_valid) \
             { \
-                _deScaleV4 = ((float4 *) _dFltScale)[grp_id * numFltPerGrpPadV4 + dCv4_idx]; \
+                _de_scale_v4 = ((float4 *) _d_flt_scale)[grp_id * num_flt_per_grp_pad_v4 + dCv4_idx]; \
                 \
-                _deScale[0] *= _inScale; \
-                _deScale[1] *= _inScale; \
-                _deScale[2] *= _inScale; \
-                _deScale[3] *= _inScale; \
+                _de_scale[0] *= _in_scale; \
+                _de_scale[1] *= _in_scale; \
+                _de_scale[2] *= _in_scale; \
+                _de_scale[3] *= _in_scale; \
             } \
         }
 
-#define DEQUANT_V4(_fR, _R, _deScale) \
+#define DEQUANT_V4(_fR, _R, _de_scale) \
         { \
-        	_fR[0] = _R[0] * _deScale[0]; \
-        	_fR[1] = _R[1] * _deScale[1]; \
-        	_fR[2] = _R[2] * _deScale[2]; \
-        	_fR[3] = _R[3] * _deScale[3]; \
+        	_fR[0] = _R[0] * _de_scale[0]; \
+        	_fR[1] = _R[1] * _de_scale[1]; \
+        	_fR[2] = _R[2] * _de_scale[2]; \
+        	_fR[3] = _R[3] * _de_scale[3]; \
         }
 
-#define QUANT_V4(_R, _fR, _quantScale) \
+#define QUANT_V4(_R, _fR, _quant_scale) \
         { \
-           _R[0] = __float2int_rn(_fR[0] * _quantScale); \
-           _R[1] = __float2int_rn(_fR[1] * _quantScale); \
-           _R[2] = __float2int_rn(_fR[2] * _quantScale); \
-           _R[3] = __float2int_rn(_fR[3] * _quantScale); \
+           _R[0] = __float2int_rn(_fR[0] * _quant_scale); \
+           _R[1] = __float2int_rn(_fR[1] * _quant_scale); \
+           _R[2] = __float2int_rn(_fR[2] * _quant_scale); \
+           _R[3] = __float2int_rn(_fR[3] * _quant_scale); \
         }
 
 //////////////////////////////////////////////////////
 // bias macros
 //////////////////////////////////////////////////////
 
-#define ADD_BIAS_V4(_hasBias, _bias) \
+#define ADD_BIAS_V4(_has_bias, _bias) \
         { \
-            if(_hasBias && dCv4XValid && dCv4YValid) \
+            if(_has_bias && dCv4_x_valid && dCv4_y_valid) \
             { \
-                int4 _biasV4 = ((int4 *)_bias)[grp_id * numFltPerGrpPadV4 + dCv4_idx]; \
-	            float* _fBias = (float *) &_biasV4; \
+                int4 _bias_v4 = ((int4 *)_bias)[grp_id * num_flt_per_grp_pad_v4 + dCv4_idx]; \
+	            float* _fBias = (float *) &_bias_v4; \
                 \
                 _Pragma("unroll") \
 	            for(int i = 0; i < _INT4_TO_4INT_; i++) \
@@ -101,11 +101,11 @@
 // relu macros
 //////////////////////////////////////////////////////
 
-#define FUSE_RELU_V4(_hasRelu) \
+#define FUSE_RELU_V4(_has_relu) \
         { \
-	        if(_hasRelu && dCv4XValid && dCv4YValid) \
+	        if(_has_relu && dCv4_x_valid && dCv4_y_valid) \
             { \
-                if (_hasRelu == 1) \
+                if (_has_relu == 1) \
                 {  \
                     _Pragma("unroll") \
 	                for(int i = 0; i < _INT4_TO_4INT_; i++) \
@@ -117,18 +117,18 @@
         }
 
 #if 0
-#define FUSE_RELU_V4(_hasRelu) \
+#define FUSE_RELU_V4(_has_relu) \
         { \
-	        if(_hasRelu && dCv4XValid && dCv4YValid) \
+	        if(_has_relu && dCv4_x_valid && dCv4_y_valid) \
             { \
-                if (_hasRelu == 1) {  \
+                if (_has_relu == 1) {  \
                     _Pragma("unroll") \
 	                for(int i = 0; i < _INT4_TO_4INT_; i++) \
                     { \
 	                    fR[i] = Max(fR[i], 0); \
 	                } \
                 } \
-                else if( _hasRelu == 2) { \
+                else if( _has_relu == 2) { \
                     _Pragma("unroll") \
 	                for(int i = 0; i < _INT4_TO_4INT_; i++) \
                     { \
@@ -143,15 +143,15 @@
 // clip macros
 //////////////////////////////////////////////////////
 
-#define FUSE_CLIP_V4(_hasClip, _clipMax, _clipMin) \
+#define FUSE_CLIP_V4(_has_clip, _clip_max, _clip_min) \
         { \
-	        if(_hasClip && dCv4XValid && dCv4YValid) \
+	        if(_has_clip && dCv4_x_valid && dCv4_y_valid) \
             { \
                 _Pragma("unroll") \
 	            for(int i = 0; i < _INT4_TO_4INT_; i++) \
                 { \
-			        fR[i] = Min(fR[i], _clipMax); \
-			        fR[i] = Max(fR[i], _clipMin); \
+			        fR[i] = Min(fR[i], _clip_max); \
+			        fR[i] = Max(fR[i], _clip_min); \
 	            } \
 		    } \
         }
@@ -160,11 +160,11 @@
 // prelu macros
 //////////////////////////////////////////////////////
 
-#define FUSE_PRELU_V4(_hasPrelu, _prelu, _leaky) \
+#define FUSE_PRELU_V4(_has_prelu, _prelu, _leaky) \
         { \
-            if (_hasPrelu && dCv4XValid && dCv4YValid) \
+            if (_has_prelu && dCv4_x_valid && dCv4_y_valid) \
             { \
-                if (_hasPrelu == 1) \
+                if (_has_prelu == 1) \
                 { \
                     _Pragma("unroll") \
 	                for(int i = 0; i < _INT4_TO_4INT_; i++) \
@@ -174,29 +174,29 @@
                     } \
                 } \
                 \
-                if (_hasPrelu == 2) \
+                if (_has_prelu == 2) \
                 { \
-                    int4 _scaleV4  = ((int4 *)_prelu)[grp_id * numFltPerGrpPadV4 + dCv4_idx]; \
-                    float * _fScale = (float *) &_scaleV4; \
+                    int4 _scale_v4  = ((int4 *)_prelu)[grp_id * num_flt_per_grp_pad_v4 + dCv4_idx]; \
+                    float * _f_scale = (float *) &_scale_v4; \
                     \
                     _Pragma("unroll") \
 	                for(int i = 0; i < _INT4_TO_4INT_; i++) \
                     { \
 	    		        if(fR[i] < _FLOAT_ZERO_) \
-                            fR[i] *= _fScale[i]; \
+                            fR[i] *= _f_scale[i]; \
                     } \
                 } \
                 \
-                if (_hasPrelu == 3) \
+                if (_has_prelu == 3) \
                 { \
-                    int4 _scaleV4  = ((int4 *)_prelu)[dCv4_off]; \
-                    float * _fScale = (float *) &_scaleV4; \
+                    int4 _scale_v4  = ((int4 *)_prelu)[dCv4_off]; \
+                    float * _f_scale = (float *) &_scale_v4; \
                     \
                     _Pragma("unroll") \
 	                for(int i = 0; i < _INT4_TO_4INT_; i++) \
                     { \
 	    		        if(fR[i] < _FLOAT_ZERO_) \
-                            fR[i] *= _fScale[i]; \
+                            fR[i] *= _f_scale[i]; \
                     } \
                 } \
             } \
@@ -206,26 +206,26 @@
 // eltwise macros
 //////////////////////////////////////////////////////
 
-#define FUSE_ELT_V4(_hasElt, _preData) \
+#define FUSE_ELT_V4(_has_elt, _pre_data) \
         { \
-	        if( _hasElt && dCv4XValid && dCv4YValid) \
+	        if( _has_elt && dCv4_x_valid && dCv4_y_valid) \
             { \
-	            int  _eltV4 = ((int *) _preData)[dCv4_off]; \
-	            int8_t *_eltV1 = (int8_t *) &_eltV4; \
+	            int  elt_v4 = ((int *) _pre_data)[dCv4_off]; \
+	            int8_t *elt_v1 = (int8_t *) &elt_v4; \
                 \
                 _Pragma("unroll") \
 	            for(int i = 0; i < _INT4_TO_4INT_; i++) \
                 { \
-			        fR[i] += (int)_eltV1[i] * preScale; \
+			        fR[i] += (int)elt_v1[i] * pre_scale; \
 	            } \
 	        } \
         }
 
-#define SET_CONCAT_OFF_V4(_hasConcat, _concatV4_off) \
+#define SET_CONCAT_OFF_V4(_has_concat, _concat_v4_off) \
         { \
-            if (_hasConcat && dCv4XValid && dCv4YValid) \
+            if (_has_concat && dCv4_x_valid && dCv4_y_valid) \
             { \
-                dCv4_off = concatOffsetV4 + dCv4_idy * concatStrideV4 + dCv4_base + dCv4_idx; \
+                dCv4_off = concat_offset_v4 + dCv4_idy * concat_stride_v4 + dCv4_base + dCv4_idx; \
             } \
         }
         

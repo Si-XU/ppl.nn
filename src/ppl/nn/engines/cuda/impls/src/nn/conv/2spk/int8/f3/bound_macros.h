@@ -15,43 +15,43 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#define SET_BOUND_FLT3(_inHWMask, _inN_id, _inH_id, _inW_id) \
+#define SET_BOUND_FLT3(_in_hw_mask, _in_n_id, _in_h_id, _in_w_id) \
         { \
-            if(_inN_id < inNum) \
+            if(_in_n_id < in_num) \
             { \
-                _inHWMask = 0xffffffff; \
-                if(_inH_id < 0 || _inH_id >= inHeight) _inHWMask = _inHWMask & 0xfffffff8; \
-                if(_inW_id < 0 || _inW_id >= inWidth)  _inHWMask = _inHWMask & 0xffffffb6; \
+                _in_hw_mask = 0xffffffff; \
+                if(_in_h_id < 0 || _in_h_id >= in_height) _in_hw_mask = _in_hw_mask & 0xfffffff8; \
+                if(_in_w_id < 0 || _in_w_id >= in_width)  _in_hw_mask = _in_hw_mask & 0xffffffb6; \
                 \
-                _inH_id += holeHeight; \
-                _inW_id += holeWidth; \
+                _in_h_id += hole_height; \
+                _in_w_id += hole_width; \
                 \
-                if(_inH_id < 0 || _inH_id >= inHeight) _inHWMask = _inHWMask & 0xffffffc7; \
-                if(_inW_id < 0 || _inW_id >= inWidth)  _inHWMask = _inHWMask & 0xffffff6d; \
+                if(_in_h_id < 0 || _in_h_id >= in_height) _in_hw_mask = _in_hw_mask & 0xffffffc7; \
+                if(_in_w_id < 0 || _in_w_id >= in_width)  _in_hw_mask = _in_hw_mask & 0xffffff6d; \
                 \
-                _inH_id += holeHeight; \
-                _inW_id += holeWidth; \
+                _in_h_id += hole_height; \
+                _in_w_id += hole_width; \
                 \
-                if(_inH_id < 0 || _inH_id >= inHeight)  _inHWMask = _inHWMask & 0xfffffe3f; \
-                if(_inW_id < 0 || _inW_id >= inWidth)   _inHWMask = _inHWMask & 0xfffffedb; \
+                if(_in_h_id < 0 || _in_h_id >= in_height)  _in_hw_mask = _in_hw_mask & 0xfffffe3f; \
+                if(_in_w_id < 0 || _in_w_id >= in_width)   _in_hw_mask = _in_hw_mask & 0xfffffedb; \
             } else { \
-                _inHWMask = 0x0; \
+                _in_hw_mask = 0x0; \
             } \
         }
 
-#define FWD_FLT3(_fltHW_id, _fltHW_bid, _fltCv16_id, _fltCv16Valid) \
+#define FWD_FLT3(_flt_hw_id, _flt_hw_bid, _flt_c_v16_id, _flt_c_v16_valid) \
         { \
-            if(_fltHW_id == 8) \
+            if(_flt_hw_id == 8) \
             { \
-                _fltHW_id = 0; \
-                _fltCv16_id += TILE_K_V16_PER_CTA; \
+                _flt_hw_id = 0; \
+                _flt_c_v16_id += TILE_K_V16_PER_CTA; \
                 \
-                _fltCv16Valid = _fltCv16_id < fltCv16End; \
+                _flt_c_v16_valid = _flt_c_v16_id < flt_c_v16_end; \
             } else { \
-                _fltHW_id = _fltHW_id + 1; \
+                _flt_hw_id = _flt_hw_id + 1; \
             } \
             \
-            _fltHW_bid = (0x1 << _fltHW_id); \
+            _flt_hw_bid = (0x1 << _flt_hw_id); \
         }
 
 #define FWD_FLT(_flt_hw_id, _flt_hw_bid, _flt_c_v16_id, _flt_c_v16_valid) FWD_FLT3(_flt_hw_id, _flt_hw_bid, _flt_c_v16_id, _flt_c_v16_valid)

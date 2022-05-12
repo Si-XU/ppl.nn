@@ -120,8 +120,7 @@ file(GLOB_RECURSE CUDA_SRC ${CUDA_SRC} src/arithmetic/*.cu
                                        src/memory/*.cu
                                        src/reduce/*.cu
                                        src/reformat/*.cu
-                                       src/nn/conv/conv.cu
-                                       src/nn/conv/conv_int8.cu
+                                       src/nn/conv/conv_*.cu
                                        src/nn/conv/common/*.cu
                                        src/nn/conv/common/init_lut.cc
 				                       src/unary/*.cu)

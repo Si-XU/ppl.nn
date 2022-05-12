@@ -43,7 +43,7 @@
 ////////////////////////////////////////
 
 #undef Align
-#undef CeilDiv
+#undef DivUp
 
 #undef Min
 #undef Max

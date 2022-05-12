@@ -15,17 +15,17 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#define SET_BOUND_FLT1(_inHWMask, _inN_id, _inH_id, _inW_id) \
+#define SET_BOUND_FLT1(_in_hw_mask, _in_n_id, _in_h_id, _in_w_id) \
         { \
-            _inHWMask = _inN_id <  inNum && \
-                        _inH_id >= 0 && _inH_id < inHeight && \
-                        _inW_id >= 0 && _inW_id < inWidth; \
+            _in_hw_mask = _in_n_id <  in_num && \
+                        _in_h_id >= 0 && _in_h_id < in_height && \
+                        _in_w_id >= 0 && _in_w_id < in_width; \
         }
 
-#define FWD_FLT1(_fltCv16_id, _fltCv16Valid) \
+#define FWD_FLT1(_flt_c_v16_id, _flt_c_v16_valid) \
         { \
-            _fltCv16_id   += TILE_K_V16_PER_CTA; \
-            _fltCv16Valid = _fltCv16_id < fltCv16End; \
+            _flt_c_v16_id   += TILE_K_V16_PER_CTA; \
+            _flt_c_v16_valid = _flt_c_v16_id < flt_c_v16_end; \
         }
 
 #define FWD_FLT(_flt_c_v16_id, _flt_c_v16_valid) FWD_FLT1(_flt_c_v16_id, _flt_c_v16_valid)
