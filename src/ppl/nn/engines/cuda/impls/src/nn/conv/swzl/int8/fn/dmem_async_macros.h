@@ -23,347 +23,347 @@
 // load dA macros
 ////////////////////////////////////////
 
-#define LOAD_dAv4_SIZE_16TH(_sAv4, _sAv4_off, _dA, _dAv4_off, _fltCv16Valid, _fltNValid) \
+#define LOAD_dAv4_SIZE_16TH(_sAv4, _sAv4_off, _dA, _dAv4_off, _flt_c_v16_valid, _flt_n_valid) \
         { \
-            _dAv4_off[0] += cFltLut.idx[cLut_id]; \
+            _dAv4_off[0] += flt_lut.idx[lut_id]; \
             \
             if(tid < ( CTA_SIZE_IN_THD / 16 ))  \
-                CP_ASYNC( (_fltNValid[0] && _fltCv16Valid), _sAv4, _sAv4_off, _dA, _dAv4_off[0]); \
+                CP_ASYNC( (_flt_n_valid[0] && _flt_c_v16_valid), _sAv4, _sAv4_off, _dA, _dAv4_off[0]); \
         }
 
-#define LOAD_dAv4_SIZE_8TH(_sAv4, _sAv4_off, _dA, _dAv4_off, _fltCv16Valid, _fltNValid) \
+#define LOAD_dAv4_SIZE_8TH(_sAv4, _sAv4_off, _dA, _dAv4_off, _flt_c_v16_valid, _flt_n_valid) \
         { \
-            _dAv4_off[0] += cFltLut.idx[cLut_id]; \
+            _dAv4_off[0] += flt_lut.idx[lut_id]; \
             \
             if(tid < ( CTA_SIZE_IN_THD / 8 ))  \
-                CP_ASYNC( (_fltNValid[0] && _fltCv16Valid), _sAv4, _sAv4_off, _dA, _dAv4_off[0]); \
+                CP_ASYNC( (_flt_n_valid[0] && _flt_c_v16_valid), _sAv4, _sAv4_off, _dA, _dAv4_off[0]); \
         }
 
-#define LOAD_dAv4_SIZE_QTR(_sAv4, _sAv4_off, _dA, _dAv4_off, _fltCv16Valid, _fltNValid) \
+#define LOAD_dAv4_SIZE_QTR(_sAv4, _sAv4_off, _dA, _dAv4_off, _flt_c_v16_valid, _flt_n_valid) \
         { \
-            _dAv4_off[0] += cFltLut.idx[cLut_id]; \
+            _dAv4_off[0] += flt_lut.idx[lut_id]; \
             \
             if(tid < ( CTA_SIZE_IN_THD / 4 ))  \
-                CP_ASYNC( (_fltNValid[0] && _fltCv16Valid), _sAv4, _sAv4_off, _dA, _dAv4_off[0]); \
+                CP_ASYNC( (_flt_n_valid[0] && _flt_c_v16_valid), _sAv4, _sAv4_off, _dA, _dAv4_off[0]); \
         }
 
-#define LOAD_dAv4_SIZE_HALF(_sAv4, _sAv4_off, _dA, _dAv4_off, _fltCv16Valid, _fltNValid) \
+#define LOAD_dAv4_SIZE_HALF(_sAv4, _sAv4_off, _dA, _dAv4_off, _flt_c_v16_valid, _flt_n_valid) \
         { \
-            _dAv4_off[0] += cFltLut.idx[cLut_id]; \
+            _dAv4_off[0] += flt_lut.idx[lut_id]; \
             \
             if(tid < ( CTA_SIZE_IN_THD / 2 ))  \
-                CP_ASYNC( (_fltNValid[0] && _fltCv16Valid), _sAv4, _sAv4_off, _dA, _dAv4_off[0]); \
+                CP_ASYNC( (_flt_n_valid[0] && _flt_c_v16_valid), _sAv4, _sAv4_off, _dA, _dAv4_off[0]); \
         }
 
-#define LOAD_dAv4_SIZE1(_sAv4, _sAv4_off, _dA, _dAv4_off, _fltCv16Valid, _fltNValid) \
+#define LOAD_dAv4_SIZE1(_sAv4, _sAv4_off, _dA, _dAv4_off, _flt_c_v16_valid, _flt_n_valid) \
         { \
-            _dAv4_off[0] += cFltLut.idx[cLut_id]; \
+            _dAv4_off[0] += flt_lut.idx[lut_id]; \
             \
-            CP_ASYNC( (_fltNValid[0] && _fltCv16Valid), _sAv4, _sAv4_off, _dA, _dAv4_off[0]); \
+            CP_ASYNC( (_flt_n_valid[0] && _flt_c_v16_valid), _sAv4, _sAv4_off, _dA, _dAv4_off[0]); \
         }
 
-#define LOAD_dAv4_SIZE2(_sAv4, _sAv4_off, _dA, _dAv4_off, _fltCv16Valid, _fltNValid) \
+#define LOAD_dAv4_SIZE2(_sAv4, _sAv4_off, _dA, _dAv4_off, _flt_c_v16_valid, _flt_n_valid) \
         { \
-            _dAv4_off[0] += cFltLut.idx[cLut_id]; \
-            _dAv4_off[1] += cFltLut.idx[cLut_id]; \
+            _dAv4_off[0] += flt_lut.idx[lut_id]; \
+            _dAv4_off[1] += flt_lut.idx[lut_id]; \
             \
-            CP_ASYNC( (_fltNValid[0] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 0, _dA, _dAv4_off[0]); \
-            CP_ASYNC( (_fltNValid[1] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 1, _dA, _dAv4_off[1]); \
+            CP_ASYNC( (_flt_n_valid[0] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 0, _dA, _dAv4_off[0]); \
+            CP_ASYNC( (_flt_n_valid[1] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 1, _dA, _dAv4_off[1]); \
         }
 
-#define LOAD_dAv4_SIZE4(_sAv4, _sAv4_off, _dA, _dAv4_off, _fltCv16Valid, _fltNValid) \
+#define LOAD_dAv4_SIZE4(_sAv4, _sAv4_off, _dA, _dAv4_off, _flt_c_v16_valid, _flt_n_valid) \
         { \
-            _dAv4_off[0] += cFltLut.idx[cLut_id]; \
-            _dAv4_off[1] += cFltLut.idx[cLut_id]; \
-            _dAv4_off[2] += cFltLut.idx[cLut_id]; \
-            _dAv4_off[3] += cFltLut.idx[cLut_id]; \
+            _dAv4_off[0] += flt_lut.idx[lut_id]; \
+            _dAv4_off[1] += flt_lut.idx[lut_id]; \
+            _dAv4_off[2] += flt_lut.idx[lut_id]; \
+            _dAv4_off[3] += flt_lut.idx[lut_id]; \
             \
-            CP_ASYNC( (_fltNValid[0] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 0, _dA, _dAv4_off[0]); \
-            CP_ASYNC( (_fltNValid[1] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 1, _dA, _dAv4_off[1]); \
-            CP_ASYNC( (_fltNValid[2] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 2, _dA, _dAv4_off[2]); \
-            CP_ASYNC( (_fltNValid[3] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 3, _dA, _dAv4_off[3]); \
+            CP_ASYNC( (_flt_n_valid[0] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 0, _dA, _dAv4_off[0]); \
+            CP_ASYNC( (_flt_n_valid[1] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 1, _dA, _dAv4_off[1]); \
+            CP_ASYNC( (_flt_n_valid[2] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 2, _dA, _dAv4_off[2]); \
+            CP_ASYNC( (_flt_n_valid[3] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 3, _dA, _dAv4_off[3]); \
         }
 
-#define LOAD_dAv4_SIZE8(_sAv4, _sAv4_off, _dA, _dAv4_off, _fltCv16Valid, _fltNValid) \
+#define LOAD_dAv4_SIZE8(_sAv4, _sAv4_off, _dA, _dAv4_off, _flt_c_v16_valid, _flt_n_valid) \
         { \
-            _dAv4_off[0] += cFltLut.idx[cLut_id]; \
-            _dAv4_off[1] += cFltLut.idx[cLut_id]; \
-            _dAv4_off[2] += cFltLut.idx[cLut_id]; \
-            _dAv4_off[3] += cFltLut.idx[cLut_id]; \
-            _dAv4_off[4] += cFltLut.idx[cLut_id]; \
-            _dAv4_off[5] += cFltLut.idx[cLut_id]; \
-            _dAv4_off[6] += cFltLut.idx[cLut_id]; \
-            _dAv4_off[7] += cFltLut.idx[cLut_id]; \
+            _dAv4_off[0] += flt_lut.idx[lut_id]; \
+            _dAv4_off[1] += flt_lut.idx[lut_id]; \
+            _dAv4_off[2] += flt_lut.idx[lut_id]; \
+            _dAv4_off[3] += flt_lut.idx[lut_id]; \
+            _dAv4_off[4] += flt_lut.idx[lut_id]; \
+            _dAv4_off[5] += flt_lut.idx[lut_id]; \
+            _dAv4_off[6] += flt_lut.idx[lut_id]; \
+            _dAv4_off[7] += flt_lut.idx[lut_id]; \
             \
-            CP_ASYNC( (_fltNValid[0] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 0, _dA, _dAv4_off[0]); \
-            CP_ASYNC( (_fltNValid[1] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 1, _dA, _dAv4_off[1]); \
-            CP_ASYNC( (_fltNValid[2] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 2, _dA, _dAv4_off[2]); \
-            CP_ASYNC( (_fltNValid[3] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 3, _dA, _dAv4_off[3]); \
-            CP_ASYNC( (_fltNValid[4] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 4, _dA, _dAv4_off[4]); \
-            CP_ASYNC( (_fltNValid[5] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 5, _dA, _dAv4_off[5]); \
-            CP_ASYNC( (_fltNValid[6] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 6, _dA, _dAv4_off[6]); \
-            CP_ASYNC( (_fltNValid[7] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 7, _dA, _dAv4_off[7]); \
+            CP_ASYNC( (_flt_n_valid[0] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 0, _dA, _dAv4_off[0]); \
+            CP_ASYNC( (_flt_n_valid[1] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 1, _dA, _dAv4_off[1]); \
+            CP_ASYNC( (_flt_n_valid[2] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 2, _dA, _dAv4_off[2]); \
+            CP_ASYNC( (_flt_n_valid[3] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 3, _dA, _dAv4_off[3]); \
+            CP_ASYNC( (_flt_n_valid[4] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 4, _dA, _dAv4_off[4]); \
+            CP_ASYNC( (_flt_n_valid[5] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 5, _dA, _dAv4_off[5]); \
+            CP_ASYNC( (_flt_n_valid[6] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 6, _dA, _dAv4_off[6]); \
+            CP_ASYNC( (_flt_n_valid[7] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 7, _dA, _dAv4_off[7]); \
         }
 
-#define LOAD_dAv4_SIZE16(_sAv4, _sAv4_off, _dA, _dAv4_off, _fltCv16Valid, _fltNValid) \
+#define LOAD_dAv4_SIZE16(_sAv4, _sAv4_off, _dA, _dAv4_off, _flt_c_v16_valid, _flt_n_valid) \
         { \
-            _dAv4_off[0]  += cFltLut.idx[cLut_id]; \
-            _dAv4_off[1]  += cFltLut.idx[cLut_id]; \
-            _dAv4_off[2]  += cFltLut.idx[cLut_id]; \
-            _dAv4_off[3]  += cFltLut.idx[cLut_id]; \
-            _dAv4_off[4]  += cFltLut.idx[cLut_id]; \
-            _dAv4_off[5]  += cFltLut.idx[cLut_id]; \
-            _dAv4_off[6]  += cFltLut.idx[cLut_id]; \
-            _dAv4_off[7]  += cFltLut.idx[cLut_id]; \
-            _dAv4_off[8]  += cFltLut.idx[cLut_id]; \
-            _dAv4_off[9]  += cFltLut.idx[cLut_id]; \
-            _dAv4_off[10] += cFltLut.idx[cLut_id]; \
-            _dAv4_off[11] += cFltLut.idx[cLut_id]; \
-            _dAv4_off[12] += cFltLut.idx[cLut_id]; \
-            _dAv4_off[13] += cFltLut.idx[cLut_id]; \
-            _dAv4_off[14] += cFltLut.idx[cLut_id]; \
-            _dAv4_off[15] += cFltLut.idx[cLut_id]; \
+            _dAv4_off[0]  += flt_lut.idx[lut_id]; \
+            _dAv4_off[1]  += flt_lut.idx[lut_id]; \
+            _dAv4_off[2]  += flt_lut.idx[lut_id]; \
+            _dAv4_off[3]  += flt_lut.idx[lut_id]; \
+            _dAv4_off[4]  += flt_lut.idx[lut_id]; \
+            _dAv4_off[5]  += flt_lut.idx[lut_id]; \
+            _dAv4_off[6]  += flt_lut.idx[lut_id]; \
+            _dAv4_off[7]  += flt_lut.idx[lut_id]; \
+            _dAv4_off[8]  += flt_lut.idx[lut_id]; \
+            _dAv4_off[9]  += flt_lut.idx[lut_id]; \
+            _dAv4_off[10] += flt_lut.idx[lut_id]; \
+            _dAv4_off[11] += flt_lut.idx[lut_id]; \
+            _dAv4_off[12] += flt_lut.idx[lut_id]; \
+            _dAv4_off[13] += flt_lut.idx[lut_id]; \
+            _dAv4_off[14] += flt_lut.idx[lut_id]; \
+            _dAv4_off[15] += flt_lut.idx[lut_id]; \
             \
-            CP_ASYNC( (_fltNValid[0]  && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 0,  _dA, _dAv4_off[0]);  \
-            CP_ASYNC( (_fltNValid[1]  && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 1,  _dA, _dAv4_off[1]);  \
-            CP_ASYNC( (_fltNValid[2]  && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 2,  _dA, _dAv4_off[2]);  \
-            CP_ASYNC( (_fltNValid[3]  && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 3,  _dA, _dAv4_off[3]);  \
-            CP_ASYNC( (_fltNValid[4]  && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 4,  _dA, _dAv4_off[4]);  \
-            CP_ASYNC( (_fltNValid[5]  && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 5,  _dA, _dAv4_off[5]);  \
-            CP_ASYNC( (_fltNValid[6]  && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 6,  _dA, _dAv4_off[6]);  \
-            CP_ASYNC( (_fltNValid[7]  && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 7,  _dA, _dAv4_off[7]);  \
-            CP_ASYNC( (_fltNValid[8]  && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 8,  _dA, _dAv4_off[8]);  \
-            CP_ASYNC( (_fltNValid[9]  && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 9,  _dA, _dAv4_off[9]);  \
-            CP_ASYNC( (_fltNValid[10] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 10, _dA, _dAv4_off[10]); \
-            CP_ASYNC( (_fltNValid[11] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 11, _dA, _dAv4_off[11]); \
-            CP_ASYNC( (_fltNValid[12] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 12, _dA, _dAv4_off[12]); \
-            CP_ASYNC( (_fltNValid[13] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 13, _dA, _dAv4_off[13]); \
-            CP_ASYNC( (_fltNValid[14] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 14, _dA, _dAv4_off[14]); \
-            CP_ASYNC( (_fltNValid[15] && _fltCv16Valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 15, _dA, _dAv4_off[15]); \
+            CP_ASYNC( (_flt_n_valid[0]  && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 0,  _dA, _dAv4_off[0]);  \
+            CP_ASYNC( (_flt_n_valid[1]  && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 1,  _dA, _dAv4_off[1]);  \
+            CP_ASYNC( (_flt_n_valid[2]  && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 2,  _dA, _dAv4_off[2]);  \
+            CP_ASYNC( (_flt_n_valid[3]  && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 3,  _dA, _dAv4_off[3]);  \
+            CP_ASYNC( (_flt_n_valid[4]  && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 4,  _dA, _dAv4_off[4]);  \
+            CP_ASYNC( (_flt_n_valid[5]  && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 5,  _dA, _dAv4_off[5]);  \
+            CP_ASYNC( (_flt_n_valid[6]  && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 6,  _dA, _dAv4_off[6]);  \
+            CP_ASYNC( (_flt_n_valid[7]  && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 7,  _dA, _dAv4_off[7]);  \
+            CP_ASYNC( (_flt_n_valid[8]  && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 8,  _dA, _dAv4_off[8]);  \
+            CP_ASYNC( (_flt_n_valid[9]  && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 9,  _dA, _dAv4_off[9]);  \
+            CP_ASYNC( (_flt_n_valid[10] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 10, _dA, _dAv4_off[10]); \
+            CP_ASYNC( (_flt_n_valid[11] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 11, _dA, _dAv4_off[11]); \
+            CP_ASYNC( (_flt_n_valid[12] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 12, _dA, _dAv4_off[12]); \
+            CP_ASYNC( (_flt_n_valid[13] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 13, _dA, _dAv4_off[13]); \
+            CP_ASYNC( (_flt_n_valid[14] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 14, _dA, _dAv4_off[14]); \
+            CP_ASYNC( (_flt_n_valid[15] && _flt_c_v16_valid), _sAv4, _sAv4_off + CTA_SIZE_IN_THD * 15, _dA, _dAv4_off[15]); \
         }
 
-#define SET_dAv4_BOUND(_step_id, _dAv4_off, _fltNValid) \
+#define SET_dAv4_BOUND(_step_id, _dAv4_off, _flt_n_valid) \
         { \
-            int _fltN_id  =  cta_idy  *  TILE_M_PER_CTA + \
+            int _flt_n_id  =  cta_idy  *  TILE_M_PER_CTA + \
                             _step_id  * (TILE_M_PER_CTA / READ_dAv4_STEPS) + \
                              ldg_idy; \
             \
-            _fltNValid  =  _fltN_id < numFltPerGrp; \
+            _flt_n_valid  =  _flt_n_id < num_flt_per_grp; \
             \
-            _dAv4_off  =   grp_id   * fltHW * numChlPerGrpPadV16 * numFltPerGrp + \
-                          _fltN_id  * fltHW * numChlPerGrpPadV16 + \
-                           fltCv16_id; \
+            _dAv4_off  =   grp_id   * flt_hw * num_chl_per_grp_pad_v16 * num_flt_per_grp + \
+                          _flt_n_id  * flt_hw * num_chl_per_grp_pad_v16 + \
+                           flt_c_v16_id; \
         }
 
 ////////////////////////////////////////
 // load dB macros
 ////////////////////////////////////////
 
-#define SET_dBv4_BOUND(_step_id, _dBv4_off, _inN_id, _inH_START, _inW_START) \
+#define SET_dBv4_BOUND(_step_id, _dBv4_off, _in_n_id, _in_h_start, _in_w_start) \
         { \
-            int _outNHW_id    =  cta_idx  *  TILE_N_PER_CTA + \
+            int _out_nhw_id    =  cta_idx  *  TILE_N_PER_CTA + \
                                 _step_id  * (TILE_N_PER_CTA / READ_dBv4_STEPS) + \
                                  ldg_idy; \
             \
-            int _outW_id =  (_outNHW_id % outWidth); \
-            int _outH_id =  (_outNHW_id / outWidth) % outHeight; \
-            int _inH_id  =     _outH_id * strideHeight; \
-            int _inW_id  =     _outW_id * strideWidth; \
+            int _out_w_id =  (_out_nhw_id % out_width); \
+            int _out_h_id =  (_out_nhw_id / out_width) % out_height; \
+            int _in_h_id  =     _out_h_id * stride_height; \
+            int _in_w_id  =     _out_w_id * stride_width; \
             \
-            _inN_id      =  _outNHW_id / outHW; \
-            _inH_START   =  _inH_id - padHeight; \
-            _inW_START   =  _inW_id - padWidth;  \
+            _in_n_id      =  _out_nhw_id / out_hw; \
+            _in_h_start   =  _in_h_id - pad_height; \
+            _in_w_start   =  _in_w_id - pad_width;  \
             \
-            _dBv4_off  =  (_inN_id  * inHW + _inH_id  * inWidth + _inW_id) * numChlPerGrpPadV16 * numGrp + \
-                           grp_id   * numChlPerGrpPadV16 + \
-                           fltCv16_id; \
+            _dBv4_off  =  (_in_n_id  * in_hw + _in_h_id  * in_width + _in_w_id) * num_chl_per_grp_pad_v16 * num_grp + \
+                           grp_id   * num_chl_per_grp_pad_v16 + \
+                           flt_c_v16_id; \
         }
 
-#define LOAD_dBv4_SIZE_16TH(_sBv4, _sBv4_off, _dB, _dBv4_off, _inN_id, _inH_id, _inW_id) \
+#define LOAD_dBv4_SIZE_16TH(_sBv4, _sBv4_off, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id) \
         { \
-            _dBv4_off[0] += cInLut.idx[cLut_id]; \
+            _dBv4_off[0] += in_lut.idx[lut_id]; \
             \
             if(tid < ( CTA_SIZE_IN_THD / 16 ))  \
-                CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[0]) && WidthInRange(_inW_id[0]) && (_inN_id[0] < inNum) ), _sBv4, _sBv4_off, _dB, _dBv4_off[0]); \
+                CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[0]) && WidthInRange(_in_w_id[0]) && (_in_n_id[0] < in_num) ), _sBv4, _sBv4_off, _dB, _dBv4_off[0]); \
         }
 
-#define LOAD_dBv4_SIZE_8TH(_sBv4, _sBv4_off, _dB, _dBv4_off, _inN_id, _inH_id, _inW_id) \
+#define LOAD_dBv4_SIZE_8TH(_sBv4, _sBv4_off, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id) \
         { \
-            _dBv4_off[0] += cInLut.idx[cLut_id]; \
+            _dBv4_off[0] += in_lut.idx[lut_id]; \
             \
             if(tid < ( CTA_SIZE_IN_THD / 8 ))  \
-                CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[0]) && WidthInRange(_inW_id[0]) && (_inN_id[0] < inNum) ), _sBv4, _sBv4_off, _dB, _dBv4_off[0]); \
+                CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[0]) && WidthInRange(_in_w_id[0]) && (_in_n_id[0] < in_num) ), _sBv4, _sBv4_off, _dB, _dBv4_off[0]); \
         }
 
-#define LOAD_dBv4_SIZE_QTR(_sBv4, _sBv4_off, _dB, _dBv4_off, _inN_id, _inH_id, _inW_id) \
+#define LOAD_dBv4_SIZE_QTR(_sBv4, _sBv4_off, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id) \
         { \
-            _dBv4_off[0] += cInLut.idx[cLut_id]; \
+            _dBv4_off[0] += in_lut.idx[lut_id]; \
             \
             if(tid < ( CTA_SIZE_IN_THD / 4 ))  \
-                CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[0]) && WidthInRange(_inW_id[0]) && (_inN_id[0] < inNum) ), _sBv4, _sBv4_off, _dB, _dBv4_off[0]); \
+                CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[0]) && WidthInRange(_in_w_id[0]) && (_in_n_id[0] < in_num) ), _sBv4, _sBv4_off, _dB, _dBv4_off[0]); \
         }
 
-#define LOAD_dBv4_SIZE_HALF(_sBv4, _sBv4_off, _dB, _dBv4_off, _inN_id, _inH_id, _inW_id) \
+#define LOAD_dBv4_SIZE_HALF(_sBv4, _sBv4_off, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id) \
         { \
-            _dBv4_off[0] += cInLut.idx[cLut_id]; \
+            _dBv4_off[0] += in_lut.idx[lut_id]; \
             \
             if(tid < ( CTA_SIZE_IN_THD / 2 ))  \
-                CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[0]) && WidthInRange(_inW_id[0]) && (_inN_id[0] < inNum) ), _sBv4, _sBv4_off, _dB, _dBv4_off[0]); \
+                CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[0]) && WidthInRange(_in_w_id[0]) && (_in_n_id[0] < in_num) ), _sBv4, _sBv4_off, _dB, _dBv4_off[0]); \
         }
 
-#define LOAD_dBv4_SIZE1(_sBv4, _sBv4_off, _dB, _dBv4_off, _inN_id, _inH_id, _inW_id) \
+#define LOAD_dBv4_SIZE1(_sBv4, _sBv4_off, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id) \
         { \
-            _dBv4_off[0] += cInLut.idx[cLut_id]; \
+            _dBv4_off[0] += in_lut.idx[lut_id]; \
             \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[0]) && WidthInRange(_inW_id[0]) && (_inN_id[0] < inNum) ), _sBv4, _sBv4_off, _dB, _dBv4_off[0]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[0]) && WidthInRange(_in_w_id[0]) && (_in_n_id[0] < in_num) ), _sBv4, _sBv4_off, _dB, _dBv4_off[0]); \
         }
 
-#define LOAD_dBv4_SIZE2(_sBv4, _sBv4_off, _dB, _dBv4_off, _inN_id, _inH_id, _inW_id) \
+#define LOAD_dBv4_SIZE2(_sBv4, _sBv4_off, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id) \
         { \
-            _dBv4_off[0] += cInLut.idx[cLut_id]; \
-            _dBv4_off[1] += cInLut.idx[cLut_id]; \
+            _dBv4_off[0] += in_lut.idx[lut_id]; \
+            _dBv4_off[1] += in_lut.idx[lut_id]; \
             \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[0]) && WidthInRange(_inW_id[0]) && (_inN_id[0] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 0, _dB, _dBv4_off[0]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[1]) && WidthInRange(_inW_id[1]) && (_inN_id[1] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 1, _dB, _dBv4_off[1]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[0]) && WidthInRange(_in_w_id[0]) && (_in_n_id[0] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 0, _dB, _dBv4_off[0]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[1]) && WidthInRange(_in_w_id[1]) && (_in_n_id[1] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 1, _dB, _dBv4_off[1]); \
         }
 
-#define LOAD_dBv4_SIZE4(_sBv4, _sBv4_off, _dB, _dBv4_off, _inN_id, _inH_id, _inW_id) \
+#define LOAD_dBv4_SIZE4(_sBv4, _sBv4_off, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id) \
         { \
-            _dBv4_off[0] += cInLut.idx[cLut_id]; \
-            _dBv4_off[1] += cInLut.idx[cLut_id]; \
-            _dBv4_off[2] += cInLut.idx[cLut_id]; \
-            _dBv4_off[3] += cInLut.idx[cLut_id]; \
+            _dBv4_off[0] += in_lut.idx[lut_id]; \
+            _dBv4_off[1] += in_lut.idx[lut_id]; \
+            _dBv4_off[2] += in_lut.idx[lut_id]; \
+            _dBv4_off[3] += in_lut.idx[lut_id]; \
             \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[0]) && WidthInRange(_inW_id[0]) && (_inN_id[0] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 0, _dB, _dBv4_off[0]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[1]) && WidthInRange(_inW_id[1]) && (_inN_id[1] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 1, _dB, _dBv4_off[1]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[2]) && WidthInRange(_inW_id[2]) && (_inN_id[2] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 2, _dB, _dBv4_off[2]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[3]) && WidthInRange(_inW_id[3]) && (_inN_id[3] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 3, _dB, _dBv4_off[3]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[0]) && WidthInRange(_in_w_id[0]) && (_in_n_id[0] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 0, _dB, _dBv4_off[0]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[1]) && WidthInRange(_in_w_id[1]) && (_in_n_id[1] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 1, _dB, _dBv4_off[1]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[2]) && WidthInRange(_in_w_id[2]) && (_in_n_id[2] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 2, _dB, _dBv4_off[2]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[3]) && WidthInRange(_in_w_id[3]) && (_in_n_id[3] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 3, _dB, _dBv4_off[3]); \
         }
 
-#define LOAD_dBv4_SIZE8(_sBv4, _sBv4_off, _dB, _dBv4_off, _inN_id, _inH_id, _inW_id) \
+#define LOAD_dBv4_SIZE8(_sBv4, _sBv4_off, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id) \
         { \
-            _dBv4_off[0] += cInLut.idx[cLut_id]; \
-            _dBv4_off[1] += cInLut.idx[cLut_id]; \
-            _dBv4_off[2] += cInLut.idx[cLut_id]; \
-            _dBv4_off[3] += cInLut.idx[cLut_id]; \
-            _dBv4_off[4] += cInLut.idx[cLut_id]; \
-            _dBv4_off[5] += cInLut.idx[cLut_id]; \
-            _dBv4_off[6] += cInLut.idx[cLut_id]; \
-            _dBv4_off[7] += cInLut.idx[cLut_id]; \
+            _dBv4_off[0] += in_lut.idx[lut_id]; \
+            _dBv4_off[1] += in_lut.idx[lut_id]; \
+            _dBv4_off[2] += in_lut.idx[lut_id]; \
+            _dBv4_off[3] += in_lut.idx[lut_id]; \
+            _dBv4_off[4] += in_lut.idx[lut_id]; \
+            _dBv4_off[5] += in_lut.idx[lut_id]; \
+            _dBv4_off[6] += in_lut.idx[lut_id]; \
+            _dBv4_off[7] += in_lut.idx[lut_id]; \
             \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[0]) && WidthInRange(_inW_id[0]) && (_inN_id[0] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 0, _dB, _dBv4_off[0]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[1]) && WidthInRange(_inW_id[1]) && (_inN_id[1] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 1, _dB, _dBv4_off[1]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[2]) && WidthInRange(_inW_id[2]) && (_inN_id[2] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 2, _dB, _dBv4_off[2]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[3]) && WidthInRange(_inW_id[3]) && (_inN_id[3] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 3, _dB, _dBv4_off[3]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[4]) && WidthInRange(_inW_id[4]) && (_inN_id[4] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 4, _dB, _dBv4_off[4]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[5]) && WidthInRange(_inW_id[5]) && (_inN_id[5] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 5, _dB, _dBv4_off[5]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[6]) && WidthInRange(_inW_id[6]) && (_inN_id[6] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 6, _dB, _dBv4_off[6]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[7]) && WidthInRange(_inW_id[7]) && (_inN_id[7] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 7, _dB, _dBv4_off[7]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[0]) && WidthInRange(_in_w_id[0]) && (_in_n_id[0] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 0, _dB, _dBv4_off[0]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[1]) && WidthInRange(_in_w_id[1]) && (_in_n_id[1] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 1, _dB, _dBv4_off[1]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[2]) && WidthInRange(_in_w_id[2]) && (_in_n_id[2] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 2, _dB, _dBv4_off[2]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[3]) && WidthInRange(_in_w_id[3]) && (_in_n_id[3] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 3, _dB, _dBv4_off[3]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[4]) && WidthInRange(_in_w_id[4]) && (_in_n_id[4] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 4, _dB, _dBv4_off[4]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[5]) && WidthInRange(_in_w_id[5]) && (_in_n_id[5] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 5, _dB, _dBv4_off[5]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[6]) && WidthInRange(_in_w_id[6]) && (_in_n_id[6] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 6, _dB, _dBv4_off[6]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[7]) && WidthInRange(_in_w_id[7]) && (_in_n_id[7] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 7, _dB, _dBv4_off[7]); \
         }
 
-#define LOAD_dBv4_SIZE16(_sBv4, _sBv4_off, _dB, _dBv4_off, _inN_id, _inH_id, _inW_id) \
+#define LOAD_dBv4_SIZE16(_sBv4, _sBv4_off, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id) \
         { \
-            _dBv4_off[0]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[1]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[2]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[3]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[4]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[5]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[6]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[7]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[8]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[9]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[10] += cInLut.idx[cLut_id]; \
-            _dBv4_off[11] += cInLut.idx[cLut_id]; \
-            _dBv4_off[12] += cInLut.idx[cLut_id]; \
-            _dBv4_off[13] += cInLut.idx[cLut_id]; \
-            _dBv4_off[14] += cInLut.idx[cLut_id]; \
-            _dBv4_off[15] += cInLut.idx[cLut_id]; \
+            _dBv4_off[0]  += in_lut.idx[lut_id]; \
+            _dBv4_off[1]  += in_lut.idx[lut_id]; \
+            _dBv4_off[2]  += in_lut.idx[lut_id]; \
+            _dBv4_off[3]  += in_lut.idx[lut_id]; \
+            _dBv4_off[4]  += in_lut.idx[lut_id]; \
+            _dBv4_off[5]  += in_lut.idx[lut_id]; \
+            _dBv4_off[6]  += in_lut.idx[lut_id]; \
+            _dBv4_off[7]  += in_lut.idx[lut_id]; \
+            _dBv4_off[8]  += in_lut.idx[lut_id]; \
+            _dBv4_off[9]  += in_lut.idx[lut_id]; \
+            _dBv4_off[10] += in_lut.idx[lut_id]; \
+            _dBv4_off[11] += in_lut.idx[lut_id]; \
+            _dBv4_off[12] += in_lut.idx[lut_id]; \
+            _dBv4_off[13] += in_lut.idx[lut_id]; \
+            _dBv4_off[14] += in_lut.idx[lut_id]; \
+            _dBv4_off[15] += in_lut.idx[lut_id]; \
             \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[0])  && WidthInRange(_inW_id[0])  && (_inN_id[0]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 0,  _dB, _dBv4_off[0]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[1])  && WidthInRange(_inW_id[1])  && (_inN_id[1]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 1,  _dB, _dBv4_off[1]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[2])  && WidthInRange(_inW_id[2])  && (_inN_id[2]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 2,  _dB, _dBv4_off[2]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[3])  && WidthInRange(_inW_id[3])  && (_inN_id[3]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 3,  _dB, _dBv4_off[3]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[4])  && WidthInRange(_inW_id[4])  && (_inN_id[4]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 4,  _dB, _dBv4_off[4]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[5])  && WidthInRange(_inW_id[5])  && (_inN_id[5]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 5,  _dB, _dBv4_off[5]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[6])  && WidthInRange(_inW_id[6])  && (_inN_id[6]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 6,  _dB, _dBv4_off[6]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[7])  && WidthInRange(_inW_id[7])  && (_inN_id[7]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 7,  _dB, _dBv4_off[7]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[8])  && WidthInRange(_inW_id[8])  && (_inN_id[8]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 8,  _dB, _dBv4_off[8]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[9])  && WidthInRange(_inW_id[9])  && (_inN_id[9]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 9,  _dB, _dBv4_off[9]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[10]) && WidthInRange(_inW_id[10]) && (_inN_id[10] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 10, _dB, _dBv4_off[10]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[11]) && WidthInRange(_inW_id[11]) && (_inN_id[11] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 11, _dB, _dBv4_off[11]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[12]) && WidthInRange(_inW_id[12]) && (_inN_id[12] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 12, _dB, _dBv4_off[12]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[13]) && WidthInRange(_inW_id[13]) && (_inN_id[13] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 13, _dB, _dBv4_off[13]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[14]) && WidthInRange(_inW_id[14]) && (_inN_id[14] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 14, _dB, _dBv4_off[14]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[15]) && WidthInRange(_inW_id[15]) && (_inN_id[15] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 15, _dB, _dBv4_off[15]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[0])  && WidthInRange(_in_w_id[0])  && (_in_n_id[0]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 0,  _dB, _dBv4_off[0]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[1])  && WidthInRange(_in_w_id[1])  && (_in_n_id[1]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 1,  _dB, _dBv4_off[1]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[2])  && WidthInRange(_in_w_id[2])  && (_in_n_id[2]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 2,  _dB, _dBv4_off[2]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[3])  && WidthInRange(_in_w_id[3])  && (_in_n_id[3]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 3,  _dB, _dBv4_off[3]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[4])  && WidthInRange(_in_w_id[4])  && (_in_n_id[4]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 4,  _dB, _dBv4_off[4]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[5])  && WidthInRange(_in_w_id[5])  && (_in_n_id[5]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 5,  _dB, _dBv4_off[5]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[6])  && WidthInRange(_in_w_id[6])  && (_in_n_id[6]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 6,  _dB, _dBv4_off[6]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[7])  && WidthInRange(_in_w_id[7])  && (_in_n_id[7]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 7,  _dB, _dBv4_off[7]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[8])  && WidthInRange(_in_w_id[8])  && (_in_n_id[8]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 8,  _dB, _dBv4_off[8]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[9])  && WidthInRange(_in_w_id[9])  && (_in_n_id[9]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 9,  _dB, _dBv4_off[9]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[10]) && WidthInRange(_in_w_id[10]) && (_in_n_id[10] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 10, _dB, _dBv4_off[10]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[11]) && WidthInRange(_in_w_id[11]) && (_in_n_id[11] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 11, _dB, _dBv4_off[11]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[12]) && WidthInRange(_in_w_id[12]) && (_in_n_id[12] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 12, _dB, _dBv4_off[12]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[13]) && WidthInRange(_in_w_id[13]) && (_in_n_id[13] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 13, _dB, _dBv4_off[13]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[14]) && WidthInRange(_in_w_id[14]) && (_in_n_id[14] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 14, _dB, _dBv4_off[14]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[15]) && WidthInRange(_in_w_id[15]) && (_in_n_id[15] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 15, _dB, _dBv4_off[15]); \
         }
 
-#define LOAD_dBv4_SIZE32(_sBv4, _sBv4_off, _dB, _dBv4_off, _inN_id, _inH_id, _inW_id) \
+#define LOAD_dBv4_SIZE32(_sBv4, _sBv4_off, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id) \
         { \
-            _dBv4_off[0]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[1]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[2]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[3]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[4]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[5]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[6]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[7]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[8]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[9]  += cInLut.idx[cLut_id]; \
-            _dBv4_off[10] += cInLut.idx[cLut_id]; \
-            _dBv4_off[11] += cInLut.idx[cLut_id]; \
-            _dBv4_off[12] += cInLut.idx[cLut_id]; \
-            _dBv4_off[13] += cInLut.idx[cLut_id]; \
-            _dBv4_off[14] += cInLut.idx[cLut_id]; \
-            _dBv4_off[15] += cInLut.idx[cLut_id]; \
-            _dBv4_off[16] += cInLut.idx[cLut_id]; \
-            _dBv4_off[17] += cInLut.idx[cLut_id]; \
-            _dBv4_off[18] += cInLut.idx[cLut_id]; \
-            _dBv4_off[19] += cInLut.idx[cLut_id]; \
-            _dBv4_off[20] += cInLut.idx[cLut_id]; \
-            _dBv4_off[21] += cInLut.idx[cLut_id]; \
-            _dBv4_off[22] += cInLut.idx[cLut_id]; \
-            _dBv4_off[23] += cInLut.idx[cLut_id]; \
-            _dBv4_off[24] += cInLut.idx[cLut_id]; \
-            _dBv4_off[25] += cInLut.idx[cLut_id]; \
-            _dBv4_off[26] += cInLut.idx[cLut_id]; \
-            _dBv4_off[27] += cInLut.idx[cLut_id]; \
-            _dBv4_off[28] += cInLut.idx[cLut_id]; \
-            _dBv4_off[29] += cInLut.idx[cLut_id]; \
-            _dBv4_off[30] += cInLut.idx[cLut_id]; \
-            _dBv4_off[31] += cInLut.idx[cLut_id]; \
+            _dBv4_off[0]  += in_lut.idx[lut_id]; \
+            _dBv4_off[1]  += in_lut.idx[lut_id]; \
+            _dBv4_off[2]  += in_lut.idx[lut_id]; \
+            _dBv4_off[3]  += in_lut.idx[lut_id]; \
+            _dBv4_off[4]  += in_lut.idx[lut_id]; \
+            _dBv4_off[5]  += in_lut.idx[lut_id]; \
+            _dBv4_off[6]  += in_lut.idx[lut_id]; \
+            _dBv4_off[7]  += in_lut.idx[lut_id]; \
+            _dBv4_off[8]  += in_lut.idx[lut_id]; \
+            _dBv4_off[9]  += in_lut.idx[lut_id]; \
+            _dBv4_off[10] += in_lut.idx[lut_id]; \
+            _dBv4_off[11] += in_lut.idx[lut_id]; \
+            _dBv4_off[12] += in_lut.idx[lut_id]; \
+            _dBv4_off[13] += in_lut.idx[lut_id]; \
+            _dBv4_off[14] += in_lut.idx[lut_id]; \
+            _dBv4_off[15] += in_lut.idx[lut_id]; \
+            _dBv4_off[16] += in_lut.idx[lut_id]; \
+            _dBv4_off[17] += in_lut.idx[lut_id]; \
+            _dBv4_off[18] += in_lut.idx[lut_id]; \
+            _dBv4_off[19] += in_lut.idx[lut_id]; \
+            _dBv4_off[20] += in_lut.idx[lut_id]; \
+            _dBv4_off[21] += in_lut.idx[lut_id]; \
+            _dBv4_off[22] += in_lut.idx[lut_id]; \
+            _dBv4_off[23] += in_lut.idx[lut_id]; \
+            _dBv4_off[24] += in_lut.idx[lut_id]; \
+            _dBv4_off[25] += in_lut.idx[lut_id]; \
+            _dBv4_off[26] += in_lut.idx[lut_id]; \
+            _dBv4_off[27] += in_lut.idx[lut_id]; \
+            _dBv4_off[28] += in_lut.idx[lut_id]; \
+            _dBv4_off[29] += in_lut.idx[lut_id]; \
+            _dBv4_off[30] += in_lut.idx[lut_id]; \
+            _dBv4_off[31] += in_lut.idx[lut_id]; \
             \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[0])  && WidthInRange(_inW_id[0])  && (_inN_id[0]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 0,  _dB, _dBv4_off[0]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[1])  && WidthInRange(_inW_id[1])  && (_inN_id[1]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 1,  _dB, _dBv4_off[1]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[2])  && WidthInRange(_inW_id[2])  && (_inN_id[2]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 2,  _dB, _dBv4_off[2]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[3])  && WidthInRange(_inW_id[3])  && (_inN_id[3]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 3,  _dB, _dBv4_off[3]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[4])  && WidthInRange(_inW_id[4])  && (_inN_id[4]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 4,  _dB, _dBv4_off[4]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[5])  && WidthInRange(_inW_id[5])  && (_inN_id[5]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 5,  _dB, _dBv4_off[5]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[6])  && WidthInRange(_inW_id[6])  && (_inN_id[6]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 6,  _dB, _dBv4_off[6]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[7])  && WidthInRange(_inW_id[7])  && (_inN_id[7]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 7,  _dB, _dBv4_off[7]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[8])  && WidthInRange(_inW_id[8])  && (_inN_id[8]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 8,  _dB, _dBv4_off[8]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[9])  && WidthInRange(_inW_id[9])  && (_inN_id[9]  < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 9,  _dB, _dBv4_off[9]);  \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[10]) && WidthInRange(_inW_id[10]) && (_inN_id[10] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 10, _dB, _dBv4_off[10]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[11]) && WidthInRange(_inW_id[11]) && (_inN_id[11] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 11, _dB, _dBv4_off[11]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[12]) && WidthInRange(_inW_id[12]) && (_inN_id[12] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 12, _dB, _dBv4_off[12]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[13]) && WidthInRange(_inW_id[13]) && (_inN_id[13] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 13, _dB, _dBv4_off[13]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[14]) && WidthInRange(_inW_id[14]) && (_inN_id[14] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 14, _dB, _dBv4_off[14]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[15]) && WidthInRange(_inW_id[15]) && (_inN_id[15] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 15, _dB, _dBv4_off[15]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[16]) && WidthInRange(_inW_id[16]) && (_inN_id[16] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 16, _dB, _dBv4_off[16]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[17]) && WidthInRange(_inW_id[17]) && (_inN_id[17] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 17, _dB, _dBv4_off[17]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[18]) && WidthInRange(_inW_id[18]) && (_inN_id[18] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 18, _dB, _dBv4_off[18]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[19]) && WidthInRange(_inW_id[19]) && (_inN_id[19] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 19, _dB, _dBv4_off[19]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[20]) && WidthInRange(_inW_id[20]) && (_inN_id[20] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 20, _dB, _dBv4_off[20]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[21]) && WidthInRange(_inW_id[21]) && (_inN_id[21] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 21, _dB, _dBv4_off[21]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[22]) && WidthInRange(_inW_id[22]) && (_inN_id[22] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 22, _dB, _dBv4_off[22]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[23]) && WidthInRange(_inW_id[23]) && (_inN_id[23] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 23, _dB, _dBv4_off[23]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[24]) && WidthInRange(_inW_id[24]) && (_inN_id[24] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 24, _dB, _dBv4_off[24]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[25]) && WidthInRange(_inW_id[25]) && (_inN_id[25] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 25, _dB, _dBv4_off[25]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[26]) && WidthInRange(_inW_id[26]) && (_inN_id[26] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 26, _dB, _dBv4_off[26]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[27]) && WidthInRange(_inW_id[27]) && (_inN_id[27] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 27, _dB, _dBv4_off[27]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[28]) && WidthInRange(_inW_id[28]) && (_inN_id[28] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 28, _dB, _dBv4_off[28]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[29]) && WidthInRange(_inW_id[29]) && (_inN_id[29] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 29, _dB, _dBv4_off[29]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[30]) && WidthInRange(_inW_id[30]) && (_inN_id[30] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 30, _dB, _dBv4_off[30]); \
-            CP_ASYNC( ( fltCv16Valid && HeightInRange(_inH_id[31]) && WidthInRange(_inW_id[31]) && (_inN_id[31] < inNum) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 31, _dB, _dBv4_off[31]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[0])  && WidthInRange(_in_w_id[0])  && (_in_n_id[0]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 0,  _dB, _dBv4_off[0]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[1])  && WidthInRange(_in_w_id[1])  && (_in_n_id[1]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 1,  _dB, _dBv4_off[1]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[2])  && WidthInRange(_in_w_id[2])  && (_in_n_id[2]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 2,  _dB, _dBv4_off[2]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[3])  && WidthInRange(_in_w_id[3])  && (_in_n_id[3]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 3,  _dB, _dBv4_off[3]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[4])  && WidthInRange(_in_w_id[4])  && (_in_n_id[4]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 4,  _dB, _dBv4_off[4]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[5])  && WidthInRange(_in_w_id[5])  && (_in_n_id[5]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 5,  _dB, _dBv4_off[5]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[6])  && WidthInRange(_in_w_id[6])  && (_in_n_id[6]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 6,  _dB, _dBv4_off[6]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[7])  && WidthInRange(_in_w_id[7])  && (_in_n_id[7]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 7,  _dB, _dBv4_off[7]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[8])  && WidthInRange(_in_w_id[8])  && (_in_n_id[8]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 8,  _dB, _dBv4_off[8]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[9])  && WidthInRange(_in_w_id[9])  && (_in_n_id[9]  < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 9,  _dB, _dBv4_off[9]);  \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[10]) && WidthInRange(_in_w_id[10]) && (_in_n_id[10] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 10, _dB, _dBv4_off[10]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[11]) && WidthInRange(_in_w_id[11]) && (_in_n_id[11] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 11, _dB, _dBv4_off[11]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[12]) && WidthInRange(_in_w_id[12]) && (_in_n_id[12] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 12, _dB, _dBv4_off[12]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[13]) && WidthInRange(_in_w_id[13]) && (_in_n_id[13] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 13, _dB, _dBv4_off[13]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[14]) && WidthInRange(_in_w_id[14]) && (_in_n_id[14] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 14, _dB, _dBv4_off[14]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[15]) && WidthInRange(_in_w_id[15]) && (_in_n_id[15] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 15, _dB, _dBv4_off[15]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[16]) && WidthInRange(_in_w_id[16]) && (_in_n_id[16] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 16, _dB, _dBv4_off[16]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[17]) && WidthInRange(_in_w_id[17]) && (_in_n_id[17] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 17, _dB, _dBv4_off[17]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[18]) && WidthInRange(_in_w_id[18]) && (_in_n_id[18] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 18, _dB, _dBv4_off[18]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[19]) && WidthInRange(_in_w_id[19]) && (_in_n_id[19] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 19, _dB, _dBv4_off[19]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[20]) && WidthInRange(_in_w_id[20]) && (_in_n_id[20] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 20, _dB, _dBv4_off[20]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[21]) && WidthInRange(_in_w_id[21]) && (_in_n_id[21] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 21, _dB, _dBv4_off[21]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[22]) && WidthInRange(_in_w_id[22]) && (_in_n_id[22] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 22, _dB, _dBv4_off[22]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[23]) && WidthInRange(_in_w_id[23]) && (_in_n_id[23] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 23, _dB, _dBv4_off[23]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[24]) && WidthInRange(_in_w_id[24]) && (_in_n_id[24] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 24, _dB, _dBv4_off[24]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[25]) && WidthInRange(_in_w_id[25]) && (_in_n_id[25] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 25, _dB, _dBv4_off[25]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[26]) && WidthInRange(_in_w_id[26]) && (_in_n_id[26] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 26, _dB, _dBv4_off[26]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[27]) && WidthInRange(_in_w_id[27]) && (_in_n_id[27] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 27, _dB, _dBv4_off[27]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[28]) && WidthInRange(_in_w_id[28]) && (_in_n_id[28] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 28, _dB, _dBv4_off[28]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[29]) && WidthInRange(_in_w_id[29]) && (_in_n_id[29] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 29, _dB, _dBv4_off[29]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[30]) && WidthInRange(_in_w_id[30]) && (_in_n_id[30] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 30, _dB, _dBv4_off[30]); \
+            CP_ASYNC( ( flt_c_v16_valid && HeightInRange(_in_h_id[31]) && WidthInRange(_in_w_id[31]) && (_in_n_id[31] < in_num) ), _sBv4, _sBv4_off + CTA_SIZE_IN_THD * 31, _dB, _dBv4_off[31]); \
         }
 

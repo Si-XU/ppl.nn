@@ -21,7 +21,7 @@
 
 #define READ_sRv4_SIZE1(_Rv4, _sm_base_v4, _sRv4_read) \
         { \
-            if(dCv4YValid) \
+            if(dCv4_y_valid) \
             { \
                 _Rv4[0] = _sm_base_v4[_sRv4_read]; \
             } \
@@ -29,7 +29,7 @@
 
 #define READ_sRv4_SIZE2(_Rv4, _sm_base_v4, _sRv4_read) \
         { \
-            if(dCv4YValid) \
+            if(dCv4_y_valid) \
             { \
                 _Rv4[0] = _sm_base_v4[_sRv4_read + WARP_SIZE_IN_THD * CTA_SIZE_Y_IN_WARP * 0]; \
                 _Rv4[1] = _sm_base_v4[_sRv4_read + WARP_SIZE_IN_THD * CTA_SIZE_Y_IN_WARP * 1]; \
@@ -38,7 +38,7 @@
 
 #define READ_sRv4_SIZE4(_Rv4, _sm_base_v4, _sRv4_read) \
         { \
-            if(dCv4YValid) \
+            if(dCv4_y_valid) \
             { \
                 _Rv4[0] = _sm_base_v4[(_sRv4_read + WARP_SIZE_IN_THD * CTA_SIZE_Y_IN_WARP * 0)]; \
                 _Rv4[1] = _sm_base_v4[(_sRv4_read + WARP_SIZE_IN_THD * CTA_SIZE_Y_IN_WARP * 1)]; \
@@ -49,7 +49,7 @@
 
 #define READ_sRv4_SIZE8(_Rv4, _sm_base_v4, _sRv4_read) \
         { \
-            if(dCv4YValid) \
+            if(dCv4_y_valid) \
             { \
                 _Rv4[0] = _sm_base_v4[(_sRv4_read + WARP_SIZE_IN_THD * CTA_SIZE_Y_IN_WARP * 0)]; \
                 _Rv4[1] = _sm_base_v4[(_sRv4_read + WARP_SIZE_IN_THD * CTA_SIZE_Y_IN_WARP * 1) ^ 4]; \
@@ -68,33 +68,33 @@
 
 #define WRITE_sRv2_SIZE1(_sm_base_v2, _sRv2_write, _Cv2, _Cv2_off) \
         { \
-            _sm_base_v2[_sRv2_write + (sRowWt_off ^ 0x0) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 0]; \
+            _sm_base_v2[_sRv2_write + (smem_row_write_off ^ 0x0) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 0]; \
         }
 
 #define WRITE_sRv2_SIZE2(_sm_base_v2, _sRv2_write, _Cv2, _Cv2_off) \
         { \
-            _sm_base_v2[_sRv2_write + (sRowWt_off ^ 0x0) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 0]; \
-            _sm_base_v2[_sRv2_write + (sRowWt_off ^ 0x1) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 1]; \
+            _sm_base_v2[_sRv2_write + (smem_row_write_off ^ 0x0) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 0]; \
+            _sm_base_v2[_sRv2_write + (smem_row_write_off ^ 0x1) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 1]; \
         }
 
 #define WRITE_sRv2_SIZE4(_sm_base_v2, _sRv2_write, _Cv2, _Cv2_off) \
         { \
-            _sm_base_v2[_sRv2_write + (sRowWt_off ^ 0x0) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 0]; \
-            _sm_base_v2[_sRv2_write + (sRowWt_off ^ 0x1) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 1]; \
-            _sm_base_v2[_sRv2_write + (sRowWt_off ^ 0x2) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 2]; \
-            _sm_base_v2[_sRv2_write + (sRowWt_off ^ 0x3) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 3]; \
+            _sm_base_v2[_sRv2_write + (smem_row_write_off ^ 0x0) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 0]; \
+            _sm_base_v2[_sRv2_write + (smem_row_write_off ^ 0x1) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 1]; \
+            _sm_base_v2[_sRv2_write + (smem_row_write_off ^ 0x2) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 2]; \
+            _sm_base_v2[_sRv2_write + (smem_row_write_off ^ 0x3) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 3]; \
         }
 
 #define WRITE_sRv2_SIZE8(_sm_base_v2, _sRv2_write, _Cv2, _Cv2_off) \
         { \
-            _sm_base_v2[_sRv2_write + (sRowWt_off ^ 0x0) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 0]; \
-            _sm_base_v2[_sRv2_write + (sRowWt_off ^ 0x1) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 1]; \
-            _sm_base_v2[_sRv2_write + (sRowWt_off ^ 0x2) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 2]; \
-            _sm_base_v2[_sRv2_write + (sRowWt_off ^ 0x3) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 3]; \
-            _sm_base_v2[_sRv2_write + (sRowWt_off ^ 0x4) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 4]; \
-            _sm_base_v2[_sRv2_write + (sRowWt_off ^ 0x5) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 5]; \
-            _sm_base_v2[_sRv2_write + (sRowWt_off ^ 0x6) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 6]; \
-            _sm_base_v2[_sRv2_write + (sRowWt_off ^ 0x7) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 7]; \
+            _sm_base_v2[_sRv2_write + (smem_row_write_off ^ 0x0) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 0]; \
+            _sm_base_v2[_sRv2_write + (smem_row_write_off ^ 0x1) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 1]; \
+            _sm_base_v2[_sRv2_write + (smem_row_write_off ^ 0x2) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 2]; \
+            _sm_base_v2[_sRv2_write + (smem_row_write_off ^ 0x3) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 3]; \
+            _sm_base_v2[_sRv2_write + (smem_row_write_off ^ 0x4) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 4]; \
+            _sm_base_v2[_sRv2_write + (smem_row_write_off ^ 0x5) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 5]; \
+            _sm_base_v2[_sRv2_write + (smem_row_write_off ^ 0x6) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 6]; \
+            _sm_base_v2[_sRv2_write + (smem_row_write_off ^ 0x7) * TILE_M_V2_PER_MMA] = _Cv2[_Cv2_off + 7]; \
         }
 
 #if defined(USE_IMMA16816) || defined(USE_IMMA16832)

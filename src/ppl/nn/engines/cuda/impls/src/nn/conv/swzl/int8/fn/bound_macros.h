@@ -15,138 +15,138 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#define FWD_FLT_SIZE1(_fltH_id, _fltW_id, _fltCv16_id, _fltCv16Valid) \
+#define FWD_FLT_SIZE1(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid) \
         { \
-            _fltW_id++; \
-            inW_id[0] += holeWidth; \
+            _flt_w_id++; \
+            in_w_id[0] += hole_width; \
             \
-            if(_fltW_id == fltWidth) \
+            if(_flt_w_id == fltWidth) \
             {\
-                _fltW_id = 0; \
-                inW_id[0] = inW_START[0]; \
-                _fltH_id++; \
-                inH_id[0] += holeHeight; \
+                _flt_w_id = 0; \
+                in_w_id[0] = in_w_start[0]; \
+                _flt_h_id++; \
+                in_h_id[0] += hole_height; \
             } \
             \
-            if(_fltH_id == fltHeight) \
+            if(_flt_h_id == fltHeight) \
             { \
-                _fltH_id = 0;   \
-                inH_id[0] = inH_START[0]; \
+                _flt_h_id = 0;   \
+                in_h_id[0] = in_h_start[0]; \
                 \
-                _fltCv16_id += TILE_K_V16_PER_CTA; \
+                _flt_c_v16_id += TILE_K_V16_PER_CTA; \
                 \
-                _fltCv16Valid = _fltCv16_id < fltCv16End; \
+                _flt_c_v16_valid = _flt_c_v16_id < flt_c_v16_end; \
             } \
         }
 
-#define FWD_FLT_SIZE2(_fltH_id, _fltW_id, _fltCv16_id, _fltCv16Valid) \
+#define FWD_FLT_SIZE2(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid) \
         { \
-            _fltW_id++; \
-            inW_id[0] += holeWidth;        inW_id[1] += holeWidth; \
+            _flt_w_id++; \
+            in_w_id[0] += hole_width;        in_w_id[1] += hole_width; \
             \
-            if(_fltW_id == fltWidth) \
+            if(_flt_w_id == fltWidth) \
             {\
-                _fltW_id = 0; \
-                inW_id[0] = inW_START[0];  inW_id[1] = inW_START[1]; \
-                _fltH_id++; \
-                inH_id[0] += holeHeight;   inH_id[1] += holeHeight; \
+                _flt_w_id = 0; \
+                in_w_id[0] = in_w_start[0];  in_w_id[1] = in_w_start[1]; \
+                _flt_h_id++; \
+                in_h_id[0] += hole_height;   in_h_id[1] += hole_height; \
             } \
             \
-            if(_fltH_id == fltHeight) \
+            if(_flt_h_id == fltHeight) \
             { \
-                _fltH_id = 0;   \
-                inH_id[0] = inH_START[0];  inH_id[1] = inH_START[1]; \
+                _flt_h_id = 0;   \
+                in_h_id[0] = in_h_start[0];  in_h_id[1] = in_h_start[1]; \
                 \
-                _fltCv16_id += TILE_K_V16_PER_CTA; \
+                _flt_c_v16_id += TILE_K_V16_PER_CTA; \
                 \
-                _fltCv16Valid = _fltCv16_id < fltCv16End; \
-            } \
-        }
-
-#define FWD_FLT_SIZE4(_fltH_id, _fltW_id, _fltCv16_id, _fltCv16Valid) \
-        { \
-            _fltW_id++; \
-            inW_id[0] += holeWidth;        inW_id[1] += holeWidth;   inW_id[2] += holeWidth;  inW_id[3] += holeWidth; \
-            \
-            if(_fltW_id == fltWidth) \
-            { \
-                _fltW_id = 0; \
-                inW_id[0] = inW_START[0];  inW_id[1] = inW_START[1]; inW_id[2] = inW_START[2];  inW_id[3] = inW_START[3]; \
-                _fltH_id++; \
-                inH_id[0] += holeHeight;   inH_id[1] += holeHeight;  inH_id[2] += holeHeight;   inH_id[3] += holeHeight; \
-            } \
-            \
-            if(_fltH_id == fltHeight) \
-            { \
-                _fltH_id = 0;   \
-                inH_id[0] = inH_START[0];  inH_id[1] = inH_START[1]; inH_id[2] = inH_START[2];  inH_id[3] = inH_START[3]; \
-                \
-                _fltCv16_id += TILE_K_V16_PER_CTA; \
-                \
-                _fltCv16Valid = _fltCv16_id < fltCv16End; \
+                _flt_c_v16_valid = _flt_c_v16_id < flt_c_v16_end; \
             } \
         }
 
-#define FWD_FLT_SIZE8(_fltH_id, _fltW_id, _fltCv16_id, _fltCv16Valid) \
+#define FWD_FLT_SIZE4(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid) \
         { \
-            _fltW_id++; \
-            inW_id[0] += holeWidth;        inW_id[1] += holeWidth;   inW_id[2] += holeWidth;  inW_id[3] += holeWidth; \
-            inW_id[4] += holeWidth;        inW_id[5] += holeWidth;   inW_id[6] += holeWidth;  inW_id[7] += holeWidth; \
+            _flt_w_id++; \
+            in_w_id[0] += hole_width;        in_w_id[1] += hole_width;   in_w_id[2] += hole_width;  in_w_id[3] += hole_width; \
             \
-            if(_fltW_id == fltWidth) \
+            if(_flt_w_id == fltWidth) \
             { \
-                _fltW_id = 0; \
-                inW_id[0] = inW_START[0];  inW_id[1] = inW_START[1]; inW_id[2] = inW_START[2];  inW_id[3] = inW_START[3]; \
-                inW_id[4] = inW_START[4];  inW_id[5] = inW_START[5]; inW_id[6] = inW_START[6];  inW_id[7] = inW_START[7]; \
-                _fltH_id++; \
-                inH_id[0] += holeHeight;   inH_id[1] += holeHeight;  inH_id[2] += holeHeight;   inH_id[3] += holeHeight; \
-                inH_id[4] += holeHeight;   inH_id[5] += holeHeight;  inH_id[6] += holeHeight;   inH_id[7] += holeHeight; \
+                _flt_w_id = 0; \
+                in_w_id[0] = in_w_start[0];  in_w_id[1] = in_w_start[1]; in_w_id[2] = in_w_start[2];  in_w_id[3] = in_w_start[3]; \
+                _flt_h_id++; \
+                in_h_id[0] += hole_height;   in_h_id[1] += hole_height;  in_h_id[2] += hole_height;   in_h_id[3] += hole_height; \
             } \
             \
-            if(_fltH_id == fltHeight) \
+            if(_flt_h_id == fltHeight) \
             { \
-                _fltH_id = 0;   \
-                inH_id[0] = inH_START[0];  inH_id[1] = inH_START[1]; inH_id[2] = inH_START[2];  inH_id[3] = inH_START[3]; \
-                inH_id[4] = inH_START[4];  inH_id[5] = inH_START[5]; inH_id[6] = inH_START[6];  inH_id[7] = inH_START[7]; \
+                _flt_h_id = 0;   \
+                in_h_id[0] = in_h_start[0];  in_h_id[1] = in_h_start[1]; in_h_id[2] = in_h_start[2];  in_h_id[3] = in_h_start[3]; \
                 \
-                _fltCv16_id += TILE_K_V16_PER_CTA; \
+                _flt_c_v16_id += TILE_K_V16_PER_CTA; \
                 \
-                _fltCv16Valid = _fltCv16_id < fltCv16End; \
+                _flt_c_v16_valid = _flt_c_v16_id < flt_c_v16_end; \
             } \
         }
 
-#define FWD_FLT_SIZE16(_fltH_id, _fltW_id, _fltCv16_id, _fltCv16Valid) \
+#define FWD_FLT_SIZE8(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid) \
         { \
-            _fltW_id++; \
-            inW_id[0]  += holeWidth;        inW_id[1]  += holeWidth;   inW_id[2]  += holeWidth;  inW_id[3]  += holeWidth; \
-            inW_id[4]  += holeWidth;        inW_id[5]  += holeWidth;   inW_id[6]  += holeWidth;  inW_id[7]  += holeWidth; \
-            inW_id[8]  += holeWidth;        inW_id[9]  += holeWidth;   inW_id[10] += holeWidth;  inW_id[11] += holeWidth; \
-            inW_id[12] += holeWidth;        inW_id[13] += holeWidth;   inW_id[14] += holeWidth;  inW_id[15] += holeWidth; \
+            _flt_w_id++; \
+            in_w_id[0] += hole_width;        in_w_id[1] += hole_width;   in_w_id[2] += hole_width;  in_w_id[3] += hole_width; \
+            in_w_id[4] += hole_width;        in_w_id[5] += hole_width;   in_w_id[6] += hole_width;  in_w_id[7] += hole_width; \
             \
-            if(_fltW_id == fltWidth) \
+            if(_flt_w_id == fltWidth) \
             { \
-                _fltW_id = 0; \
-                inW_id[0]  = inW_START[0];   inW_id[1]  = inW_START[1];  inW_id[2]  = inW_START[2];   inW_id[3]  = inW_START[3]; \
-                inW_id[4]  = inW_START[4];   inW_id[5]  = inW_START[5];  inW_id[6]  = inW_START[6];   inW_id[7]  = inW_START[7]; \
-                inW_id[8]  = inW_START[8];   inW_id[9]  = inW_START[9];  inW_id[10] = inW_START[10];  inW_id[11] = inW_START[11]; \
-                inW_id[12] = inW_START[12];  inW_id[13] = inW_START[13]; inW_id[14] = inW_START[14];  inW_id[15] = inW_START[15]; \
-                _fltH_id++; \
-                inH_id[0]  += holeHeight;        inH_id[1]  += holeHeight;   inH_id[2]  += holeHeight;  inH_id[3]  += holeHeight; \
-                inH_id[4]  += holeHeight;        inH_id[5]  += holeHeight;   inH_id[6]  += holeHeight;  inH_id[7]  += holeHeight; \
-                inH_id[8]  += holeHeight;        inH_id[9]  += holeHeight;   inH_id[10] += holeHeight;  inH_id[11] += holeHeight; \
-                inH_id[12] += holeHeight;        inH_id[13] += holeHeight;   inH_id[14] += holeHeight;  inH_id[15] += holeHeight; \
+                _flt_w_id = 0; \
+                in_w_id[0] = in_w_start[0];  in_w_id[1] = in_w_start[1]; in_w_id[2] = in_w_start[2];  in_w_id[3] = in_w_start[3]; \
+                in_w_id[4] = in_w_start[4];  in_w_id[5] = in_w_start[5]; in_w_id[6] = in_w_start[6];  in_w_id[7] = in_w_start[7]; \
+                _flt_h_id++; \
+                in_h_id[0] += hole_height;   in_h_id[1] += hole_height;  in_h_id[2] += hole_height;   in_h_id[3] += hole_height; \
+                in_h_id[4] += hole_height;   in_h_id[5] += hole_height;  in_h_id[6] += hole_height;   in_h_id[7] += hole_height; \
             } \
             \
-            if(_fltH_id == fltHeight) \
+            if(_flt_h_id == fltHeight) \
             { \
-                _fltH_id = 0;   \
-                inH_id[0]  = inH_START[0];   inH_id[1]  = inH_START[1];  inH_id[2]  = inH_START[2];   inH_id[3]  = inH_START[3]; \
-                inH_id[4]  = inH_START[4];   inH_id[5]  = inH_START[5];  inH_id[6]  = inH_START[6];   inH_id[7]  = inH_START[7]; \
-                inH_id[8]  = inH_START[8];   inH_id[9]  = inH_START[9];  inH_id[10] = inH_START[10];  inH_id[11] = inH_START[11]; \
-                inH_id[12] = inH_START[12];  inH_id[13] = inH_START[13]; inH_id[14] = inH_START[14];  inH_id[15] = inH_START[15]; \
+                _flt_h_id = 0;   \
+                in_h_id[0] = in_h_start[0];  in_h_id[1] = in_h_start[1]; in_h_id[2] = in_h_start[2];  in_h_id[3] = in_h_start[3]; \
+                in_h_id[4] = in_h_start[4];  in_h_id[5] = in_h_start[5]; in_h_id[6] = in_h_start[6];  in_h_id[7] = in_h_start[7]; \
                 \
-                _fltCv16_id += TILE_K_V16_PER_CTA; \
+                _flt_c_v16_id += TILE_K_V16_PER_CTA; \
                 \
-                _fltCv16Valid = _fltCv16_id < fltCv16End; \
+                _flt_c_v16_valid = _flt_c_v16_id < flt_c_v16_end; \
+            } \
+        }
+
+#define FWD_FLT_SIZE16(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid) \
+        { \
+            _flt_w_id++; \
+            in_w_id[0]  += hole_width;        in_w_id[1]  += hole_width;   in_w_id[2]  += hole_width;  in_w_id[3]  += hole_width; \
+            in_w_id[4]  += hole_width;        in_w_id[5]  += hole_width;   in_w_id[6]  += hole_width;  in_w_id[7]  += hole_width; \
+            in_w_id[8]  += hole_width;        in_w_id[9]  += hole_width;   in_w_id[10] += hole_width;  in_w_id[11] += hole_width; \
+            in_w_id[12] += hole_width;        in_w_id[13] += hole_width;   in_w_id[14] += hole_width;  in_w_id[15] += hole_width; \
+            \
+            if(_flt_w_id == fltWidth) \
+            { \
+                _flt_w_id = 0; \
+                in_w_id[0]  = in_w_start[0];   in_w_id[1]  = in_w_start[1];  in_w_id[2]  = in_w_start[2];   in_w_id[3]  = in_w_start[3]; \
+                in_w_id[4]  = in_w_start[4];   in_w_id[5]  = in_w_start[5];  in_w_id[6]  = in_w_start[6];   in_w_id[7]  = in_w_start[7]; \
+                in_w_id[8]  = in_w_start[8];   in_w_id[9]  = in_w_start[9];  in_w_id[10] = in_w_start[10];  in_w_id[11] = in_w_start[11]; \
+                in_w_id[12] = in_w_start[12];  in_w_id[13] = in_w_start[13]; in_w_id[14] = in_w_start[14];  in_w_id[15] = in_w_start[15]; \
+                _flt_h_id++; \
+                in_h_id[0]  += hole_height;        in_h_id[1]  += hole_height;   in_h_id[2]  += hole_height;  in_h_id[3]  += hole_height; \
+                in_h_id[4]  += hole_height;        in_h_id[5]  += hole_height;   in_h_id[6]  += hole_height;  in_h_id[7]  += hole_height; \
+                in_h_id[8]  += hole_height;        in_h_id[9]  += hole_height;   in_h_id[10] += hole_height;  in_h_id[11] += hole_height; \
+                in_h_id[12] += hole_height;        in_h_id[13] += hole_height;   in_h_id[14] += hole_height;  in_h_id[15] += hole_height; \
+            } \
+            \
+            if(_flt_h_id == fltHeight) \
+            { \
+                _flt_h_id = 0;   \
+                in_h_id[0]  = in_h_start[0];   in_h_id[1]  = in_h_start[1];  in_h_id[2]  = in_h_start[2];   in_h_id[3]  = in_h_start[3]; \
+                in_h_id[4]  = in_h_start[4];   in_h_id[5]  = in_h_start[5];  in_h_id[6]  = in_h_start[6];   in_h_id[7]  = in_h_start[7]; \
+                in_h_id[8]  = in_h_start[8];   in_h_id[9]  = in_h_start[9];  in_h_id[10] = in_h_start[10];  in_h_id[11] = in_h_start[11]; \
+                in_h_id[12] = in_h_start[12];  in_h_id[13] = in_h_start[13]; in_h_id[14] = in_h_start[14];  in_h_id[15] = in_h_start[15]; \
+                \
+                _flt_c_v16_id += TILE_K_V16_PER_CTA; \
+                \
+                _flt_c_v16_valid = _flt_c_v16_id < flt_c_v16_end; \
             } \
         }

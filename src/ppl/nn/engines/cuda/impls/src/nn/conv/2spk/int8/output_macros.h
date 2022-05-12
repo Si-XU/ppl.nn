@@ -87,12 +87,12 @@
             if(_has_bias && dCv4_x_valid && dCv4_y_valid) \
             { \
                 int4 _bias_v4 = ((int4 *)_bias)[grp_id * num_flt_per_grp_pad_v4 + dCv4_idx]; \
-	            float* _fBias = (float *) &_bias_v4; \
+	            float* _f_bias = (float *) &_bias_v4; \
                 \
                 _Pragma("unroll") \
 	            for(int i = 0; i < _INT4_TO_4INT_; i++) \
                 { \
-	                fR[i] = fR[i] + _fBias[i]; \
+	                fR[i] = fR[i] + _f_bias[i]; \
 	            } \
             } \
         }

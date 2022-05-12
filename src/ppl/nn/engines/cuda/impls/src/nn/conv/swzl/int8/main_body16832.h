@@ -22,12 +22,6 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #endif
 {
 #if (__CUDA_ARCH__ >= 800) && (__CUDACC_VER_MAJOR__  * 1000  + __CUDACC_VER_MINOR__ * 10  >= 10020)
-    ///////////////////////////////////////////////////
-    // definition section
-    ///////////////////////////////////////////////////
-
-    /////////////////////////
-    // results
     int4 Cv4[Cv4_ITEMS_PER_THD];
 
     int  * C   = (int  *) Cv4;
@@ -36,14 +30,10 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #pragma unroll
     for (int i = 0; i < C_ITEMS_PER_THD; i++) { C[i] = _ZERO_; }
 
-    /////////////////////////
-    // thread layout
     uint tid       =  threadIdx.x;
 
-    uint local_tid =  tid & 0x1f; // [0, 31], tid within the warp
+    uint local_tid =  tid & 0x1f;
 
-    /////////////////////////
-    //  warp layout
     uint warp_idx  = (tid >>  WARP_SIZE_IN_BITS) & (CTA_SIZE_X_IN_WARP - 1);
     uint warp_idy  =  tid >> (WARP_SIZE_IN_BITS  +  CTA_SIZE_X_IN_BITS);
 
@@ -63,36 +53,60 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
     uint out_tid   =  warp_idy * WARP_SIZE_IN_THD + local_tid;
 
-    uint cta_idx   = blockIdx.x;
-    uint cta_idy   = blockIdx.y;
+    /////////////////////////
+    //  cta layout
+    uint cta_idx   = 0;
+    uint cta_idy   = 0;
+
+    uint lsb_y_mask = 0x7;
+    uint lsb_y_bits = 3;
+
+    while(1)
+    {
+        uint msb_cta_y  =  blockIdx.y & (~lsb_y_mask);
+        uint lsb_cta_y  =  blockIdx.y &   lsb_y_mask;
+
+        uint flip_cta_y =  blockIdx.y &  (lsb_y_mask + 0x1);
+        uint tail_cta_y =  blockIdx.y |   lsb_y_mask;
+
+        uint local_cta_id = lsb_cta_y * gridDim.x + blockIdx.x;
+
+        if(tail_cta_y < gridDim.y)
+        {
+            cta_idy = msb_cta_y | (local_cta_id & lsb_y_mask);
+
+            cta_idx = local_cta_id >> lsb_y_bits;
+            if(flip_cta_y) cta_idx = gridDim.x + (~cta_idx);
+
+            break;
+        }
+        else {
+            lsb_y_mask = lsb_y_mask >> 1;
+            lsb_y_bits = lsb_y_bits -  1;
+        }
+    }
 
 #if defined(ENABLE_SPLITK)
-    uint grp_id    = blockIdx.z % numGrp;
-    uint spk_id    = blockIdx.z / numGrp;
+    uint grp_id    = blockIdx.z % num_grp;
+    uint spk_id    = blockIdx.z / num_grp;
 
-    uint numChlPerSpk = (spk_id != splitK - 1) ? numChlPerSpkHead : numChlPerSpkTail;
+    uint num_chl_per_spk = (spk_id != splitk - 1) ? num_chl_per_spk_head : num_chl_per_spk_tail;
 #elif defined(ENABLE_FUSE)
     uint grp_id    = blockIdx.z;
 #endif
 
 #if defined(ENABLE_SPLITK)
-    int kloop = fltHW * CeilDiv(numChlPerSpk, TILE_K_PER_CTA);
+    int kloop = flt_hw * DivUp(num_chl_per_spk, TILE_K_PER_CTA);
 #elif defined(ENABLE_FUSE)
-    int kloop = kLoopNum;
+    int kloop = kloop_num;
 #endif
 
-    /////////////////////////
-    // in, flt and out leading dimension
-
-    uint numChlPerGrpPadV16 = numChlPerGrpPad >> 4;
-    // uint numFltPerGrpPadV16 = numFltPerGrpPad >> 4;
-    uint numFltPerGrpPadV4  = numFltPerGrpPad >> 2;
-
-    /////////////////////////
-    //  output layout
+    uint num_chl_per_grp_pad_v16 = num_chl_per_grp_pad >> 4;
+    // uint num_flt_per_grp_pad_v16 = num_flt_per_grp_pad >> 4;
+    uint num_flt_per_grp_pad_v4  = num_flt_per_grp_pad >> 2;
 
     uint   dCv4_idx[OUTPUT_BLKS_PER_STEP];
-    bool dCv4XValid[OUTPUT_BLKS_PER_STEP];
+    bool dCv4_x_valid[OUTPUT_BLKS_PER_STEP];
 
     uint dCv4_idy   =  cta_idy  * TILE_M_V4_PER_CTA  +
                        out_tid  % TILE_M_V4_PER_CTA;
@@ -101,81 +115,72 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
                        warp_idx * TILE_N_V1_PER_WARP +
                        out_tid  / TILE_M_V4_PER_CTA;
 
-    bool dCv4YValid =  (dCv4_idy < numFltPerGrpPadV4) & ((out_tid / TILE_M_V4_PER_CTA) < TILE_N_PER_MMA);
+    bool dCv4_y_valid =  (dCv4_idy < num_flt_per_grp_pad_v4) & ((out_tid / TILE_M_V4_PER_CTA) < TILE_N_PER_MMA);
 
 #pragma unroll
     for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++)
     {
         dCv4_idx[i]   =  dCv4_idx[0] + OUTPUT_SIZE_X_IN_THD * i;
-        dCv4XValid[i] = (dCv4_idx[i] / outHW) < inNum;
+        dCv4_x_valid[i] = (dCv4_idx[i] / out_hw) < in_num;
     }
 
 #if defined(ENABLE_SPLITK)
-    uint dCv4_base  =  spk_id * numFltPerGrpPadV4 * numGrp * outHW * inNum +
-                       grp_id * numFltPerGrpPadV4 + dCv4_idy;
+    uint dCv4_base  =  spk_id * num_flt_per_grp_pad_v4 * num_grp * out_hw * in_num +
+                       grp_id * num_flt_per_grp_pad_v4 + dCv4_idy;
 #elif defined(ENABLE_FUSE)
-    uint dCv4_base  =  grp_id * numFltPerGrpPadV4 + dCv4_idy;
+    uint dCv4_base  =  grp_id * num_flt_per_grp_pad_v4 + dCv4_idy;
 #endif
-
-    /////////////////////////
-    //  reduce layout
 
     uint mma_idy    =  local_tid %  MMA_SIZE_Y_IN_THD;
     uint mma_idx    =  local_tid >> MMA_SIZE_Y_IN_BITS;
 
-    uint sRowWt_id  =  (warp_idy * TILE_M_V8_PER_WARP) / SMEM_ROW_V8_SIZE;
-    uint sRowWt_off = ((warp_idy * TILE_M_V8_PER_WARP) ^ ((mma_idx % TILE_N_PER_MMA_QTR) / M_ROWS_PER_SMEM_ROW)
+    uint smem_row_write_id  =  (warp_idy * TILE_M_V8_PER_WARP) / SMEM_ROW_V8_SIZE;
+    uint smem_row_write_off = ((warp_idy * TILE_M_V8_PER_WARP) ^ ((mma_idx % TILE_N_PER_MMA_QTR) / M_ROWS_PER_SMEM_ROW)
                        ) % SMEM_ROW_V8_SIZE;
 
     uint sRv2_write =  warp_idx   * TILE_M_V2_PER_CTA    * TILE_N_V1_PER_MMA    +
                        mma_idx    * TILE_M_V2_PER_CTA    +
-                       sRowWt_id  * SMEM_ROW_V2_SIZE     +
+                       smem_row_write_id  * SMEM_ROW_V2_SIZE     +
                        mma_idy;
 
-    uint sMmaRd_idy =  out_tid    % TILE_M_V4_PER_CTA;
-    uint sMmaRd_idx =  out_tid    / TILE_M_V4_PER_CTA; 
+    uint mma_read_idy =  out_tid    % TILE_M_V4_PER_CTA;
+    uint mma_read_idx =  out_tid    / TILE_M_V4_PER_CTA; 
 
-    uint sRowRd_id  =  sMmaRd_idy / SMEM_ROW_V4_SIZE;
-    uint sRowRd_off =  sMmaRd_idy % SMEM_ROW_V4_SIZE;
+    uint smem_row_read_id  =  mma_read_idy / SMEM_ROW_V4_SIZE;
+    uint smem_row_read_off =  mma_read_idy % SMEM_ROW_V4_SIZE;
 
-    uint sIntra_off =  sRowRd_off % TILE_M_V4_PER_MMA;
-    uint sInter_off =  sRowRd_off / TILE_M_V4_PER_MMA;
+    uint smem_intra_off =  smem_row_read_off % TILE_M_V4_PER_MMA;
+    uint smem_inter_off =  smem_row_read_off / TILE_M_V4_PER_MMA;
 
     uint sRv4_read  =  warp_idx                          * TILE_M_V4_PER_CTA    * TILE_N_PER_MMA          +
-                      (sMmaRd_idx / TILE_N_PER_MMA_QTR)  * TILE_M_V4_PER_CTA    * TILE_N_PER_MMA_QTR      +
-                      (sMmaRd_idx % TILE_N_PER_MMA_QTR)  * TILE_M_V4_PER_CTA    +
-                       sRowRd_id  * SMEM_ROW_V4_SIZE     +
-                    (((sMmaRd_idx % TILE_N_PER_MMA_QTR)  / M_ROWS_PER_SMEM_ROW) ^ sInter_off)         * TILE_M_V4_PER_MMA +
-                       sIntra_off;
-
-    ///////////////////////////////////////////////////
-    // device memory A B and C index
-    ///////////////////////////////////////////////////
+                      (mma_read_idx / TILE_N_PER_MMA_QTR)  * TILE_M_V4_PER_CTA    * TILE_N_PER_MMA_QTR      +
+                      (mma_read_idx % TILE_N_PER_MMA_QTR)  * TILE_M_V4_PER_CTA    +
+                       smem_row_read_id  * SMEM_ROW_V4_SIZE     +
+                    (((mma_read_idx % TILE_N_PER_MMA_QTR)  / M_ROWS_PER_SMEM_ROW) ^ smem_inter_off)         * TILE_M_V4_PER_MMA +
+                       smem_intra_off;
 
 #if defined(FLT_SIZE3)
-    int fltHW_id      = 0;
-    int fltHW_bid     = 0x1; // bid: binary id for bit operation
+    int flt_hw_id      = 0;
+    int flt_hw_bid     = 0x1;
 
-    int cLut_id       = 0;
+    int lut_id       = 0;
 #elif defined(FLT_SIZEN)
-    int  fltH_id      = 0;
-    int  fltW_id      = 0;
+    int  flt_h_id      = 0;
+    int  flt_w_id      = 0;
 
-    int cLut_id       = 0;
+    int lut_id       = 0;
 #endif
 
 #if defined(ENABLE_SPLITK)
-    int  fltCv16End   = (spk_id * numChlPerSpkHead + numChlPerSpk) >> 4;
-    int  fltCv16_id   = ldg_idx + ((spk_id * numChlPerSpkHead) >> 4);
+    int  flt_c_v16_end   = (spk_id * num_chl_per_spk_head + num_chl_per_spk) >> 4;
+    int  flt_c_v16_id   = ldg_idx + ((spk_id * num_chl_per_spk_head) >> 4);
 #elif defined(ENABLE_FUSE)
-    int  fltCv16End   = numChlPerGrpPadV16;
-    int  fltCv16_id   = ldg_idx;
+    int  flt_c_v16_end   = num_chl_per_grp_pad_v16;
+    int  flt_c_v16_id   = ldg_idx;
 #endif
 
-    bool fltCv16Valid = fltCv16_id < fltCv16End;
+    bool flt_c_v16_valid = flt_c_v16_id < flt_c_v16_end;
 
-    /////////////////////////
-    // ldg A and B registers
     int4 Rv4[Rv4_SIZE];
 #if defined(ENABLE_FUSE)
     int * R = (int *) Rv4;
@@ -189,59 +194,47 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     int4 * reg_dBv4 = (int4 *) Rv4 + REG_dAv4_SIZE;
 #endif
 
-    /////////////////////////
-    // ldg A index
-
     int   dAv4_off[READ_dAv4_STEPS];
-    bool fltNValid[READ_dAv4_STEPS];
+    bool flt_n_valid[READ_dAv4_STEPS];
 
     for(int i = 0; i < READ_dAv4_STEPS; i++)
     {
-        SET_dAv4_BOUND(i, dAv4_off[i], fltNValid[i]);
+        SET_dAv4_BOUND(i, dAv4_off[i], flt_n_valid[i]);
     }
-
-    /////////////////////////
-    // ldg B index
 
 #if defined(FLT_SIZE1)
     int   dBv4_off[READ_dBv4_STEPS];
-    bool inHWValid[READ_dBv4_STEPS];
+    bool in_hw_valid[READ_dBv4_STEPS];
 
     for(int i = 0; i < READ_dBv4_STEPS; i++)
     {
-        SET_dBv4_BOUND(i, dBv4_off[i], inHWValid[i]);
+        SET_dBv4_BOUND(i, dBv4_off[i], in_hw_valid[i]);
     }
 #elif defined(FLT_SIZE3)
     int dBv4_off[READ_dBv4_STEPS];
-    int inHWMask[READ_dBv4_STEPS];
+    int in_hw_mask[READ_dBv4_STEPS];
 
     for(int i = 0; i < READ_dBv4_STEPS; i++)
     {
-        SET_dBv4_BOUND(i, dBv4_off[i], inHWMask[i]);
+        SET_dBv4_BOUND(i, dBv4_off[i], in_hw_mask[i]);
     }
 #elif defined(FLT_SIZEN)
     int dBv4_off[READ_dBv4_STEPS];
-    int   inN_id[READ_dBv4_STEPS];
-    int   inH_id[READ_dBv4_STEPS];
-    int   inW_id[READ_dBv4_STEPS];
+    int   in_n_id[READ_dBv4_STEPS];
+    int   in_h_id[READ_dBv4_STEPS];
+    int   in_w_id[READ_dBv4_STEPS];
 
-    int inH_START[READ_dBv4_STEPS];
-    int inW_START[READ_dBv4_STEPS];
+    int in_h_start[READ_dBv4_STEPS];
+    int in_w_start[READ_dBv4_STEPS];
 
     for(int i = 0; i < READ_dBv4_STEPS; i++)
     {
-        SET_dBv4_BOUND(i, dBv4_off[i], inN_id[i], inH_START[i], inW_START[i]);
-        inH_id[i] = inH_START[i];
-        inW_id[i] = inW_START[i];
+        SET_dBv4_BOUND(i, dBv4_off[i], in_n_id[i], in_h_start[i], in_w_start[i]);
+        in_h_id[i] = in_h_start[i];
+        in_w_id[i] = in_w_start[i];
     }
 #endif
 
-    ///////////////////////////////////////////////////
-    // shared memory index
-    ///////////////////////////////////////////////////
-
-    /////////////////////////
-    //  smem index
     extern __shared__ char sm_base[];
 
     int  * sm_base_v1 = (int  *) sm_base;
@@ -256,12 +249,8 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     CVT_SM_PTR(smp_base_v4, sm_base_v4);
 #endif
 
-    /////////////////////////
-    //  A, B smem index
-
-    // store to shared memory (sts)
-    uint sAv4_write =  sts_idy  * TILE_K_V16_PER_CTA +                 // row offset
-                       sts_idx;                                        // col offset
+    uint sAv4_write =  sts_idy  * TILE_K_V16_PER_CTA +
+                       sts_idx;
 
     uint sBv4_write =  sAv4_write + SM_A_V4_1BUF * BUF_NUM;
 
@@ -279,7 +268,6 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     uint ldsb_idx = ((local_tid / K_ROWS_PER_SMEM_ROW) & 0x7) ^  (local_tid >> 4);
 #endif
 
-    // load from shared memory (lds)
     uint sAv1_read  =  warp_idy   * TILE_M_PER_WARP        * TILE_K_V4_PER_CTA +
 #if TILE_M_PER_WARP == 8
                       (ldsa_idy   % WARP_SIZE_IN_THD_HALF) * TILE_K_V4_PER_CTA +
@@ -298,7 +286,6 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     int sm_read_buf  = 0;
 #endif
 
-    // double buffer registers
     int db0_sBv1[REG_sBv1_SIZE];
 #if TILE_K_PER_CTA == 64 || TILE_K_PER_CTA == 128
     int db1_sBv1[REG_sBv1_SIZE];
@@ -309,11 +296,6 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     int db1_sAv1[REG_sAv1_SIZE];
 #endif
 
-    ///////////////////////////////////////////////////
-    // main loop
-    ///////////////////////////////////////////////////
-
-    // prefetch
 #if BUF_NUM > 2
 #pragma unroll
     for(int buf = 0; buf < BUF_NUM - 1; buf++, --kloop)
@@ -321,37 +303,37 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #endif
 #if defined(FLT_SIZE1)
 #if BUF_NUM <=2
-        LOAD_dAv4(reg_dAv4, dA, dAv4_off, fltCv16Valid, fltNValid);
-        LOAD_dBv4(reg_dBv4, dB, dBv4_off, fltCv16Valid, inHWValid);
+        LOAD_dAv4(reg_dAv4, dA, dAv4_off, flt_c_v16_valid, flt_n_valid);
+        LOAD_dBv4(reg_dBv4, dB, dBv4_off, flt_c_v16_valid, in_hw_valid);
 #elif BUF_NUM > 2
-        LOAD_dAv4(smp_base_v4, sAv4_write, dA, dAv4_off, fltCv16Valid, fltNValid);
-        LOAD_dBv4(smp_base_v4, sBv4_write, dB, dBv4_off, fltCv16Valid, inHWValid);
+        LOAD_dAv4(smp_base_v4, sAv4_write, dA, dAv4_off, flt_c_v16_valid, flt_n_valid);
+        LOAD_dBv4(smp_base_v4, sBv4_write, dB, dBv4_off, flt_c_v16_valid, in_hw_valid);
 #endif
 
-        FWD_FLT(fltCv16_id, fltCv16Valid);
+        FWD_FLT(flt_c_v16_id, flt_c_v16_valid);
 #elif defined(FLT_SIZE3)
 #if BUF_NUM <=2
-        LOAD_dAv4(reg_dAv4, dA, dAv4_off, fltCv16Valid, fltNValid);
-        LOAD_dBv4(reg_dBv4, dB, dBv4_off, fltCv16Valid, fltHW_bid);
+        LOAD_dAv4(reg_dAv4, dA, dAv4_off, flt_c_v16_valid, flt_n_valid);
+        LOAD_dBv4(reg_dBv4, dB, dBv4_off, flt_c_v16_valid, flt_hw_bid);
 #elif BUF_NUM > 2
-        LOAD_dAv4(smp_base_v4, sAv4_write, dA, dAv4_off, fltCv16Valid, fltNValid);
-        LOAD_dBv4(smp_base_v4, sBv4_write, dB, dBv4_off, fltCv16Valid, fltHW_bid);
+        LOAD_dAv4(smp_base_v4, sAv4_write, dA, dAv4_off, flt_c_v16_valid, flt_n_valid);
+        LOAD_dBv4(smp_base_v4, sBv4_write, dB, dBv4_off, flt_c_v16_valid, flt_hw_bid);
 #endif
 
-        FWD_FLT(fltHW_id, fltHW_bid, fltCv16_id, fltCv16Valid);
-        FWD_LUT(cLut_id);
+        FWD_FLT(flt_hw_id, flt_hw_bid, flt_c_v16_id, flt_c_v16_valid);
+        FWD_LUT(lut_id);
 
 #elif defined(FLT_SIZEN)
 #if BUF_NUM <=2
-        LOAD_dAv4(reg_dAv4, dA, dAv4_off, fltCv16Valid, fltNValid);
-        LOAD_dBv4(reg_dBv4, dB, dBv4_off, inN_id, inH_id, inW_id);
+        LOAD_dAv4(reg_dAv4, dA, dAv4_off, flt_c_v16_valid, flt_n_valid);
+        LOAD_dBv4(reg_dBv4, dB, dBv4_off, in_n_id, in_h_id, in_w_id);
 #elif BUF_NUM > 2
-        LOAD_dAv4(smp_base_v4, sAv4_write, dA, dAv4_off, fltCv16Valid, fltNValid);
-        LOAD_dBv4(smp_base_v4, sBv4_write, dB, dBv4_off, inN_id, inH_id, inW_id);
+        LOAD_dAv4(smp_base_v4, sAv4_write, dA, dAv4_off, flt_c_v16_valid, flt_n_valid);
+        LOAD_dBv4(smp_base_v4, sBv4_write, dB, dBv4_off, in_n_id, in_h_id, in_w_id);
 #endif
 
-        FWD_FLT(fltH_id, fltW_id, fltCv16_id, fltCv16Valid);
-        FWD_LUT(cLut_id);
+        FWD_FLT(flt_h_id, flt_w_id, flt_c_v16_id, flt_c_v16_valid);
+        FWD_LUT(lut_id);
 #endif
 
 #if BUF_NUM > 2
@@ -389,36 +371,36 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     {
 #if defined(FLT_SIZE1)
 #if BUF_NUM <= 2
-        LOAD_dAv4(reg_dAv4, dA, dAv4_off, fltCv16Valid, fltNValid);
-        LOAD_dBv4(reg_dBv4, dB, dBv4_off, fltCv16Valid, inHWValid);
+        LOAD_dAv4(reg_dAv4, dA, dAv4_off, flt_c_v16_valid, flt_n_valid);
+        LOAD_dBv4(reg_dBv4, dB, dBv4_off, flt_c_v16_valid, in_hw_valid);
 #elif BUF_NUM > 2
-        LOAD_dAv4(smp_base_v4, sAv4_write, dA, dAv4_off, fltCv16Valid, fltNValid);
-        LOAD_dBv4(smp_base_v4, sBv4_write, dB, dBv4_off, fltCv16Valid, inHWValid);
+        LOAD_dAv4(smp_base_v4, sAv4_write, dA, dAv4_off, flt_c_v16_valid, flt_n_valid);
+        LOAD_dBv4(smp_base_v4, sBv4_write, dB, dBv4_off, flt_c_v16_valid, in_hw_valid);
 #endif
 
-        FWD_FLT(fltCv16_id, fltCv16Valid);
+        FWD_FLT(flt_c_v16_id, flt_c_v16_valid);
 #elif defined(FLT_SIZE3)
 #if BUF_NUM <= 2
-        LOAD_dAv4(reg_dAv4, dA, dAv4_off, fltCv16Valid, fltNValid);
-        LOAD_dBv4(reg_dBv4, dB, dBv4_off, fltCv16Valid, fltHW_bid);
+        LOAD_dAv4(reg_dAv4, dA, dAv4_off, flt_c_v16_valid, flt_n_valid);
+        LOAD_dBv4(reg_dBv4, dB, dBv4_off, flt_c_v16_valid, flt_hw_bid);
 #elif BUF_NUM > 2
-        LOAD_dAv4(smp_base_v4, sAv4_write, dA, dAv4_off, fltCv16Valid, fltNValid);
-        LOAD_dBv4(smp_base_v4, sBv4_write, dB, dBv4_off, fltCv16Valid, fltHW_bid);
+        LOAD_dAv4(smp_base_v4, sAv4_write, dA, dAv4_off, flt_c_v16_valid, flt_n_valid);
+        LOAD_dBv4(smp_base_v4, sBv4_write, dB, dBv4_off, flt_c_v16_valid, flt_hw_bid);
 #endif
 
-        FWD_FLT(fltHW_id, fltHW_bid, fltCv16_id, fltCv16Valid);
-        FWD_LUT(cLut_id);
+        FWD_FLT(flt_hw_id, flt_hw_bid, flt_c_v16_id, flt_c_v16_valid);
+        FWD_LUT(lut_id);
 #elif defined(FLT_SIZEN)
 #if BUF_NUM <= 2
-        LOAD_dAv4(reg_dAv4, dA, dAv4_off, fltCv16Valid, fltNValid);
-        LOAD_dBv4(reg_dBv4, dB, dBv4_off, inN_id, inH_id, inW_id);
+        LOAD_dAv4(reg_dAv4, dA, dAv4_off, flt_c_v16_valid, flt_n_valid);
+        LOAD_dBv4(reg_dBv4, dB, dBv4_off, in_n_id, in_h_id, in_w_id);
 #elif BUF_NUM > 2
-        LOAD_dAv4(smp_base_v4, sAv4_write, dA, dAv4_off, fltCv16Valid, fltNValid);
-        LOAD_dBv4(smp_base_v4, sBv4_write, dB, dBv4_off, inN_id, inH_id, inW_id);
+        LOAD_dAv4(smp_base_v4, sAv4_write, dA, dAv4_off, flt_c_v16_valid, flt_n_valid);
+        LOAD_dBv4(smp_base_v4, sBv4_write, dB, dBv4_off, in_n_id, in_h_id, in_w_id);
 #endif
 
-        FWD_FLT(fltH_id, fltW_id, fltCv16_id, fltCv16Valid);
-        FWD_LUT(cLut_id);
+        FWD_FLT(flt_h_id, flt_w_id, flt_c_v16_id, flt_c_v16_valid);
+        FWD_LUT(lut_id);
 #endif
 
 #if BUF_NUM > 2
@@ -426,7 +408,6 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #endif
 
 #if TILE_K_PER_CTA == 64 || TILE_K_PER_CTA == 128
-        // 1st step
         READ_sAv1(db1_sAv1, smp_base_v1, sAv1_read);
         READ_sBv1(db1_sBv1, smp_base_v1, sBv1_read);
 
@@ -437,7 +418,6 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
         MMA_INSTS(C, db0_sBv1, db0_sAv1);
 
 #if TILE_K_PER_CTA == 128
-        // 2nd step
         READ_sAv1(db0_sAv1, smp_base_v1, sAv1_read);
         READ_sBv1(db0_sBv1, smp_base_v1, sBv1_read);
 
@@ -446,7 +426,6 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
         MMA_INSTS(C, db1_sBv1, db1_sAv1);
 
-        // 3rd step
         READ_sAv1(db1_sAv1, smp_base_v1, sAv1_read);
         READ_sBv1(db1_sBv1, smp_base_v1, sBv1_read);
 
@@ -481,7 +460,6 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
         __syncthreads();
 
-        // 1th step
         READ_sAv1(db0_sAv1, smp_base_v1, sAv1_read);
         READ_sBv1(db0_sBv1, smp_base_v1, sBv1_read);
 
@@ -501,19 +479,15 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #endif
     __syncthreads();
 
-    ///////////////////////////////////////////////////
-    // output section
-    ///////////////////////////////////////////////////
-
 #if defined(ENABLE_FUSE)
-    uint concatV4_off[OUTPUT_BLKS_PER_STEP];
+    uint concat_v4_off[OUTPUT_BLKS_PER_STEP];
 
 #pragma unroll
-    for (int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) { concatV4_off[i] = 0; }
+    for (int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) { concat_v4_off[i] = 0; }
 
-    float4 deScaleV4;
-    float* deScale = (float *) &deScaleV4;
-    GET_DEQUANTSCALE(deScaleV4, deScale, dFltScale, inScale);
+    float4 de_scale_v4;
+    float* de_scale = (float *) &de_scale_v4;
+    GET_DEQUANTSCALE(de_scale_v4, de_scale, d_flt_scale, in_scale);
 
 #endif
 
@@ -529,27 +503,27 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
         __syncthreads();
 
 #if defined(ENABLE_FUSE)
-        DEQUANT_V4(fR, R, deScale);
+        DEQUANT_V4(fR, R, de_scale);
 #endif
 
 #if defined(ENABLE_FUSE)
-        ADD_BIAS_V4(hasBias, bias);
+        ADD_BIAS_V4(has_bias, bias);
 #endif
 
 #if defined(ENABLE_FUSE)
 
-        FUSE_RELU_V4(hasRelu);
-        FUSE_CLIP_V4(hasClip, clipMax, clipMin);
-        // FUSE_PRELU_V4(hasPrelu, prelu, leaky);
+        FUSE_RELU_V4(has_relu);
+        FUSE_CLIP_V4(has_clip, clip_max, clip_min);
+        // FUSE_PRELU_V4(has_prelu, prelu, leaky);
 
-        FUSE_ELT_V4(hasElt, preData);
-        FUSE_RELU_V4(hasEltRelu);
-        FUSE_CLIP_V4(hasEltClip, eltClipMax, eltClipMin);
-        // FUSE_PRELU_V4(hasEltPrelu, eltPrelu, eltLeaky);
+        FUSE_ELT_V4(has_elt, pre_data);
+        FUSE_RELU_V4(has_elt_relu);
+        FUSE_CLIP_V4(has_elt_clip, elt_clip_max, elt_clip_min);
+        // FUSE_PRELU_V4(has_elt_prelu, elt_prelu, elt_leaky);
 
-        SET_CONCAT_OFF_V4(hasConcat, concatV4_off);
+        SET_CONCAT_OFF_V4(has_concat, concat_v4_off);
 
-        QUANT_V4(R, fR, outScale);
+        QUANT_V4(R, fR, out_scale);
 #endif
 
 #if defined(ENABLE_FUSE)
@@ -559,5 +533,5 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #endif
     }
 
-#endif // __CUDA_ARCH__
+#endif
 }
