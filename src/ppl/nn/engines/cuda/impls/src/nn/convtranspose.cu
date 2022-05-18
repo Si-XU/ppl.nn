@@ -164,7 +164,6 @@ uint64_t PPLConvTransposeGetBufSizeCuda(
    half
    mapped by output shape
    DivUp(out hw, cta_size)
-
    nhwc and nhwuvc are both paded
 */
 __global__ void nhwc2nhwuvc(const void *input, void *cvt_input,
@@ -230,7 +229,6 @@ __global__ void new_nhwc2nhw_ker_c(int4 *cvt_input, const int4 *input,
    v = (s+stride_w-1)/stride_w
    u = (r+stride_h-1)/stride_h
    pattern number = stride_h*stride_w
-
    convert to (k*pattern) * (u*v*c)
 */
 __global__ void flt_krsc2pkuvc(int4 *cvt_flt, const int4 *flt,
@@ -442,6 +440,8 @@ ppl::common::RetCode PPLCUDAConvTransposeCvt(
     a_shape.Reshape({K, M});
     out_a_shape.Reshape({padM, padK});
 
+    __half* trans_flt = (__half*)temp_buffer;
+    //k_pad-crs 2 crsk_pad
     ppl::common::RetCode status = PPLCUDATransposeForwardImp(device_id,
                                                              stream,
                                                              trans_param,
@@ -555,15 +555,14 @@ ppl::common::RetCode PPLCUDAConvTransposeForward(
             fuse_param_t gemm_fuse_param;
             int M     = batch*cvt_in_h*cvt_in_w;
             int K_pad = kernel_u*kernel_v*in_c_pad;
-            if (out_c <= 4 && ((pattern_num&1)==0)) {
-                out_c_pad = 4;
-            }
             int N_pad = out_c_pad*pattern_num;
 
+            gemm_param.bias_term = 0;
             gemm_param.transA    = 0;
             gemm_param.transB    = 1;
             gemm_param.alpha     = 1.f;
             gemm_param.beta      = 0.f;
+            gemm_param.N         = N_pad;
             ppl::nn::TensorShape a_shape, b_shape, c_shape;
             a_shape.SetDataType(input_shape->GetDataType());
             b_shape.SetDataType(input_shape->GetDataType());
@@ -575,8 +574,9 @@ ppl::common::RetCode PPLCUDAConvTransposeForward(
             void *gemm_buf = NULL;
             void *gemm_output = (int4*)temp_buffer + cvt_in_size_v4;
 
-            PPLCUDAGemmForwardImp(stream, module, &a_shape, cvt_input, &b_shape, rev_flt, 
+            PPLCUDAGemmForwardImp(device_id, stream, module, &a_shape, cvt_input, &b_shape, rev_flt, 
                     gemm_bias, &c_shape, gemm_output, gemm_param, gemm_buf, gemm_fuse_param, algo_param);
+
 
             //cvt gemm_output to nhwc
             int has_relu = fuse_param.has_activation;
@@ -588,29 +588,14 @@ ppl::common::RetCode PPLCUDAConvTransposeForward(
 
             int pad_height = kernel_h-1 - DivUp(kernel_h-stride_h, stride_h)*stride_h - pad_h;
             int pad_width  = kernel_w-1 - DivUp(kernel_w-stride_w, stride_w)*stride_w - pad_w;
-            if (out_c_pad != 4) {
-                nhwuvc2nhwc<1><<<cvt_grid, cvt_cta_size, 0, stream>>>(
-                        (int4 *)output, (const int4 *)gemm_output,
-                        batch, out_h, out_w, out_c_v4,
-                        cvt_in_h, cvt_in_w,
-                        kernel_h, kernel_w,
-                        pad_height, pad_width,
-                        stride_h, stride_w,
-                        (const int4 *)bias, has_relu);
-            }
-            else {
-                const int out_c_v2 = 1;//DivUp(out_c, 4);
-                cvt_grid.x = DivUp(cvt_in_h*cvt_in_w*pattern_num*out_c_v2, cvt_cta_size);
-                nhwuvc2nhwc<0><<<cvt_grid, cvt_cta_size, 0, stream>>>(
-                        (int4 *)output, (const int4 *)gemm_output,
-                        batch, out_h, out_w, out_c_v2,
-                        cvt_in_h, cvt_in_w,
-                        kernel_h, kernel_w,
-                        pad_height, pad_width,
-                        stride_h, stride_w,
-                        (const int4 *)bias, has_relu);
-            }
-
+            nhwuvc2nhwc<<<cvt_grid, cvt_cta_size, 0, stream>>>(
+                    (int4 *)output, (const int4 *)gemm_output,
+                    batch, out_h, out_w, out_c_v4,
+                    cvt_in_h, cvt_in_w,
+                    kernel_h, kernel_w,
+                    pad_height, pad_width,
+                    stride_h, stride_w,
+                    (const int4 *)bias, has_relu);
         }
         else{
             cvt_input = (void*)input;
@@ -639,12 +624,12 @@ ppl::common::RetCode PPLCUDAConvTransposeForward(
             
 #ifdef PPLNN_ENABLE_CUDA_JIT
             PPLCUDAConvolutionForwardJitImp(
-                stream, module->GetKernelFunc(), input_shape->GetDataType(),
+                device_id, stream, module->GetKernelFunc(), input_shape->GetDataType(),
                 (int4*)cvt_input, (int4*)rev_flt, (int4*)output, (int4*)bias,
                 (int4*)temp_buffer, algo_param, conv_param, fuse_param);
 #else
             PPLCUDAConvolutionForwardImp(
-                stream, ppl::common::DATATYPE_FLOAT16,
+                device_id, stream, ppl::common::DATATYPE_FLOAT16,
                 (int4 *)cvt_input, (int4*)rev_flt, (int4*)output,
                 (int4*)bias, (int4*)temp_buffer,
                 algo_param, conv_param, fuse_param);
@@ -784,7 +769,8 @@ double PPLCUDAConvTransposeSelectKernel(
             gemm_param.transB    = 1;
             gemm_param.alpha     = 1.f;
             gemm_param.beta      = 1.f;
-            min_time = PPLCUDAGemmSelectKernel(stream,
+            gemm_param.N         = N_pad;
+            min_time = PPLCUDAGemmSelectKernel(device_id, stream,
                                 &a_shape, cvt_input, &b_shape, rev_flt,
                                 gemm_bias, &c_shape, gemm_output,
                                 gemm_buf, gemm_param, gemm_fuse_param,
@@ -829,7 +815,7 @@ double PPLCUDAConvTransposeSelectKernel(
 #else
 
             min_time = PPLCUDAConvolutionSelectKernel(
-                            stream, input_shape->GetDataType(),
+                            device_id, stream, input_shape->GetDataType(),
                             (int4 *)cvt_input, (int4*)rev_flt, (int4*)output,
                             (int4*)bias, (int4*)d_temp_buf,
                             algo_param, conv_param, fuse_param);
