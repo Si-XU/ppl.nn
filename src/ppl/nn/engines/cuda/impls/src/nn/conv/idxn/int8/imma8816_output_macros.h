@@ -193,7 +193,7 @@
 	            } \
 	        } \
             \
-	        if( _has_prelu == 2) \
+            else if( _has_prelu == 2) \
             { \
                 int2 _scaleV2[NUM_N_STEPS]; \
                 float * _f_scale = (float *) _scaleV2;\
@@ -211,7 +211,7 @@
                         fCv2[Cv2_off + i].y *= _f_scale[i * _INT2_TO_2INT_ + 1]; \
 	            } \
 	        } \
-	        if( _has_prelu == 3) \
+            else if( _has_prelu == 3) \
             { \
                 int2 _scaleV2[NUM_N_STEPS]; \
                 float * _f_scale = (float *) _scaleV2;\
@@ -231,7 +231,7 @@
                         fCv2[Cv2_off + i].y *= _f_scale[i * _INT2_TO_2INT_ + 1]; \
 	            } \
 	        } \
-    }
+        }
 
 //////////////////////////////////////////////////////
 // eltwise macros
@@ -266,5 +266,123 @@
                 if (dCv2_y_valid[0]) \
                     _concat_v2_off0 = concat_offset_v4 * _INT4_TO_8HALF_ + dCv2_idy[0] * concat_stride_v4 * _INT4_TO_8HALF_; \
             } \
+        }
+
+//////////////////////////////////////////////////////
+// jit macros
+//////////////////////////////////////////////////////
+
+#define JIT_FUSE_RELU_V2() \
+        { \
+            _Pragma("unroll") \
+            for(int i = 0; i < NUM_N_STEPS; i++) \
+            { \
+                if( dCv2_y_valid[0] && dCv2_x_valid[i] ) { \
+                    fCv2[Cv2_off + i].x = Max(fCv2[Cv2_off + i].x, _FLOAT_ZERO_); \
+                    fCv2[Cv2_off + i].y = Max(fCv2[Cv2_off + i].y, _FLOAT_ZERO_); \
+                } \
+	        } \
+        }
+
+#define JIT_FUSE_SIGMOID_V2() \
+        { \
+            _Pragma("unroll") \
+            for(int i = 0; i < NUM_N_STEPS; i++) \
+            { \
+                if( dCv2_y_valid[0] && dCv2_x_valid[i] ) { \
+                    fCv2[Cv2_off + i].x = __expf(fCv2[Cv2_off + i].x) / (_FLOAT_ONE_ + __expf(fCv2[Cv2_off + i].x)); \
+                    fCv2[Cv2_off + i].y = __expf(fCv2[Cv2_off + i].y) / (_FLOAT_ONE_ + __expf(fCv2[Cv2_off + i].y)); \
+                } \
+	        } \
+        }
+
+#define JIT_FUSE_CLIP_V2(_clip_max, _clip_min) \
+        { \
+            _Pragma("unroll") \
+            for(int i = 0; i < NUM_N_STEPS; i++) \
+            { \
+                if( dCv2_y_valid[0] && dCv2_x_valid[i] ) { \
+                    fCv2[Cv2_off + i].x = Min(fCv2[Cv2_off + i].x, _clip_max); \
+                    fCv2[Cv2_off + i].y = Min(fCv2[Cv2_off + i].y, _clip_max); \
+                    fCv2[Cv2_off + i].x = Max(fCv2[Cv2_off + i].x, _clip_min); \
+                    fCv2[Cv2_off + i].y = Max(fCv2[Cv2_off + i].y, _clip_min); \
+                } \
+	        } \
+        }
+
+#define JIT_FUSE_PRELU_V2(_has_prelu, _prelu) \
+        { \
+	        if( _has_prelu == 2) \
+            { \
+                int2 _scaleV2[NUM_N_STEPS]; \
+                float * _f_scale = (float *) _scaleV2;\
+                \
+                _Pragma("unroll") \
+                for(int i = 0; i < NUM_N_STEPS; i++) \
+                    _scaleV2[i] = dCv2_x_valid[i] ? ((int2 *)_prelu)[dCv2_idx[i]] : {0, 0}; \
+                \
+                _Pragma("unroll") \
+                for(int i = 0; i < NUM_N_STEPS; i++) \
+                { \
+                    if( dCv2_y_valid[0] && dCv2_x_valid[i] && fCv2[Cv2_off + i].x < _FLOAT_ZERO_ ) \
+                        fCv2[Cv2_off + i].x *= _f_scale[i * _INT2_TO_2INT_ + 0]; \
+                    if( dCv2_y_valid[0] && dCv2_x_valid[i] && fCv2[Cv2_off + i].y < _FLOAT_ZERO_ ) \
+                        fCv2[Cv2_off + i].y *= _f_scale[i * _INT2_TO_2INT_ + 1]; \
+	            } \
+	        } \
+            else if( _has_prelu == 3) \
+            { \
+                int2 _scaleV2[NUM_N_STEPS]; \
+                float * _f_scale = (float *) _scaleV2;\
+                \
+                _Pragma("unroll") \
+                for(int i = 0; i < NUM_N_STEPS; i++) \
+                { \
+                    _scaleV2[i] = (dCv2_y_valid[0] && dCv2_x_valid[i]) ? ((int2 *)_prelu)[dCv2_idy[0] * num_flt_v2 + dCv2_idx[i]] : {0, 0}; \
+                } \
+                \
+                _Pragma("unroll") \
+                for(int i = 0; i < NUM_N_STEPS; i++) \
+                { \
+                    if( dCv2_y_valid[0] && dCv2_x_valid[i] && fCv2[Cv2_off + i].x < _FLOAT_ZERO_ ) \
+                        fCv2[Cv2_off + i].x *= _f_scale[i * _INT2_TO_2INT_ + 0]; \
+                    if( dCv2_y_valid[0] && dCv2_x_valid[i] && fCv2[Cv2_off + i].y < _FLOAT_ZERO_ ) \
+                        fCv2[Cv2_off + i].y *= _f_scale[i * _INT2_TO_2INT_ + 1]; \
+	            } \
+	        } \
+        }
+
+#define JIT_FUSE_LEAKY_V2(_leaky) \
+        { \
+            _Pragma("unroll") \
+            for(int i = 0; i < NUM_N_STEPS; i++) \
+            { \
+                if( dCv2_y_valid[0] && dCv2_x_valid[i] && fCv2[Cv2_off + i].x < _FLOAT_ZERO_) \
+                    fCv2[Cv2_off + i].x *= _leaky; \
+                if( dCv2_y_valid[0] && dCv2_x_valid[i] && fCv2[Cv2_off + i].y < _FLOAT_ZERO_) \
+                    fCv2[Cv2_off + i].y *= _leaky; \
+	        } \
+        }
+
+#define JIT_FUSE_ELT_V2(_pre_data) \
+        { \
+            _Pragma("unroll") \
+            for(int i = 0; i < NUM_N_STEPS; i++) \
+            { \
+                if(dCv2_y_valid[0] && dCv2_x_valid[i] ) { \
+                    int16_t  elt_v2 = ((int16_t*) _pre_data) [dCv2_idy[0] * num_flt_v2 + dCv2_idx[i]]; \
+                    int8_t * elt_v1 = (int8_t *) &elt_v2; \
+                    \
+                    fCv2[Cv2_off + i].x += (int)elt_v1[0] * pre_scale; \
+                    fCv2[Cv2_off + i].y += (int)elt_v1[1] * pre_scale; \
+                } \
+	        } \
+        }
+
+#define JIT_SET_CONCAT_OFF_V2(_concat_v2_off0) \
+        { \
+            _concat_v2_off0 = dCv2_idy[0] * num_flt_v2; \
+            if (dCv2_y_valid[0]) \
+                _concat_v2_off0 = concat_offset_v4 * _INT4_TO_8HALF_ + dCv2_idy[0] * concat_stride_v4 * _INT4_TO_8HALF_; \
         }
 
