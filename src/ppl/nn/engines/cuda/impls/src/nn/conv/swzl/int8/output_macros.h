@@ -291,81 +291,70 @@
 
 #define JIT_FUSE_RELU_V4() \
         { \
-	        if(dCv4_y_valid) \
+            for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
             { \
-                for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
+                _Pragma("unroll") \
+	            for(int j = 0; j < _INT4_TO_4INT_; j++) \
                 { \
-                    _Pragma("unroll") \
-	                for(int j = 0; j < _INT4_TO_4INT_; j++) \
-                    { \
-	                    fR[i * _INT4_TO_4INT_ + j] = Max(fR[i * _INT4_TO_4INT_ + j], 0); \
-	                } \
-		        } \
+	                fR[i * _INT4_TO_4INT_ + j] = Max(fR[i * _INT4_TO_4INT_ + j], 0); \
+	            } \
 		    } \
         }
 
 #define JIT_FUSE_SIGMOID_V4() \
         { \
-	        if(dCv4_y_valid) \
+            for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
             { \
-                for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
+                _Pragma("unroll") \
+	            for(int j = 0; j < _INT4_TO_4INT_; j++) \
                 { \
-                    _Pragma("unroll") \
-	                for(int j = 0; j < _INT4_TO_4INT_; j++) \
-                    { \
-			            fR[i * _INT4_TO_4INT_ + j] = __expf(fR[i * _INT4_TO_4INT_ + j]) / (1.f + __expf(fR[i * _INT4_TO_4INT_ + j])); \
-                    } \
-		        } \
+			        fR[i * _INT4_TO_4INT_ + j] = __expf(fR[i * _INT4_TO_4INT_ + j]) / (1.f + __expf(fR[i * _INT4_TO_4INT_ + j])); \
+                } \
 		    } \
         }
 
 #define JIT_FUSE_CLIP_V4(_clip_max, _clip_min) \
         { \
-	        if(dCv4_y_valid) \
+            for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
             { \
-                for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
+                _Pragma("unroll") \
+	            for(int j = 0; j < _INT4_TO_4INT_; j++) \
                 { \
-                    _Pragma("unroll") \
-	                for(int j = 0; j < _INT4_TO_4INT_; j++) \
-                    { \
-			            fR[i * _INT4_TO_4INT_ + j] = Min(fR[i * _INT4_TO_4INT_ + j], _clip_max); \
-			            fR[i * _INT4_TO_4INT_ + j] = Max(fR[i * _INT4_TO_4INT_ + j], _clip_min); \
-	                } \
-		        } \
+			        fR[i * _INT4_TO_4INT_ + j] = Min(fR[i * _INT4_TO_4INT_ + j], _clip_max); \
+			        fR[i * _INT4_TO_4INT_ + j] = Max(fR[i * _INT4_TO_4INT_ + j], _clip_min); \
+	            } \
 		    } \
         }
 
 #define JIT_FUSE_PRELU_V4(_has_prelu, _prelu) \
         { \
-            if (dCv4_y_valid) { \
-                _Pragma("unroll") \
-                for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++)  \
-                { \
-                    if (_has_prelu == 2) { \
-                        int4 _scale_v4 = ((int4 *)_prelu)[dCv4_base]; \
-                        float * _f_scale = (float *) &_scale_v4; \
-                        \
-                        _Pragma("unroll") \
-                        for (int j = 0; j < _INT4_TO_4INT_; j++) \
-                        { \
-	    		            if(fR[i * _INT4_TO_4INT_ + j] < _FLOAT_ZERO_) \
-                                fR[i * _INT4_TO_4INT_ + j] *= _f_scale; \
-                        } \
-                    } \
+            _Pragma("unroll") \
+            for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++)  \
+            { \
+                if (_has_prelu == 2) { \
+                    int4 _scale_v4 = ((int4 *)_prelu)[dCv4_base]; \
+                    float * _f_scale = (float *) &_scale_v4; \
                     \
-                    else if (_has_prelu == 3) { \
-                        int4 _scale_v4[OUTPUT_BLKS_PER_STEP]; \
-                        float * _f_scale = (float *) &_scale_v4; \
-                        \
-                        if(dCv4_x_valid[i]) \
-                            _scale_v4[i] = ((int4 *)_prelu)[dCv4_base + dCv4_idx[i] * num_flt_per_grp_pad_v4 * num_grp]; \
-                        \
-                        _Pragma("unroll") \
-                        for (int j = 0; j < _INT4_TO_4INT_; j++) \
-                        { \
-	    		            if(fR[i * _INT4_TO_4INT_ + j] < _FLOAT_ZERO_) \
-                                fR[i * _INT4_TO_4INT_ + j] *= _f_scale[i * _INT4_TO_4INT_ + j]; \
-                        } \
+                    _Pragma("unroll") \
+                    for (int j = 0; j < _INT4_TO_4INT_; j++) \
+                    { \
+	    	            if(fR[i * _INT4_TO_4INT_ + j] < _FLOAT_ZERO_) \
+                            fR[i * _INT4_TO_4INT_ + j] *= _f_scale; \
+                    } \
+                } \
+                \
+                else if (_has_prelu == 3) { \
+                    int4 _scale_v4[OUTPUT_BLKS_PER_STEP]; \
+                    float * _f_scale = (float *) &_scale_v4; \
+                    \
+                    if(dCv4_x_valid[i]) \
+                        _scale_v4[i] = ((int4 *)_prelu)[dCv4_base + dCv4_idx[i] * num_flt_per_grp_pad_v4 * num_grp]; \
+                    \
+                    _Pragma("unroll") \
+                    for (int j = 0; j < _INT4_TO_4INT_; j++) \
+                    { \
+	    	            if(fR[i * _INT4_TO_4INT_ + j] < _FLOAT_ZERO_) \
+                            fR[i * _INT4_TO_4INT_ + j] *= _f_scale[i * _INT4_TO_4INT_ + j]; \
                     } \
                 } \
             } \
@@ -373,38 +362,32 @@
 
 #define JIT_FUSE_LEAKY_V4(_leaky) \
         { \
-	        if(dCv4_y_valid) \
+            for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++)  \
             { \
-                for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++)  \
+                _Pragma("unroll") \
+                for (int j = 0; j < _INT4_TO_4INT_; j++) \
                 { \
-                    _Pragma("unroll") \
-                    for (int j = 0; j < _INT4_TO_4INT_; j++) \
-                    { \
-	    	            if(fR[i * _INT4_TO_4INT_ + j] < _FLOAT_ZERO_) \
-                            fR[i * _INT4_TO_4INT_ + j] *= _leaky; \
-                    } \
+	    	        if(fR[i * _INT4_TO_4INT_ + j] < _FLOAT_ZERO_) \
+                        fR[i * _INT4_TO_4INT_ + j] *= _leaky; \
                 } \
             } \
         }
 
 #define JIT_FUSE_ELT_V4(_pre_data) \
         { \
-       	    if(dCv4_y_valid) \
+            int elt_v4[OUTPUT_BLKS_PER_STEP]; \
+            int8_t *elt_v1 = (int8_t *)&elt_v4; \
+            \
+            _Pragma("unroll") \
+            for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
             { \
-                int elt_v4[OUTPUT_BLKS_PER_STEP]; \
-                int8_t *elt_v1 = (int8_t *)&elt_v4; \
+                if(dCv4_x_valid[i]) \
+                    elt_v4[i] = ((int *) _pre_data) [dCv4_base + dCv4_idx[i] * num_flt_per_grp_pad_v4 * num_grp]; \
                 \
                 _Pragma("unroll") \
-                for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
+                for (int j = 0; j < _INT4_TO_4INT_; j++) \
                 { \
-                    if(dCv4_x_valid[i]) \
-                        elt_v4[i] = ((int *) _pre_data) [dCv4_base + dCv4_idx[i] * num_flt_per_grp_pad_v4 * num_grp]; \
-                    \
-                    _Pragma("unroll") \
-                    for (int j = 0; j < _INT4_TO_4INT_; j++) \
-                    { \
-			            fR[i * _INT4_TO_4INT_ + j] += (int)elt_v1[i * _INT4_TO_4INT_ + j] * pre_scale; \
-	                } \
+			        fR[i * _INT4_TO_4INT_ + j] += (int)elt_v1[i * _INT4_TO_4INT_ + j] * pre_scale; \
 	            } \
 	        } \
         }
