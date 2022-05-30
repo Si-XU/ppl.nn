@@ -248,7 +248,7 @@ double PPLCUDAGemmJITSelectKernelInt8(
        auto gene_factor = mgr->FindKernel(type);
        std::string source = "";
        fuse_info_t empty_fuse_info;
-       gene_factor->Gene2spkKernel(source, algo_param.algo_name, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_set, algo_param.splitk, algo_param.splitf, algo_param.tiles.buf, declare_times);
+       gene_factor->Gene2spkKernel(source, algo_param.algo_name, algo_param.mma_shape, algo_param.tiles.flt_size, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_set, algo_param.splitk, algo_param.splitf, algo_param.tiles.buf, declare_times);
        gene_factor->ReplaceFusionFor2spk(source, empty_fuse_info);
        declare_times++;
 

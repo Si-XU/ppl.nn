@@ -66,6 +66,7 @@ struct tiles_param_t {
 struct algo_param_t {
     std::string algo_type = "";
     std::string algo_name = "";
+    std::string mma_shape = "";
     tiles_param_t tiles;
     int kid                    = -1;
     unsigned int splitk        = 1;
@@ -76,6 +77,8 @@ struct algo_param_t {
     void UseDefaultF1Kernel()
     {
         algo_name             = "nv2spkConv_hmma1688_nhwc_f1_b16x8_w16x8_k8_s8_buf1";
+        algo_type             = "2spk";
+        mma_shape             = "HMMA1688";
         tiles.m_cta           = 16;
         tiles.n_cta           = 8;
         tiles.m_warp          = 16;
@@ -148,12 +151,14 @@ uint64_t PPLCUDAConvolutionGetRuntimeBufSize(
 ppl::common::RetCode PPLCUDAConvolutionLoadAlgoParam(
     algo_param_t& algo_param);
 
-ppl::common::RetCode PPLCUDAConvolutionPredictKernel(
+ppl::common::RetCode PPLCUDAPredictFp16ConvKernel(
+    int device_id,
     ppl::common::datatype_t type,
     algo_param_t& algo_param,
     conv_param_t& conv_param);
 
-ppl::common::RetCode PPLCUDAConvolutionPredictKernelInt8(
+ppl::common::RetCode PPLCUDAPredictInt8ConvKernel(
+    int device_id,
     ppl::common::datatype_t type,
     algo_param_t &algo_param,
     conv_param_t &conv_param);
