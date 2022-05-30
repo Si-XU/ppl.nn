@@ -690,7 +690,8 @@ __inline__ std::string ToString(int v)
     return ss.str();
 }
 
-ppl::common::RetCode PPLCUDAConvolutionPredictKernelInt8(
+ppl::common::RetCode PPLCUDAPredictInt8ConvKernel(
+    int device_id,
     ppl::common::datatype_t type,
     algo_param_t &algo_param,
     conv_param_t &conv_param)
@@ -698,6 +699,15 @@ ppl::common::RetCode PPLCUDAConvolutionPredictKernelInt8(
     int out_hw      = conv_param.in_num * conv_param.out_height * conv_param.out_width;
     int flt_hw      = conv_param.flt_height * conv_param.flt_width;
     int chl_per_grp = conv_param.num_chl / conv_param.num_grp;
+
+    cudaDeviceProp device_prop;
+    cudaGetDeviceProperties(&device_prop, device_id);
+
+    if (device_prop.major == 7 && device_prop.minor == 5) {
+        algo_param.mma_shape = "IMMA8816";
+    } else if (device_prop.major > 8 || (device_prop.major == 8 && device_prop.minor >= 0)) {
+        algo_param.mma_shape = "IMMA16832";
+    }
 
     if (out_hw < 32) {
         algo_param.tiles.m_cta = 16;
@@ -800,7 +810,7 @@ float AlgoForwardTimeInt8(
         cudaEventRecord(begin, stream);
         for (int i = 0; i < times; i++) {
             PPLCUDAConvolutionForwardJitImpInt8(
-                stream, function, type, d_input, d_flt, d_output, bias, d_temp_buf, algo_param[n], conv_param, quant_param, fuse_param);
+                device_id, stream, function, type, d_input, d_flt, d_output, bias, d_temp_buf, algo_param[n], conv_param, quant_param, fuse_param);
         }
         cudaEventRecord(end, stream);
         cudaEventSynchronize(begin);
@@ -931,11 +941,11 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
                 std::string source = "";
                 fuse_info_t empty_fuse_info;
                 if (algo_param.algo_name.find("Idxn") != std::string::npos) {
-                    gene_factor->GeneIdxnKernel(source, algo_param.algo_name, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_step, declare_times);
+                    gene_factor->GeneIdxnKernel(source, algo_param.algo_name, algo_param.mma_shape, algo_param.tiles.flt_size, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_step, declare_times);
                     gene_factor->ReplaceFusionForIdxn(source, empty_fuse_info);
                     declare_times++;
                 } else if (algo_param.algo_name.find("2spk") != std::string::npos) {
-                    gene_factor->Gene2spkKernel(source, algo_param.algo_name, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_set, algo_param.splitk, algo_param.splitf, algo_param.tiles.buf, declare_times);
+                    gene_factor->Gene2spkKernel(source, algo_param.algo_name, algo_param.mma_shape, algo_param.tiles.flt_size, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_set, algo_param.splitk, algo_param.splitf, algo_param.tiles.buf, declare_times);
                     gene_factor->ReplaceFusionFor2spk(source, empty_fuse_info);
                     declare_times++;
                 }

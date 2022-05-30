@@ -490,9 +490,9 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
             dCv4_idx;
 
 #if defined(ENABLE_FUSE)
-        uint concatV4_off = 0;
-
         ADD_BIAS_V4(has_bias, bias);
+
+        uint concatV4_off = 0;
 
         FUSE_RELU_V4(has_relu);
         FUSE_CLIP_V4(has_clip, clip_max, clip_min);

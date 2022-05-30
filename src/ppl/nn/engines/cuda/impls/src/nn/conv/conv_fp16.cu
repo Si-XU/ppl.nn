@@ -839,7 +839,8 @@ ppl::common::RetCode PPLCUDAConvolutionModifyAlgoParam(
     return ppl::common::RC_SUCCESS;
 }
 
-ppl::common::RetCode PPLCUDAConvolutionPredictKernel(
+ppl::common::RetCode PPLCUDAPredictFp16ConvKernel(
+    int device_id,
     ppl::common::datatype_t type,
     algo_param_t &algo_param,
     conv_param_t &conv_param)
@@ -849,7 +850,18 @@ ppl::common::RetCode PPLCUDAConvolutionPredictKernel(
     int flt_hw      = conv_param.flt_height * conv_param.flt_width;
     int chl_per_grp = conv_param.num_chl / conv_param.num_grp;
 
+    cudaDeviceProp device_prop;
+    cudaGetDeviceProperties(&device_prop, device_id);
+
+    if (device_prop.major == 7 && device_prop.minor == 5) {
+        algo_param.mma_shape = "HMMA1688";
+    } else if (device_prop.major > 8 || (device_prop.major == 8 && device_prop.minor >= 0)) {
+        algo_param.mma_shape = "HMMA16816";
+    }
+
     if (chl_per_grp <= 32) { // Use non-shared memory algo for small channel
+        algo_param.algo_type = "idxn";
+
         if (flt_hw > 9) {
             algo_param.tiles.m_cta  = 128;
             algo_param.tiles.m_warp = 64;
@@ -885,6 +897,8 @@ ppl::common::RetCode PPLCUDAConvolutionPredictKernel(
             algo_param.tiles.k_per_step *= 2;            
         }
     } else { // Use 2spk or swizzle algo for large channel
+        algo_param.algo_type = "2spk";
+
         float min_pad          = 1.0;
         algo_param.tiles.m_cta = 16;
         for (int32_t i = 128; i >= 16; i = i / 2) {
@@ -1133,14 +1147,14 @@ double PPLCUDAConvolutionJitSelectKernel(
                 auto mgr = CodeGeneFactorManager::Instance();
                 auto gene_factor = mgr->FindKernel(type);
                 std::string source = "";
-                if (algo_param.algo_name.find("Idxn") != std::string::npos) {
-                    gene_factor->GeneIdxnKernel(source, algo_param.algo_name, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_step, declare_times);
+                if (algo_param.algo_type == "idxn") {
+                    gene_factor->GeneIdxnKernel(source, algo_param.algo_name, algo_param.mma_shape, algo_param.tiles.flt_size, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_step, declare_times);
                     declare_times++;
-                } else if (algo_param.algo_name.find("2spk") != std::string::npos) {
-                    gene_factor->Gene2spkKernel(source, algo_param.algo_name, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_set, algo_param.splitk, algo_param.splitf, algo_param.tiles.buf, declare_times);
+                } else if (algo_param.algo_type == "2spk") {
+                    gene_factor->Gene2spkKernel(source, algo_param.algo_name, algo_param.mma_shape, algo_param.tiles.flt_size, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_set, algo_param.splitk, algo_param.splitf, algo_param.tiles.buf, declare_times);
                     declare_times++;
-                } else if (algo_param.algo_name.find("Swzl") != std::string::npos) {
-                    gene_factor->GeneSwzlKernel(source, algo_param.algo_name, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.splitk, algo_param.tiles.buf, declare_times);
+                } else if (algo_param.algo_type == "swzl") {
+                    gene_factor->GeneSwzlKernel(source, algo_param.algo_name, algo_param.mma_shape, algo_param.tiles.flt_size, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.splitk, algo_param.tiles.buf, declare_times);
                     declare_times++;
                 }
 
