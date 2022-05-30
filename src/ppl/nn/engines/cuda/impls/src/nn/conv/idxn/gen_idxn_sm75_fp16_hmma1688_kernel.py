@@ -127,6 +127,12 @@ class KernelInfo:
 
     def GenKernel(self):
         f = open(os.path.join(self.path, self.fname), "w")
+        f.write("#define TILE_N_PER_MMA       %d\n" % self.MMA_X)
+        f.write("#define TILE_K_PER_MMA       %d\n" % self.MMA_K)
+        f.write("#define TILE_M_PER_MMA       %d\n\n" % self.MMA_Y)
+
+        f.write("#define BLK_M_PER_MMA        %d\n" % (self.MMA_Y / 8))
+        f.write("#define BLK_N_PER_MMA        %d\n" % (self.MMA_X / 8))
 
         f.write("#define TILE_N_PER_CTA       %d\n" % self.cta_x)
         f.write("#define TILE_M_PER_CTA       %d\n\n" % self.cta_y)

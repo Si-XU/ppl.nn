@@ -168,16 +168,10 @@
 // mma size macros
 ////////////////////////////////////////
 
-#define TILE_M_PER_MMA      16
-#define TILE_K_PER_MMA      8
-#define TILE_N_PER_MMA      8
 #define TILE_M_PER_MMA_HALF ((TILE_M_PER_MMA) / 2)
 
 #define MMA_SIZE_X_IN_THD 4
 #define MMA_SIZE_Y_IN_THD 8
-
-#define BLK_M_PER_MMA 2
-#define BLK_N_PER_MMA 1
 
 ////////////////////////////////////////
 // thread / warp / cta size macros
