@@ -195,6 +195,7 @@ Define_string_opt("--import-algo-file", g_flag_import_algo_file, "",
                   "The objects in the json file declare best algo info for certain conv input shape");
 
 Define_string_opt("--quant-file", g_flag_quant_file, "", "a json file containing quantization information");
+Define_uint32_opt("--seed", g_flag_seed, 0, "set random seed");
 
 #include "ppl/nn/engines/cuda/engine_factory.h"
 #include "ppl/nn/engines/cuda/options.h"
