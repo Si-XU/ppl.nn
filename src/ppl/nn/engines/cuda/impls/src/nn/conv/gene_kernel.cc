@@ -78,11 +78,11 @@ ppl::common::RetCode Fp16CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
     int MMA_X = 0;
     int MMA_K = 0;
 
-    if(mma_shape == "HMMA1688") {
+    if(mma_shape == "hmma1688") {
         MMA_Y = 16;
         MMA_X = 8;
         MMA_K = 8;
-    } else if(mma_shape == "HMMA16816") {
+    } else if(mma_shape == "hmma16816") {
         MMA_Y = 16;
         MMA_X = 8;
         MMA_K = 16;
@@ -135,7 +135,7 @@ ppl::common::RetCode Fp16CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
 
     file_str << "#define BUF_NUM " << buf_size << "\n";
 
-    file_str << "#define USE_" << mma_shape.c_str() << "\n\n";
+    file_str << "#define USE_HMMA" << mma_shape.substr(4) << "\n\n";
 
     file_str << "#include <cuda_fp16.h>\n\n";
 
@@ -172,10 +172,10 @@ ppl::common::RetCode Fp16CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
 
     file_str << "#define MMA_INSTS(_C, _A, _B)           MMA_INST_" << warp_y / MMA_Y << "x" << warp_x / MMA_X << "(_C, _A, _B)\n\n";
 
-    if (mma_shape == "HMMA1688") {
+    if (mma_shape == "hmma1688") {
         file_str << "#define READ_sAv1(_A, _sm_base_v1, _sAv1_read)          READ_sUv1_K1_2x" << warp_y / MMA_Y_HALF / 2 << "(_A, _sm_base_v1, _sAv1_read)\n";
         file_str << "#define READ_sBv1(_B, _sm_base_v1, _sBv1_read)          READ_sUv1_K1_1x" << warp_x / MMA_X << "(_B, _sm_base_v1, _sBv1_read)\n\n";
-    } else if (mma_shape == "HMMA16816") {
+    } else if (mma_shape == "hmma16816") {
         file_str << "#define READ_sAv1(_A, _sm_base_v1, _sAv1_read)          READ_sUv1_K2_2x" << warp_y / MMA_Y_HALF / 2 << "(_A, _sm_base_v1, _sAv1_read)\n";
         file_str << "#define READ_sBv1(_B, _sm_base_v1, _sBv1_read)          READ_sUv1_K2_1x" << warp_x / MMA_X << "(_B, _sm_base_v1, _sBv1_read)\n\n";
     }
@@ -238,9 +238,9 @@ ppl::common::RetCode Fp16CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
     WriteIncludeFile(file_str, "/2spk/fp16/output_macros.h");
 
     file_str << "extern \"C\" {\n\n";
-    if (mma_shape == "HMMA1688")
+    if (mma_shape == "hmma1688")
         WriteIncludeFile(file_str, "/2spk/fp16/main_body1688.h");
-    else if (mma_shape == "HMMA16816")
+    else if (mma_shape == "hmma16816")
         WriteIncludeFile(file_str, "/2spk/fp16/main_body16816.h");
     file_str << "}\n\n";
 
@@ -263,11 +263,11 @@ ppl::common::RetCode Fp16CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
     int MMA_X = 0;
     int MMA_K = 0;
 
-    if(mma_shape == "HMMA1688") {
+    if(mma_shape == "hmma1688") {
         MMA_Y = 16;
         MMA_X = 8;
         MMA_K = 8;
-    } else if(mma_shape == "HMMA16816") {
+    } else if(mma_shape == "hmma16816") {
         MMA_Y = 16;
         MMA_X = 8;
         MMA_K = 16;
@@ -306,9 +306,9 @@ ppl::common::RetCode Fp16CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
 
     if (s_size == 8) {
         WriteIncludeFile(file_str, "/idxn/fp16/dmem_i1_macros.h");
-        if(mma_shape == "HMMA1688")
+        if(mma_shape == "hmma1688")
             WriteIncludeFile(file_str, "/idxn/fp16/hmma1688_i1_macros.h");
-        else if(mma_shape == "HMMA16816")
+        else if(mma_shape == "hmma16816")
 
         file_str << "#define LOAD_dAv1(_regA, _dAv1, _in_id, _in_off)    LOAD_dAv1_SIZE" << dAvn_size << "(_regA, _dAv1, _in_id, _in_off)\n";
         file_str << "#define LOAD_dBv1(_regB, _dBv1, _dBv1_off)          LOAD_dBv1_SIZE" << dBvn_size << "(_regB, _dBv1, _dBv1_off)\n\n";
@@ -316,9 +316,9 @@ ppl::common::RetCode Fp16CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
         file_str << "#define MMA_INSTS(_C, _A, _B)                       MMA_INST_1INT_" << dAvn_size / 2 << "x" << dBvn_size << "(_C, _A, _B)\n\n";
     } else if (s_size == 16) {
         WriteIncludeFile(file_str, "/idxn/fp16/dmem_i2_macros.h");
-        if(mma_shape == "HMMA1688")
+        if(mma_shape == "hmma1688")
             WriteIncludeFile(file_str, "/idxn/fp16/hmma1688_i2_macros.h");
-        else if(mma_shape == "HMMA16816")
+        else if(mma_shape == "hmma16816")
             WriteIncludeFile(file_str, "/idxn/fp16/hmma16816_i2_macros.h");
 
         file_str << "#define LOAD_dAv2(_regA, _dAv2, _in_id, _in_off)    LOAD_dAv2_SIZE" << dAvn_size << "(_regA, _dAv2, _in_id, _in_off)\n";
@@ -327,9 +327,9 @@ ppl::common::RetCode Fp16CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
         file_str << "#define MMA_INSTS(_C, _A, _B)                       MMA_INST_2INT_" << dAvn_size / 2 << "x" << dBvn_size << "(_C, _A, _B)\n\n";
     } else if (s_size == 32) {
         WriteIncludeFile(file_str, "/idxn/fp16/dmem_i4_macros.h");
-        if(mma_shape == "HMMA1688")
+        if(mma_shape == "hmma1688")
             WriteIncludeFile(file_str, "/idxn/fp16/hmma1688_i4_macros.h");
-        else if(mma_shape == "HMMA16816")
+        else if(mma_shape == "hmma16816")
             WriteIncludeFile(file_str, "/idxn/fp16/hmma16816_i4_macros.h");
 
         file_str << "#define LOAD_dAv4(_regA, _dAv4, _in_id, _in_off)    LOAD_dAv4_SIZE" << dAvn_size << "(_regA, _dAv4, _in_id, _in_off)\n";
@@ -357,11 +357,11 @@ ppl::common::RetCode Fp16CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
     int MMA_X = 0;
     int MMA_K = 0;
 
-    if(mma_shape == "HMMA1688") {
+    if(mma_shape == "hmma1688") {
         MMA_X = 16;
         MMA_Y = 8;
         MMA_K = 8;
-    } else if(mma_shape == "HMMA16816") {
+    } else if(mma_shape == "hmma16816") {
         MMA_X = 16;
         MMA_Y = 8;
         MMA_K = 16;
@@ -414,7 +414,7 @@ ppl::common::RetCode Fp16CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
 
     file_str << "#define BUF_NUM " << buf_size << "\n";
 
-    file_str << "#define USE_" << mma_shape.c_str() << "\n\n";
+    file_str << "#define USE_HMMA" << mma_shape.substr(4) << "\n\n";
 
     file_str << "#include <cuda_fp16.h>\n\n";
 
@@ -449,11 +449,11 @@ ppl::common::RetCode Fp16CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
 
     file_str << "#define MMA_INSTS(_C, _B, _A)           MMA_INST_" << warp_y / MMA_Y << "x" << warp_x / MMA_X << "(_C, _B, _A)\n\n";
 
-    if (mma_shape == "HMMA1688") {
+    if (mma_shape == "hmma1688") {
         file_str << "#define READ_sAv1(_A, _sm_base_v1, _sAv1_read)          READ_sUv1_K1_1x" << warp_y / MMA_Y << "(_A, _sm_base_v1, _sAv1_read)\n";
         file_str << "#define READ_sBv1(_B, _sm_base_v1, _sBv1_read)          READ_sUv1_K1_2x" << warp_x / MMA_X_HALF / 2 << "(_B, _sm_base_v1, _sBv1_read)\n\n";
     }
-    else if (mma_shape == "HMMA16816") {
+    else if (mma_shape == "hmma16816") {
         file_str << "#define READ_sAv1(_A, _sm_base_v1, _sAv1_read)          READ_sUv1_K2_1x" << warp_y / MMA_Y << "(_A, _sm_base_v1, _sAv1_read)\n";
         file_str << "#define READ_sBv1(_B, _sm_base_v1, _sBv1_read)          READ_sUv1_K2_2x" << warp_x / MMA_X_HALF / 2 << "(_B, _sm_base_v1, _sBv1_read)\n\n";
     }
@@ -519,9 +519,9 @@ ppl::common::RetCode Fp16CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
     WriteIncludeFile(file_str, "/swzl/fp16/output_macros.h");
 
     file_str << "extern \"C\" {\n\n";
-    if (mma_shape == "HMMA1688")
+    if (mma_shape == "hmma1688")
         WriteIncludeFile(file_str, "/swzl/fp16/main_body1688.h");
-    else if (mma_shape == "HMMA16816")
+    else if (mma_shape == "hmma16816")
         WriteIncludeFile(file_str, "/swzl/fp16/main_body16816.h");
     file_str << "}\n\n";
 
@@ -737,15 +737,15 @@ ppl::common::RetCode Int8CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
     int MMA_X = 0;
     int MMA_K = 0;
 
-    if(mma_shape == "IMMA8816") {
+    if(mma_shape == "imma8816") {
         MMA_Y = 8;
         MMA_X = 8;
         MMA_K = 16;
-    } else if(mma_shape == "IMMA16816") {
+    } else if(mma_shape == "imma16816") {
         MMA_Y = 16;
         MMA_X = 8;
         MMA_K = 16;
-    } else if(mma_shape == "IMMA16832") {
+    } else if(mma_shape == "imma16832") {
         MMA_Y = 16;
         MMA_X = 8;
         MMA_K = 32;
@@ -794,7 +794,7 @@ ppl::common::RetCode Int8CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
 
     file_str << "#define BUF_NUM " << buf_size << "\n";
 
-    file_str << "#define USE_" << mma_shape.c_str() << "\n\n";
+    file_str << "#define USE_IMMA" << mma_shape.substr(4) << "\n\n";
 
     if (splitk == 1 && splitf == 1)
         file_str << "#define ENABLE_FUSE\n\n";
@@ -824,28 +824,28 @@ ppl::common::RetCode Int8CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
         WriteIncludeFile(file_str, "/2spk/int8/async_macros.h");
         WriteIncludeFile(file_str, "/2spk/int8/" + std::to_string(flt_size) + "/dmem_async_macros.h");
     }
-    if (mma_shape == "IMMA8816")
+    if (mma_shape == "imma8816")
         WriteIncludeFile(file_str, "/2spk/int8/imma8816_macros.h");
-    else if(mma_shape == "IMMA16816")
+    else if(mma_shape == "imma16816")
         WriteIncludeFile(file_str, "/2spk/int8/imma16816_macros.h");
-    else if(mma_shape == "IMMA16832")
+    else if(mma_shape == "imma16832")
         WriteIncludeFile(file_str, "/2spk/int8/imma16832_macros.h");
     WriteIncludeFile(file_str, "/2spk/int8/reduce_macros.h");
     WriteIncludeFile(file_str, "/2spk/int8/smem_macros.h");
 
     file_str << "#define MMA_INSTS(_C, _A, _B)           MMA_INST_" << warp_y / MMA_Y << "x" << warp_x / MMA_X << "(_C, _A, _B)\n\n";
 
-    if (mma_shape == "IMMA8816") {
+    if (mma_shape == "imma8816") {
         file_str << "#define READ_sAv1(_A, _sm_base_v1, _sAv1_read)          READ_sUv1_K1_1x" << warp_y / MMA_Y << "(_A, _sm_base_v1, _sAv1_read)\n";
         file_str << "#define READ_sBv1(_B, _sm_base_v1, _sBv1_read)          READ_sUv1_K1_1x" << warp_x / MMA_X << "(_B, _sm_base_v1, _sBv1_read)\n\n";
 
         file_str << "#define WRITE_sRv2(_sm_base_v2, _sRv2_write_base, _C)   WRITE_sRv2_" << warp_y / MMA_Y << "x" << warp_x / MMA_X << "(_sm_base_v2, _sRv2_write_base, _C)\n\n";
-    } else if(mma_shape == "IMMA16816") {
+    } else if(mma_shape == "imma16816") {
         file_str << "#define READ_sAv1(_A, _sm_base_v1, _sAv1_read)          READ_sUv1_K1_2x" << warp_y / MMA_Y_HALF / 2 << "(_A, _sm_base_v1, _sAv1_read)\n";
         file_str << "#define READ_sBv1(_B, _sm_base_v1, _sBv1_read)          READ_sUv1_K1_1x" << warp_x / MMA_X << "(_B, _sm_base_v1, _sBv1_read)\n\n";
 
         file_str << "#define WRITE_sRv2(_sm_base_v2, _sRv2_write_base, _C)   WRITE_sRv2_" << warp_y / MMA_Y_HALF << "x" << warp_x / MMA_X << "(_sm_base_v2, _sRv2_write_base, _C)\n\n";
-    } else if(mma_shape == "IMMA16832") {
+    } else if(mma_shape == "imma16832") {
         file_str << "#define READ_sAv1(_A, _sm_base_v1, _sAv1_read)          READ_sUv1_K2_2x" << warp_y / MMA_Y_HALF / 2 << "(_A, _sm_base_v1, _sAv1_read)\n";
         file_str << "#define READ_sBv1(_B, _sm_base_v1, _sBv1_read)          READ_sUv1_K2_1x" << warp_x / MMA_X << "(_B, _sm_base_v1, _sBv1_read)\n\n";
 
@@ -905,11 +905,11 @@ ppl::common::RetCode Int8CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
     WriteIncludeFile(file_str, "/2spk/int8/output_macros.h");
 
     file_str << "extern \"C\" {\n\n";
-    if (mma_shape == "IMMA8816")
+    if (mma_shape == "imma8816")
         WriteIncludeFile(file_str, "/2spk/int8/main_body8816.h");
-    else if (mma_shape == "IMMA16816")
+    else if (mma_shape == "imma16816")
         WriteIncludeFile(file_str, "/2spk/int8/main_body16816.h");
-    else if (mma_shape == "IMMA16832")
+    else if (mma_shape == "imma16832")
         WriteIncludeFile(file_str, "/2spk/int8/main_body16832.h");
     file_str << "}\n\n";
 
@@ -934,17 +934,17 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
 
     int dAvn_size = 0;
 
-    if(mma_shape == "IMMA8816") {
+    if(mma_shape == "imma8816") {
         MMA_Y = 8;
         MMA_X = 8;
         MMA_K = 16;
         dAvn_size = warp_y / MMA_Y;
-    } else if(mma_shape == "IMMA16816") {
+    } else if(mma_shape == "imma16816") {
         MMA_Y = 16;
         MMA_X = 8;
         MMA_K = 16;
         dAvn_size = warp_y / MMA_Y / 2;
-    } else if(mma_shape == "IMMA16832") {
+    } else if(mma_shape == "imma16832") {
         MMA_Y = 16;
         MMA_X = 8;
         MMA_K = 32;
@@ -983,9 +983,9 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
 
     if (s_size == 16) {
         WriteIncludeFile(file_str, "/idxn/int8/dmem_i1_macros.h");
-        if(mma_shape == "IMMA8816")
+        if(mma_shape == "imma8816")
             WriteIncludeFile(file_str, "/idxn/int8/imma8816_i1_macros.h");
-        else if(mma_shape == "IMMA16816")
+        else if(mma_shape == "imma16816")
             WriteIncludeFile(file_str, "/idxn/int8/imma16816_i1_macros.h");
 
         file_str << "#define LOAD_dAv1(_regA, _dAv1, _in_id, _in_off)    LOAD_dAv1_SIZE" << dAvn_size << "(_regA, _dAv1, _in_id, _in_off)\n";
@@ -994,11 +994,11 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
         file_str << "#define MMA_INSTS(_C, _A, _B)                       MMA_INST_1INT_" << dAvn_size << "x" << dBvn_size << "(_C, _A, _B)\n\n";
     } else if (s_size == 32) {
         WriteIncludeFile(file_str, "/idxn/int8/dmem_i2_macros.h");
-        if(mma_shape == "IMMA8816")
+        if(mma_shape == "imma8816")
             WriteIncludeFile(file_str, "/idxn/int8/imma8816_i2_macros.h");
-        else if(mma_shape == "IMMA16816")
+        else if(mma_shape == "imma16816")
             WriteIncludeFile(file_str, "/idxn/int8/imma16816_i2_macros.h");
-        else if(mma_shape == "IMMA16832")
+        else if(mma_shape == "imma16832")
             WriteIncludeFile(file_str, "/idxn/int8/imma16832_i2_macros.h");
 
         file_str << "#define LOAD_dAv2(_regA, _dAv2, _in_id, _in_off)    LOAD_dAv2_SIZE" << dAvn_size << "(_regA, _dAv2, _in_id, _in_off)\n";
@@ -1007,11 +1007,11 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
         file_str << "#define MMA_INSTS(_C, _A, _B)                       MMA_INST_2INT_" << dAvn_size << "x" << dBvn_size << "(_C, _A, _B)\n\n";
     } else if (s_size == 64) {
         WriteIncludeFile(file_str, "/idxn/int8/dmem_i4_macros.h");
-        if(mma_shape == "IMMA8816")
+        if(mma_shape == "imma8816")
             WriteIncludeFile(file_str, "/idxn/int8/imma8816_i4_macros.h");
-        else if(mma_shape == "IMMA16816")
+        else if(mma_shape == "imma16816")
             WriteIncludeFile(file_str, "/idxn/int8/imma16816_i4_macros.h");
-        else if(mma_shape == "IMMA16832")
+        else if(mma_shape == "imma16832")
             WriteIncludeFile(file_str, "/idxn/int8/imma16832_i4_macros.h");
 
         file_str << "#define LOAD_dAv4(_regA, _dAv4, _in_id, _in_off)    LOAD_dAv4_SIZE" << dAvn_size << "(_regA, _dAv4, _in_id, _in_off)\n";
@@ -1020,9 +1020,9 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
         file_str << "#define MMA_INSTS(_C, _A, _B)                       MMA_INST_4INT_" << dAvn_size << "x" << dBvn_size << "(_C, _A, _B)\n\n";
     }
 
-    if(mma_shape == "IMMA8816")
+    if(mma_shape == "imma8816")
         WriteIncludeFile(file_str, "/idxn/int8/imma8816_output_macros.h");
-    else if(mma_shape == "IMMA16816" || mma_shape == "IMMA16832")
+    else if(mma_shape == "imma16816" || mma_shape == "imma16832")
         WriteIncludeFile(file_str, "/idxn/int8/imma16816_output_macros.h");
 
     file_str << "extern \"C\" {\n\n";
@@ -1044,15 +1044,15 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
     int MMA_X = 0;
     int MMA_K = 0;
 
-    if(mma_shape == "IMMA8816") {
+    if(mma_shape == "imma8816") {
         MMA_X = 8;
         MMA_Y = 8;
         MMA_K = 16;
-    } else if(mma_shape == "IMMA16816") {
+    } else if(mma_shape == "imma16816") {
         MMA_X = 16;
         MMA_Y = 8;
         MMA_K = 16;
-    } else if(mma_shape == "IMMA16832") {
+    } else if(mma_shape == "imma16832") {
         MMA_X = 16;
         MMA_Y = 8;
         MMA_K = 32;
@@ -1084,7 +1084,7 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
     file_str << "#define TILE_K_PER_CTA       " << k_size << "\n";
     file_str << "#define TILE_K_PER_WARP      " << k_size << "\n\n";
 
-    if (mma_shape == "IMMA8816") {
+    if (mma_shape == "imma8816") {
         if (warp_y == 8)
             file_str << "#define OUTPUT_BLKS_PER_STEP " << (warp_y / 8) << "\n\n";
         else if (warp_y == 16 || warp_y == 32 || warp_y == 64)
@@ -1096,7 +1096,7 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
         else if (warp_y == 16 || warp_y == 32 || warp_y == 64)
             file_str << "#define WRITE_sRv2(_sm_base_v2, _sRv2_write_base, _C, _C_off)    WRITE_sRv2_" << warp_y / MMA_Y << "x1(_sm_base_v2, _sRv2_write_base, _C, _C_off)\n\n";
 
-    } else if (mma_shape == "IMMA16816" || mma_shape == "IMMA16832") {
+    } else if (mma_shape == "imma16816" || mma_shape == "imma16832") {
         file_str << "#define OUTPUT_BLKS_PER_STEP " << (warp_y / 8) << "\n\n";
 
         file_str << "#define READ_sRv4(_Rv4, _sm_base_v4, _sRv4_read)                 READ_sRv4_SIZE" << warp_y / MMA_Y << "(_Rv4, _sm_base_v4, _sRv4_read)\n";
@@ -1107,7 +1107,7 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
 
     file_str << "#define BUF_NUM " << buf_size << "\n";
 
-    file_str << "#define USE_" << mma_shape.c_str() << "\n\n";
+    file_str << "#define USE_IMMA" << mma_shape.substr(4) << "\n\n";
 
     if (splitk == 1)
         file_str << "#define ENABLE_FUSE\n\n";
@@ -1134,11 +1134,11 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
         WriteIncludeFile(file_str, "/2spk/int8/" + std::to_string(flt_size) + "/dmem_async_macros.h");
     }
 
-    if (mma_shape == "IMMA8816")
+    if (mma_shape == "imma8816")
         WriteIncludeFile(file_str, "/swzl/int8/imma8816_macros.h");
-    else if (mma_shape == "IMMA16816")
+    else if (mma_shape == "imma16816")
         WriteIncludeFile(file_str, "/swzl/int8/imma16816_macros.h");
-    else if (mma_shape == "IMMA16832")
+    else if (mma_shape == "imma16832")
         WriteIncludeFile(file_str, "/swzl/int8/imma16832_macros.h");
 
     WriteIncludeFile(file_str, "/swzl/int8/reduce_macros.h");
@@ -1146,13 +1146,13 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
 
     file_str << "#define MMA_INSTS(_C, _B, _A)           MMA_INST_" << warp_y / MMA_Y << "x" << warp_x / MMA_X << "(_C, _B, _A)\n\n";
 
-    if (mma_shape == "IMMA8816") {
+    if (mma_shape == "imma8816") {
         file_str << "#define READ_sAv1(_A, _sm_base_v1, _sAv1_read)          READ_sUv1_K1_1x" << warp_y / MMA_Y << "(_A, _sm_base_v1, _sAv1_read)\n";
         file_str << "#define READ_sBv1(_B, _sm_base_v1, _sBv1_read)          READ_sUv1_K1_1x" << warp_x / MMA_X << "(_B, _sm_base_v1, _sBv1_read)\n\n";
-    } else if (mma_shape == "IMMA16816") {
+    } else if (mma_shape == "imma16816") {
         file_str << "#define READ_sAv1(_A, _sm_base_v1, _sAv1_read)          READ_sUv1_K1_1x" << warp_y / MMA_Y << "(_A, _sm_base_v1, _sAv1_read)\n";
         file_str << "#define READ_sBv1(_B, _sm_base_v1, _sBv1_read)          READ_sUv1_K1_2x" << warp_x / MMA_X_HALF / 2 << "(_B, _sm_base_v1, _sBv1_read)\n\n";
-    } else if (mma_shape == "IMMA16832") {
+    } else if (mma_shape == "imma16832") {
         file_str << "#define READ_sAv1(_A, _sm_base_v1, _sAv1_read)          READ_sUv1_K2_1x" << warp_y / MMA_Y << "(_A, _sm_base_v1, _sAv1_read)\n";
         file_str << "#define READ_sBv1(_B, _sm_base_v1, _sBv1_read)          READ_sUv1_K2_2x" << warp_x / MMA_X_HALF / 2 << "(_B, _sm_base_v1, _sBv1_read)\n\n";
     }
@@ -1218,11 +1218,11 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
     WriteIncludeFile(file_str, "/swzl/int8/output_macros.h");
 
     file_str << "extern \"C\" {\n\n";
-    if (mma_shape == "IMMA8816")
+    if (mma_shape == "imma8816")
         WriteIncludeFile(file_str, "/swzl/int8/main_body8816.h");
-    else if (mma_shape == "IMMA16816")
+    else if (mma_shape == "imma16816")
         WriteIncludeFile(file_str, "/swzl/int8/main_body16816.h");
-    else if (mma_shape == "IMMA16832")
+    else if (mma_shape == "imma16832")
         WriteIncludeFile(file_str, "/swzl/int8/main_body16832.h");
     file_str << "}\n\n";
 

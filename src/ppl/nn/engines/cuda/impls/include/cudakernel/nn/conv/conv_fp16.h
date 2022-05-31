@@ -74,6 +74,9 @@ struct algo_param_t {
     bool is_initializer_weight = true;
     unsigned int gemm_batch    = 1;
 
+    ppl::common::RetCode GeneAlgoName();
+    ppl::common::RetCode ParseAlgoName();
+
     void UseDefaultF1Kernel()
     {
         algo_name             = "nv2spkConv_hmma1688_nhwc_f1_b16x8_w16x8_k8_s8_buf1";
@@ -147,9 +150,6 @@ uint64_t PPLCUDAConvolutionGetRuntimeBufSize(
     unsigned int splitk,
     unsigned int splitf,
     uint64_t workspace = ((uint64_t)8) * 1024 * 1024 * 1024);
-
-ppl::common::RetCode PPLCUDAConvolutionLoadAlgoParam(
-    algo_param_t& algo_param);
 
 ppl::common::RetCode PPLCUDAPredictFp16ConvKernel(
     int device_id,

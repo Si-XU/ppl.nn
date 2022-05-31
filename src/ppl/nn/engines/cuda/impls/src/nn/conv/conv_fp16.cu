@@ -738,56 +738,81 @@ __inline__ std::string ToString(int v)
     ss << v;
     return ss.str();
 }
-
-ppl::common::RetCode PPLCUDAConvolutionLoadAlgoParam(
-    algo_param_t &algo_param)
+ppl::common::RetCode algo_param_t::ParseAlgoName()
 {
-    auto kname        = algo_param.algo_name.substr(algo_param.algo_name.find("_b"));
-    auto f_size       = algo_param.algo_name.substr(25,2);
+    std::stringstream algo_name_str(this->algo_name);
+    std::vector<std::string> algo_name_substrs;
+    std::string substr;
 
-    if (algo_param.algo_name.find("Idxn") != std::string::npos) {
-        sscanf(kname.c_str(), "_b%dx%d_w%dx%d_k%d_s%d_nosmem", &algo_param.tiles.m_cta, &algo_param.tiles.n_cta, &algo_param.tiles.m_warp, &algo_param.tiles.n_warp, &algo_param.tiles.k_cta, &algo_param.tiles.k_per_step);
-        algo_param.tiles.flt_pad_size    = algo_param.tiles.k_per_step / 4;
-        algo_param.tiles.cta_size_in_thd = (algo_param.tiles.m_cta / algo_param.tiles.m_warp) *
-                                           (algo_param.tiles.n_cta / algo_param.tiles.n_warp) *
-                                           WARP_SIZE;
-    } else if (algo_param.algo_name.find("2spk") != std::string::npos) { // Use 2spk algo for large channel
-        sscanf(kname.c_str(), "_b%dx%d_w%dx%d_k%d_s%d_buf%d", &algo_param.tiles.m_cta, &algo_param.tiles.n_cta, &algo_param.tiles.m_warp, &algo_param.tiles.n_warp, &algo_param.tiles.k_cta, &algo_param.tiles.k_per_set, &algo_param.tiles.buf);
-        if (f_size == "f1" || f_size == "fs") {
-            algo_param.tiles.flt_size = 1;
-        } else if (f_size == "f3") {
-            algo_param.tiles.flt_size = 3;
-        } else if (f_size == "fn") {
-            algo_param.tiles.flt_size = 0;
-        } else {
-            return ppl::common::RC_INVALID_VALUE;
-        }
-        algo_param.tiles.cta_size_in_thd = (algo_param.tiles.m_cta / algo_param.tiles.m_warp) *
-                                           (algo_param.tiles.n_cta / algo_param.tiles.n_warp) *
-                                           (algo_param.tiles.k_cta / algo_param.tiles.k_per_set) *
-                                           WARP_SIZE;
-        if (algo_param.splitk > 1)
-            algo_param.algo_name = algo_param.algo_name + "_splitk";
-    } else if (algo_param.algo_name.find("Swzl") != std::string::npos) {
-        sscanf(kname.c_str(), "_b%dx%d_w%dx%d_k%d_buf%d", &algo_param.tiles.m_cta, &algo_param.tiles.n_cta, &algo_param.tiles.m_warp, &algo_param.tiles.n_warp, &algo_param.tiles.k_cta, &algo_param.tiles.buf);
-        if (f_size == "f1") {
-            algo_param.tiles.flt_size = 1;
-        } else if (f_size == "f3") {
-            algo_param.tiles.flt_size = 3;
-        } else if (f_size == "fn") {
-            algo_param.tiles.flt_size = 0;
-        } else {
-            return ppl::common::RC_INVALID_VALUE;
-        }
-        algo_param.tiles.cta_size_in_thd = (algo_param.tiles.m_cta / algo_param.tiles.m_warp) *
-                                           (algo_param.tiles.n_cta / algo_param.tiles.n_warp) *
-                                           WARP_SIZE;
-        if (algo_param.splitk > 1)
-            algo_param.algo_name = algo_param.algo_name + "_splitk";
+    while(std::getline(algo_name_str, substr, '_')) {
+       algo_name_substrs.push_back(substr);
+    }
+
+    this->mma_shape = algo_name_substrs[1];
+
+    if ( strstr(algo_name_substrs[0].c_str(), "Idxn") ) {
+        this->algo_type = "idxn";
+
+        sscanf(algo_name_substrs[3].c_str(), "b%dx%d", &(this->tiles.m_cta), &(this->tiles.n_cta));
+        sscanf(algo_name_substrs[4].c_str(), "w%dx%d", &(this->tiles.m_warp), &(this->tiles.n_warp));
+        sscanf(algo_name_substrs[5].c_str(), "k%d",    &(this->tiles.k_cta));
+        sscanf(algo_name_substrs[6].c_str(), "s%d",    &(this->tiles.k_per_step));
+
+        this->tiles.cta_size_in_thd = (this->tiles.m_cta / this->tiles.m_warp) *
+                                      (this->tiles.n_cta / this->tiles.n_warp) *
+                                      WARP_SIZE;
+
+        this->tiles.flt_pad_size    = this->tiles.k_per_step / 4;
+
+    } else if ( strstr(algo_name_substrs[0].c_str(), "2spk") ) {
+        this->algo_type = "2spk";
+
+        if (strstr(algo_name_substrs[3].c_str(), "f1"))
+            this->tiles.flt_size = 1;
+        else if (strstr(algo_name_substrs[3].c_str(), "f3"))
+            this->tiles.flt_size = 3;
+        else if (strstr(algo_name_substrs[3].c_str(), "fn"))
+            this->tiles.flt_size = 0;
+        else if (strstr(algo_name_substrs[3].c_str(), "fs"))
+            this->tiles.flt_size = 1;
+
+        sscanf(algo_name_substrs[4].c_str(), "b%dx%d", &(this->tiles.m_cta), &(this->tiles.n_cta));
+        sscanf(algo_name_substrs[5].c_str(), "w%dx%d", &(this->tiles.m_warp), &(this->tiles.n_warp));
+        sscanf(algo_name_substrs[6].c_str(), "k%d",    &(this->tiles.k_cta));
+        sscanf(algo_name_substrs[7].c_str(), "s%d",    &(this->tiles.k_per_set));
+        sscanf(algo_name_substrs[8].c_str(), "buf%d",  &(this->tiles.buf));
+        sscanf(algo_name_substrs[9].c_str(), "spk%d",  &(this->splitk));
+        sscanf(algo_name_substrs[10].c_str(),"spf%d",  &(this->splitf));
+
+        this->tiles.cta_size_in_thd = (this->tiles.m_cta / this->tiles.m_warp) *
+                                      (this->tiles.n_cta / this->tiles.n_warp) *
+                                      (this->tiles.k_cta / this->tiles.k_per_set) *
+                                      WARP_SIZE;
+
+    } else if ( strstr(algo_name_substrs[0].c_str(), "Swzl") ) {
+        this->algo_type = "swzl";
+
+        if (strstr(algo_name_substrs[3].c_str(), "f1"))
+            this->tiles.flt_size = 1;
+        else if (strstr(algo_name_substrs[3].c_str(), "f3"))
+            this->tiles.flt_size = 3;
+        else if (strstr(algo_name_substrs[3].c_str(), "fn"))
+            this->tiles.flt_size = 0;
+
+        sscanf(algo_name_substrs[4].c_str(), "b%dx%d", &(this->tiles.m_cta), &(this->tiles.n_cta));
+        sscanf(algo_name_substrs[5].c_str(), "w%dx%d", &(this->tiles.m_warp), &(this->tiles.n_warp));
+        sscanf(algo_name_substrs[6].c_str(), "k%d",    &(this->tiles.k_cta));
+        sscanf(algo_name_substrs[7].c_str(), "buf%d",  &(this->tiles.buf));
+        sscanf(algo_name_substrs[8].c_str(), "spk%d",  &(this->splitk));
+
+        this->tiles.cta_size_in_thd = (this->tiles.m_cta / this->tiles.m_warp) *
+                                      (this->tiles.n_cta / this->tiles.n_warp) *
+                                      WARP_SIZE;
     } else {
         return ppl::common::RC_NOT_FOUND;
     }
     return ppl::common::RC_SUCCESS;
+
 }
 
 void ModifySingleParam(algo_param_t &algo_param, int pos, int offset)
@@ -854,9 +879,9 @@ ppl::common::RetCode PPLCUDAPredictFp16ConvKernel(
     cudaGetDeviceProperties(&device_prop, device_id);
 
     if (device_prop.major == 7 && device_prop.minor == 5) {
-        algo_param.mma_shape = "HMMA1688";
+        algo_param.mma_shape = "hmma1688";
     } else if (device_prop.major > 8 || (device_prop.major == 8 && device_prop.minor >= 0)) {
-        algo_param.mma_shape = "HMMA16816";
+        algo_param.mma_shape = "hmma16816";
     }
 
     if (chl_per_grp <= 32) { // Use non-shared memory algo for small channel
@@ -960,7 +985,7 @@ ppl::common::RetCode PPLCUDAPredictFp16ConvKernel(
 float AlgoForwardTime(
     int device_id,
     cudaStream_t &stream,
-    std::vector<string> name,
+    std::vector<string> kname,
     string code,
     int &idx,
     std::vector<const char *> compile_params,
@@ -980,7 +1005,7 @@ float AlgoForwardTime(
     float elapsed = 0;
 
 #ifdef PPLNN_ENABLE_CUDA_JIT
-    std::string src_name                   = name[0];
+    std::string src_name                   = kname[0];
     string ptx                             = ppl::nn::cuda::CUDANVRTCCompile(pair<string, string>(src_name, code), compile_params, device, include);
     ppl::nn::cuda::CUDAModule *cuda_module = new ppl::nn::cuda::CUDAModule();
     cuda_module->SetSourceCode(src_name, ptx);
@@ -991,8 +1016,8 @@ float AlgoForwardTime(
     cudaEventCreate(&begin);
     cudaEventCreate(&end);
 
-    for (size_t n = 0; n < name.size(); n++) {
-        CUfunction function = cuda_module->GetKernelFunc(name[n]);
+    for (size_t n = 0; n < kname.size(); n++) {
+        CUfunction function = cuda_module->GetKernelFunc(kname[n]);
         cudaEventRecord(begin, stream);
         for (int i = 0; i < times; i++) {
             PPLCUDAConvolutionForwardJitImp(
