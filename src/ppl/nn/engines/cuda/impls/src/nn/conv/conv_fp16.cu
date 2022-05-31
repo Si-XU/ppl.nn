@@ -738,6 +738,78 @@ __inline__ std::string ToString(int v)
     ss << v;
     return ss.str();
 }
+
+ppl::common::RetCode algo_param_t::BuildAlgoName()
+{
+    std::string algo_name("nv");
+
+    if (this->algo_type == "idxn")
+        algo_name += "Idxn";
+    else if (this->algo_type == "2spk")
+        algo_name += "2spk";
+    else if (this->algo_type == "swzl")
+        algo_name += "Swzl";
+
+    if (this->mma_shape == "hmma1688" && this->tiles.buf <= 2)
+        algo_name += "Sm75Fp16Conv_hmma1688_nhwc_";
+    else if (this->mma_shape == "hmma1688" && this->tiles.buf > 2)
+        algo_name += "Sm80Fp16Conv_hmma1688_nhwc_";
+    else if (this->mma_shape == "hmma16816")
+        algo_name += "Sm80Fp16Conv_hmma16816_nhwc_";
+    else if (this->mma_shape == "imma8816" && this->tiles.buf <= 2)
+        algo_name += "Sm75Int8Conv_imma8816_nhwc_";
+    else if (this->mma_shape == "imma8816" && this->tiles.buf > 2)
+        algo_name += "Sm80Int8Conv_imma8816_nhwc_";
+    else if (this->mma_shape == "imma16816")
+        algo_name += "Sm80Int8Conv_imma16816_nhwc_";
+    else if (this->mma_shape == "imma16832")
+        algo_name += "Sm80Int8Conv_imma16832_nhwc_";
+
+    if (this->algo_type == "idxn") {
+        algo_name += "b" + std::to_string(this->tiles.m_cta)  + "x" + std::to_string(this->tiles.n_cta)  + "_" + \
+                     "w" + std::to_string(this->tiles.m_warp) + "x" + std::to_string(this->tiles.n_warp) + "_" + \
+                     "k" + std::to_string(this->tiles.k_cta)  + "_" + \
+                     "s" + std::to_string(this->tiles.k_per_step);
+    } else if (this->algo_type == "2spk") {
+        if (this->tiles.flt_size == 1)
+            algo_name += "f1_";
+        else if(this->tiles.flt_size == 3)
+            algo_name += "f3_";
+        else if(this->tiles.flt_size == 0)
+            algo_name += "fn_";
+        else if(this->tiles.flt_size == 11)
+            algo_name += "fs_";
+
+        algo_name += "b" + std::to_string(this->tiles.m_cta)  + "x" + std::to_string(this->tiles.n_cta)  + "_" + \
+                     "w" + std::to_string(this->tiles.m_warp) + "x" + std::to_string(this->tiles.n_warp) + "_" + \
+                     "k" + std::to_string(this->tiles.k_cta)  + "_" + \
+                     "s" + std::to_string(this->tiles.k_per_set)  + "_" + \
+                     "buf" + std::to_string(this->tiles.buf);
+        
+        if (this->splitk > 1)
+            algo_name += "_spk" + std::to_string(this->splitk);
+    } else if (this->algo_type == "swzl") {
+        if (this->tiles.flt_size == 1)
+            algo_name += "f1_";
+        else if(this->tiles.flt_size == 3)
+            algo_name += "f3_";
+        else if(this->tiles.flt_size == 0)
+            algo_name += "fn_";
+
+        algo_name += "b" + std::to_string(this->tiles.m_cta)  + "x" + std::to_string(this->tiles.n_cta)  + "_" + \
+                     "w" + std::to_string(this->tiles.m_warp) + "x" + std::to_string(this->tiles.n_warp) + "_" + \
+                     "k" + std::to_string(this->tiles.k_cta)  + "_" + \
+                     "buf" + std::to_string(this->tiles.buf);
+
+        if (this->splitk > 1)
+            algo_name += "_spk" + std::to_string(this->splitk);
+    }
+
+    this->algo_name = algo_name;
+
+    return ppl::common::RC_SUCCESS;
+}
+
 ppl::common::RetCode algo_param_t::ParseAlgoName()
 {
     std::stringstream algo_name_str(this->algo_name);
@@ -774,15 +846,15 @@ ppl::common::RetCode algo_param_t::ParseAlgoName()
         else if (strstr(algo_name_substrs[3].c_str(), "fn"))
             this->tiles.flt_size = 0;
         else if (strstr(algo_name_substrs[3].c_str(), "fs"))
-            this->tiles.flt_size = 1;
+            this->tiles.flt_size = 11;
 
         sscanf(algo_name_substrs[4].c_str(), "b%dx%d", &(this->tiles.m_cta), &(this->tiles.n_cta));
         sscanf(algo_name_substrs[5].c_str(), "w%dx%d", &(this->tiles.m_warp), &(this->tiles.n_warp));
         sscanf(algo_name_substrs[6].c_str(), "k%d",    &(this->tiles.k_cta));
         sscanf(algo_name_substrs[7].c_str(), "s%d",    &(this->tiles.k_per_set));
         sscanf(algo_name_substrs[8].c_str(), "buf%d",  &(this->tiles.buf));
-        sscanf(algo_name_substrs[9].c_str(), "spk%d",  &(this->splitk));
-        sscanf(algo_name_substrs[10].c_str(),"spf%d",  &(this->splitf));
+        if(algo_name_substrs.size() == 10)
+            sscanf(algo_name_substrs[9].c_str(), "spk%d",  &(this->splitk));
 
         this->tiles.cta_size_in_thd = (this->tiles.m_cta / this->tiles.m_warp) *
                                       (this->tiles.n_cta / this->tiles.n_warp) *
@@ -803,7 +875,8 @@ ppl::common::RetCode algo_param_t::ParseAlgoName()
         sscanf(algo_name_substrs[5].c_str(), "w%dx%d", &(this->tiles.m_warp), &(this->tiles.n_warp));
         sscanf(algo_name_substrs[6].c_str(), "k%d",    &(this->tiles.k_cta));
         sscanf(algo_name_substrs[7].c_str(), "buf%d",  &(this->tiles.buf));
-        sscanf(algo_name_substrs[8].c_str(), "spk%d",  &(this->splitk));
+        if(algo_name_substrs.size() == 9)
+            sscanf(algo_name_substrs[8].c_str(), "spk%d",  &(this->splitk));
 
         this->tiles.cta_size_in_thd = (this->tiles.m_cta / this->tiles.m_warp) *
                                       (this->tiles.n_cta / this->tiles.n_warp) *
@@ -812,7 +885,6 @@ ppl::common::RetCode algo_param_t::ParseAlgoName()
         return ppl::common::RC_NOT_FOUND;
     }
     return ppl::common::RC_SUCCESS;
-
 }
 
 void ModifySingleParam(algo_param_t &algo_param, int pos, int offset)
@@ -1272,7 +1344,7 @@ void PPLCUDAConvolutionForwardJitImp(
     block_size.y = 1;
     block_size.z = 1;
 
-    if(algo_param.algo_name.find("Swzl") != std::string::npos) {
+    if(algo_param.algo_type == "swzl") {
         grid_size.x = DivUp(conv_param.in_num * conv_param.out_height * conv_param.out_width, tile_n);
         grid_size.y = DivUp(num_flt_per_grp_pad, tile_m);
     } else {
@@ -1285,7 +1357,7 @@ void PPLCUDAConvolutionForwardJitImp(
     const void *prelu     = (const void *)fuse_param.prelu;
     const void *elt_prelu = (const void *)fuse_param.elt_prelu;
 
-    if (algo_param.algo_name.find("Idxn") != std::string::npos) {
+    if(algo_param.algo_type == "idxn") {
         int img_pad_size = pad_size;
         int flt_pad_size = algo_param.tiles.flt_pad_size;
 
@@ -1301,7 +1373,7 @@ void PPLCUDAConvolutionForwardJitImp(
         void *args[] = {&pad_input, &d_flt, &conv_out, &kloop_num, &koff_num_pad, &in_hw, &out_hw, &flt_hw, &out_nhw, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &conv_param.num_chl, &num_chl_per_grp, &in_chl_per_grp_pad, &flt_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias, &fuse_param.has_activation, &clip_min, &fuse_param.has_clip, &clip_max, &fuse_param.has_prelu, &prelu, &fuse_param.has_elt, &(pre_data), &fuse_param.has_elt_activation, &elt_clip_min, &fuse_param.has_elt_clip, &elt_clip_max, &fuse_param.has_elt_prelu, &(elt_prelu), &leaky, &elt_leaky, &fuse_param.has_concat, &concat_offset_v8, &concat_stride_v8};
 
         CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
-    } else if (algo_param.algo_name.find("2spk") != std::string::npos) {
+    } else if (algo_param.algo_type == "2spk") {
         int kloop_num = (flt_hw / splitf) * DivUp(num_chl_per_grp_pad, cta_k);
 
         lut_t in_lut, flt_lut;
@@ -1321,7 +1393,7 @@ void PPLCUDAConvolutionForwardJitImp(
             void *args[] = {&pad_input, &d_flt, &conv_out, &kloop_num, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &num_chl_per_spk_head, &num_chl_per_spk_tail, &in_hw, &out_hw, &flt_hw, &splitk, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias};
             CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
         }
-    } else if (algo_param.algo_name.find("Swzl") != std::string::npos) {
+    } else if (algo_param.algo_type == "swzl") {
         int kloop_num = (flt_hw / splitf) * DivUp(num_chl_per_grp_pad, cta_k);
 
         lut_t in_lut, flt_lut;

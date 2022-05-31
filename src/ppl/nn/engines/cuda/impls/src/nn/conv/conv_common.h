@@ -182,6 +182,53 @@ struct kernel_info_t {
         parse_kname();
     }
 
+    kernel_info_t(struct algo_param_t& algo_param)
+    {
+        kid   = algo_param.kid;
+
+        if(algo_param.splitk == 1)
+            kname = algo_param.algo_name;
+        else if(algo_param.splitk > 1 && algo_param.splitk < 10)
+            kname = algo_param.algo_name.substr(0, algo_param.algo_name.size() - 5);
+        else if(algo_param.splitk >= 10 && algo_param.splitk < 100)
+            kname = algo_param.algo_name.substr(0, algo_param.algo_name.size() - 6);
+        else if(algo_param.splitk >= 100 && algo_param.splitk < 1000)
+            kname = algo_param.algo_name.substr(0, algo_param.algo_name.size() - 7);
+
+        if(algo_param.algo_type == "idxn") {
+            if (algo_param.tiles.k_per_step == 8)
+                ktype = CONV_IDXN_C2;
+            else if (algo_param.tiles.k_per_step == 16)
+                ktype = CONV_IDXN_C4;
+            else if (algo_param.tiles.k_per_step == 32 && strstr(algo_param.mma_shape.c_str(), "hmma"))
+                ktype = CONV_IDXN_C8;
+            else if (algo_param.tiles.k_per_step == 32 && strstr(algo_param.mma_shape.c_str(), "imma"))
+                ktype = CONV_IDXN_C32;
+            else if (algo_param.tiles.k_per_step == 64)
+                ktype = CONV_IDXN_C64;
+
+        } else if(algo_param.algo_type == "2spk") {
+            if (algo_param.tiles.flt_size == 1)
+                ktype = CONV_2SPK_F1;
+            else if (algo_param.tiles.flt_size == 3)
+                ktype = CONV_2SPK_F3;
+            else if (algo_param.tiles.flt_size == 0)
+                ktype = CONV_2SPK_FN;
+            else if (algo_param.tiles.flt_size == 11)
+                ktype = CONV_2SPK_FS;
+
+        } else if(algo_param.algo_type == "swzl") {
+            if (algo_param.tiles.flt_size == 1)
+                ktype = CONV_SWZL_F1;
+            else if (algo_param.tiles.flt_size == 3)
+                ktype = CONV_SWZL_F3;
+            else if (algo_param.tiles.flt_size == 0)
+                ktype = CONV_SWZL_FN;
+        }
+
+        parse_kname();
+    }
+
     void parse_kname()
     {
         std::stringstream kname_str(kname);
