@@ -273,7 +273,7 @@ ppl::common::RetCode Fp16CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
         MMA_K = 16;
     }
 
-    int dAvn_size = warp_y / MMA_Y / 2;
+    int dAvn_size = warp_y / (MMA_Y / 2);
     int dBvn_size = warp_x / MMA_X;
 
     std::stringstream file_str;
@@ -282,8 +282,8 @@ ppl::common::RetCode Fp16CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
     file_str << "#define TILE_K_PER_MMA       " << MMA_K << "\n";
     file_str << "#define TILE_M_PER_MMA       " << MMA_Y << "\n\n";
 
-    file_str << "#define BLK_M_PER_CTA        " << (MMA_Y / 8) << "\n";
-    file_str << "#define BLK_N_PER_CTA        " << (MMA_X / 8) << "\n\n";
+    file_str << "#define BLK_M_PER_MMA        " << (MMA_Y / 8) << "\n";
+    file_str << "#define BLK_N_PER_MMA        " << (MMA_X / 8) << "\n\n";
 
     file_str << "#define TILE_N_PER_CTA       " << cta_x << "\n";
     file_str << "#define TILE_M_PER_CTA       " << cta_y << "\n\n";
@@ -308,7 +308,6 @@ ppl::common::RetCode Fp16CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
         WriteIncludeFile(file_str, "/idxn/fp16/dmem_i1_macros.h");
         if(mma_shape == "hmma1688")
             WriteIncludeFile(file_str, "/idxn/fp16/hmma1688_i1_macros.h");
-        else if(mma_shape == "hmma16816")
 
         file_str << "#define LOAD_dAv1(_regA, _dAv1, _in_id, _in_off)    LOAD_dAv1_SIZE" << dAvn_size << "(_regA, _dAv1, _in_id, _in_off)\n";
         file_str << "#define LOAD_dBv1(_regB, _dBv1, _dBv1_off)          LOAD_dBv1_SIZE" << dBvn_size << "(_regB, _dBv1, _dBv1_off)\n\n";
@@ -381,8 +380,8 @@ ppl::common::RetCode Fp16CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
     file_str << "#define TILE_K_PER_MMA       " << MMA_K << "\n";
     file_str << "#define TILE_M_PER_MMA       " << MMA_Y << "\n\n";
 
-    file_str << "#define BLK_M_PER_CTA        " << (MMA_Y / 8) << "\n";
-    file_str << "#define BLK_N_PER_CTA        " << (MMA_X / 8) << "\n\n";
+    file_str << "#define BLK_M_PER_MMA        " << (MMA_Y / 8) << "\n";
+    file_str << "#define BLK_N_PER_MMA        " << (MMA_X / 8) << "\n\n";
 
     file_str << "#define TILE_N_PER_CTA       " << cta_x << "\n";
     file_str << "#define TILE_M_PER_CTA       " << cta_y << "\n\n";
@@ -943,12 +942,12 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
         MMA_Y = 16;
         MMA_X = 8;
         MMA_K = 16;
-        dAvn_size = warp_y / MMA_Y / 2;
+        dAvn_size = warp_y / (MMA_Y / 2);
     } else if(mma_shape == "imma16832") {
         MMA_Y = 16;
         MMA_X = 8;
         MMA_K = 32;
-        dAvn_size = warp_y / MMA_Y / 2;
+        dAvn_size = warp_y / (MMA_Y / 2);
     }
 
     int dBvn_size = warp_x / MMA_X;

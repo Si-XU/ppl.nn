@@ -36,6 +36,8 @@
 #define _4CHAR_TO_INT_          4
 #define _4INT_TO_INT4_          4
 #define _INT_TO_4BYTE_          4
+#define _INT2_TO_8BYTE_         8
+#define _INT4_TO_16BYTE_        16
 #define _INT4_TO_4INT_          4
 #define _INT4_TO_4FLOAT_        4
 #define _INT4_TO_8HALF_         8
@@ -47,6 +49,7 @@
 #define _BYTE1024_              1024
 
 #define Max(x, y)         (((x) > (y))  ? (x) : (y))
+#define Min(x, y)         (((x) < (y))  ? (x) : (y))
 
 #define MAX_SPLIT_SIZE          18
 
@@ -195,7 +198,7 @@ struct kernel_info_t {
         else if(algo_param.splitk >= 100 && algo_param.splitk < 1000)
             kname = algo_param.algo_name.substr(0, algo_param.algo_name.size() - 7);
 
-        if(algo_param.algo_type == "idxn") {
+        if(algo_param.conv_type == "idxn") {
             if (algo_param.tiles.k_per_step == 8)
                 ktype = CONV_IDXN_C2;
             else if (algo_param.tiles.k_per_step == 16)
@@ -207,7 +210,7 @@ struct kernel_info_t {
             else if (algo_param.tiles.k_per_step == 64)
                 ktype = CONV_IDXN_C64;
 
-        } else if(algo_param.algo_type == "2spk") {
+        } else if(algo_param.conv_type == "2spk") {
             if (algo_param.tiles.flt_size == 1)
                 ktype = CONV_2SPK_F1;
             else if (algo_param.tiles.flt_size == 3)
@@ -217,7 +220,7 @@ struct kernel_info_t {
             else if (algo_param.tiles.flt_size == 11)
                 ktype = CONV_2SPK_FS;
 
-        } else if(algo_param.algo_type == "swzl") {
+        } else if(algo_param.conv_type == "swzl") {
             if (algo_param.tiles.flt_size == 1)
                 ktype = CONV_SWZL_F1;
             else if (algo_param.tiles.flt_size == 3)
