@@ -903,13 +903,16 @@ double PPLCUDAConvolutionJitSelectKernel(
     uint64_t workspace)
 {
     int pad_size            = GetPadSize(type);
-    int num_chl_per_grp     = conv_param.num_chl / conv_param.num_grp;
-    int num_flt_per_grp     = conv_param.num_flt / conv_param.num_grp;
-    // int num_chl_per_grp_pad = Align(num_chl_per_grp, pad_size);
+    int num_grp             = conv_param.num_grp;
+    int num_chl_per_grp     = conv_param.num_chl / num_grp;
+    int num_flt_per_grp     = conv_param.num_flt / num_grp;
+    int num_chl_per_grp_pad = Align(num_chl_per_grp, pad_size);
     // int num_flt_per_grp_pad = Align(num_flt_per_grp, pad_size);
 
     int batch               = conv_param.in_num;
-    int flt_hw              = conv_param.flt_height * conv_param.flt_width;
+    int flt_h               = conv_param.flt_height;
+    int flt_w               = conv_param.flt_width;
+    int flt_hw              = flt_h * flt_w;
     // int in_hw               = conv_param.in_height  * conv_param.in_width;
     int out_w               = conv_param.out_width;
     int out_hw              = conv_param.out_height * conv_param.out_width;
@@ -929,6 +932,7 @@ double PPLCUDAConvolutionJitSelectKernel(
     int max_smem_per_sm  = device_prop.sharedMemPerMultiprocessor;
     int max_regs_per_cta = device_prop.regsPerBlock;
     int max_smem_per_cta = device_prop.sharedMemPerBlock;
+    int max_dyn_smem_per_cta = 0;
 
     std::string mma_shape = "";
     int splitk = 1;
@@ -936,9 +940,11 @@ double PPLCUDAConvolutionJitSelectKernel(
     int m_mma = 0;
     int n_mma = 0;
     int k_mma = 0;
-    int m_mma_ceil = 0;
-    int n_mma_ceil = 0;
-    int k_mma_ceil = 0;
+    int m_mma_max = 0;
+    int n_mma_max = 0;
+    int k_mma_max = 0;
+    int k_blk_mma = 0;
+    int buf_num_max = 0;
 
     int cpi_mma = 0;
     int cpi_ldg32_l1d = 0;
@@ -947,16 +953,23 @@ double PPLCUDAConvolutionJitSelectKernel(
     int cpi_ldg32_l2 = 0;
     int cpi_ldg64_l2 = 0;
     int cpi_ldg128_l2 = 0;
+    int cpi_lds32 = 0;
+    int cpi_lds64 = 0;
+    int cpi_lds128 = 0;
+    int cpi_sts32 = 0;
+    int cpi_sts64 = 0;
+    int cpi_sts128 = 0;
     int latency_mma = 0;
     int latency_l2_cache = 0;
     int latency_dram = 0;
 
     std::vector<std::pair<algo_param_t, float>> nominees;
     algo_param_t nominee;
-    nominee.algo_type = "TuringIMMAImpgemm";
+    nominee.algo_type = "TuringHMMAImpgemm";
 
     GetHardwareInfo(device_arch, type, cpi_mma, latency_mma, cpi_ldg32_l1d, cpi_ldg64_l1d, cpi_ldg128_l1d, \
-            cpi_ldg32_l2, cpi_ldg64_l2, cpi_ldg128_l2, latency_l2_cache, latency_dram);
+            cpi_ldg32_l2, cpi_ldg64_l2, cpi_ldg128_l2, cpi_lds32, cpi_lds64, cpi_lds128, cpi_sts32, cpi_sts64, \
+            cpi_sts128, latency_l2_cache, latency_dram, max_dyn_smem_per_cta);
 
     if (num_chl_per_grp <= 32) {
         int k_per_step = 0;
@@ -968,15 +981,16 @@ double PPLCUDAConvolutionJitSelectKernel(
             k_per_step = 32;
         }
         
-        GetIdxnMmaInfo(device_arch, type, mma_shape, m_mma, n_mma, k_mma, m_mma_ceil, n_mma_ceil, k_mma_ceil);
+        GetIdxnMmaInfo(device_arch, type, mma_shape, m_mma, n_mma, k_mma, m_mma_max, n_mma_max, k_mma_max);
 
         int flt_pad_size = k_per_step >> 2;
         int flt_chl_per_grp_pad = Align(num_chl_per_grp, flt_pad_size);
+        int k_conv = flt_hw * flt_chl_per_grp_pad;
 
         // loop over idxn kernel space
         for(int k_num = 1; k_num <= 2; k_num *= 2)
-            for(int m_warp = m_mma; m_warp <= m_mma_ceil; m_warp *= 2)
-                for(int n_warp = n_mma; n_warp <= n_mma_ceil; n_warp *= 2)
+            for(int m_warp = m_mma; m_warp <= m_mma_max; m_warp *= 2)
+                for(int n_warp = n_mma; n_warp <= n_mma_max; n_warp *= 2)
                     for(int m_warp_num = 1; m_warp_num <= 4; m_warp_num *= 2)
                         for(int n_warp_num = 1; n_warp_num <= 4; n_warp_num *= 2) {
 
@@ -986,16 +1000,16 @@ double PPLCUDAConvolutionJitSelectKernel(
                             int cta_size_in_warp = m_warp_num * n_warp_num;
                             int cta_size_in_thd  = cta_size_in_warp * WARP_SIZE;
 
-                            int kloop_num  = DivUp(flt_hw * flt_chl_per_grp_pad, k_cta);
-                            int k_conv = flt_hw * flt_chl_per_grp_pad;
+                            int kloop_total  = DivUp(flt_hw * flt_chl_per_grp_pad, k_cta);
+                            int kloop_num = kloop_total;
 
                             int m_cta_num = DivUp(m_conv, m_cta);
                             int n_cta_num = DivUp(n_conv, n_cta);
                             int cta_num = m_cta_num * n_cta_num;
 
-                            // filter out cases with too large warp tile
-                            if( cta_size_in_thd >= 512 || cta_size_in_thd == 32 ) continue;
-                            if(m_warp == m_mma_ceil && n_warp == n_mma_ceil) continue;
+                            // filter out cases with too large tiles
+                            if( m_warp_num == 4 && n_warp_num == 4 ) continue;
+                            if(m_warp == m_mma_max && n_warp == n_mma_max) continue;
 
                             // filter out cases that kloop_time > 1
                             int kloop_time = DivUp(kloop_num * (k_cta / flt_pad_size), cta_size_in_thd);
@@ -1008,32 +1022,147 @@ double PPLCUDAConvolutionJitSelectKernel(
                             if (regs_per_cta > max_regs_per_cta) continue; 
 
                             // filter out cases with too much smem usage
-                            int smem_per_cta = CheckIdxnSmemFeasible(m_cta, cta_size_in_thd);
+                            int smem_per_cta = GetIdxnSmemUsage(m_cta, cta_size_in_thd);
                             if (smem_per_cta > max_smem_per_cta) continue;
 
                             // filter out cases with too much padding
-                            float eff_score = GetEfficiencyScore(m_cta, n_cta, k_cta, m_conv, n_conv, k_conv);
-                            if(eff_score < 0.5) continue;
+                            float eff_score = GetEfficiencyScore(m_cta, n_cta, k_cta, kloop_total, m_conv, n_conv, k_conv);
+                            if(eff_score <= 0.5) continue;
 
                             // filter out cases with too low occupancy
                             float cta_launch_times = 0.f;
                             float occ_score = GetOccupancyScore(cta_size_in_thd, cta_size_in_warp, sm_num, cta_num, regs_per_cta, smem_per_cta, \
                                     max_ctas_per_sm, max_thds_per_sm, max_regs_per_sm, max_smem_per_sm, cta_launch_times);
-                            if(occ_score < 0.5) continue;
+                            if(occ_score <= 0.5) continue;
 
-                            // filter out cases with too low occupancy
-                            float pip_score = GetIdxnPipelineScore(2, cta_launch_times, out_w, cta_size_in_thd, cta_size_in_warp, m_cta, n_cta, k_cta, m_warp, n_warp, \
+                            // get kernel pipeline score
+                            float pip_score = GetIdxnPipelineScore(HALF_SIZE, cta_launch_times, out_w, cta_size_in_thd, cta_size_in_warp, m_cta, n_cta, k_cta, m_warp, n_warp, \
                                     k_per_step, m_mma, n_mma, k_mma, cpi_mma, cpi_ldg32_l1d, cpi_ldg64_l1d, cpi_ldg128_l1d, cpi_ldg32_l2, \
                                     cpi_ldg64_l2, cpi_ldg128_l2, latency_mma, latency_l2_cache, latency_dram);
 
                             // insert one nominee
                             float score = eff_score + occ_score + pip_score;
-                            nominee.SetIdxnKernelParam(m_cta, n_cta, k_cta, m_warp, n_warp, k_per_step, flt_pad_size, cta_size_in_thd, splitk, splitf, mma_shape);
+                            nominee.SetIdxnKernelParam(m_cta, n_cta, k_cta, m_warp, n_warp, k_per_step, flt_pad_size, cta_size_in_thd, smem_per_cta, splitk, splitf, mma_shape);
 
                             nominees.push_back(std::make_pair(nominee, score));
                             printf("insert nominee %s : eff %.2f occ %.2f pip %.2f launch %.2f\n", nominee.algo_name.c_str(), eff_score, occ_score, pip_score, cta_launch_times);
                         }
-        
+    } else {
+        int flt_size = 0;
+        int k_conv = flt_hw * num_chl_per_grp_pad;
+        int estimate_cta_num = GetEstimateCtaNumber(m_conv, n_conv, num_grp);
+
+        if(conv_param.flt_height == 1 && conv_param.flt_width == 1)
+            flt_size = 1;
+        else if(conv_param.flt_height == 3 && conv_param.flt_width == 3)
+            flt_size = 3;
+        else
+            flt_size = 0;
+
+        if(estimate_cta_num <= sm_num) { // choose 2spk kernel
+
+            Get2spkMmaInfo(device_arch, type, mma_shape, m_mma, n_mma, k_mma, m_mma_max, n_mma_max, k_mma_max, k_blk_mma, buf_num_max);
+            
+            const int SPLITK_OPTIONS[] = {1, 2, 4, 8};
+
+            // loop over 2spk kernel space
+            for(int spf = 0; spf < 2; spf++)
+                for(int spk = 0; spk < 4; spk++)
+                    for(int buf_num = 1; buf_num <= buf_num_max; buf_num++)
+                        for(int k_per_set = k_mma; k_per_set <= k_mma_max; k_per_set *= 2)
+                            for(int set_num = 1; set_num <= 4; set_num *= 2)
+                                for(int m_warp = m_mma; m_warp <= m_mma_max; m_warp *= 2)
+                                    for(int n_warp = n_mma; n_warp <= n_mma_max; n_warp *= 2)
+                                        for(int m_warp_num = 1; m_warp_num <= 4; m_warp_num *= 2)
+                                            for(int n_warp_num = 1; n_warp_num <= 4; n_warp_num *= 2) {
+
+                                                int m_cta = m_warp * m_warp_num;
+                                                int n_cta = n_warp * n_warp_num;
+                                                int k_cta = k_per_set * set_num;
+                                                int set_size_in_warp = m_warp_num * n_warp_num;
+                                                int cta_size_in_warp = m_warp_num * n_warp_num * set_num;
+                                                int set_size_in_thd  = set_size_in_warp * WARP_SIZE;
+                                                int cta_size_in_thd  = cta_size_in_warp * WARP_SIZE;
+
+                                                // filter out kernels that is not aligned
+                                                if( n_conv >= 64 && n_cta < 64 ) continue;
+
+                                                // filter out splitk
+                                                splitk = SPLITK_OPTIONS[spk];
+                                                if( splitk > 1 && splitk * k_cta >= Align(num_chl_per_grp, k_cta) ) continue;
+
+                                                // filter out splitf
+                                                if(spf == 1) { splitf = flt_hw; flt_size = 11; }
+                                                if(spf == 1 && splitf == 1) continue;
+                                                if(splitk * splitf >= MAX_SPLIT_SIZE) continue;
+
+                                                int m_cta_num = DivUp(m_conv, m_cta);
+                                                int n_cta_num = DivUp(n_conv, n_cta);
+                                                int cta_num = m_cta_num * n_cta_num * num_grp * splitk * splitf;
+
+                                                int split = splitk * splitf;
+                                                int kloop_total = flt_hw * DivUp(num_chl_per_grp_pad, k_cta);
+                                                int kloop_num = kloop_total / split;
+
+                                                // filter out too large and too small k_cta
+                                                if( k_cta != GetTileKSize(num_chl_per_grp_pad, kloop_num) ) continue;
+
+                                                // filter out cases with too large tiles
+                                                if( m_warp_num == 4 && n_warp_num == 4 ) continue;
+                                                if(m_warp == m_mma_max && n_warp == n_mma_max) continue;
+                                                if(cta_size_in_thd == 32 && k_cta == 64) continue;
+                                                if(cta_size_in_thd <= 64 && k_cta == 128) continue;
+                                                if(cta_size_in_thd <= 128 && k_cta == 256) continue;
+                                                if(buf_num > kloop_num) continue;
+
+                                                // filter out cases with too much register usage
+                                                int regs_per_thd = Get2spkRegsPerThread(HALF_SIZE, m_cta, n_cta, k_cta, m_warp, n_warp, k_per_set, \
+                                                        m_mma, n_mma, k_mma, k_blk_mma, buf_num, cta_size_in_thd, set_size_in_thd);
+                                                int regs_per_cta = regs_per_thd * cta_size_in_thd;
+                                                if (regs_per_thd > max_regs_per_thd) continue;
+                                                if (regs_per_cta > max_regs_per_cta) continue;
+
+                                                // filter out cases with too much smem usage
+                                                int smem_per_cta = Get2spkSmemUsage(HALF_SIZE, m_cta, n_cta, k_cta, set_num, buf_num);
+                                                if (smem_per_cta > max_dyn_smem_per_cta) continue;
+
+                                                // filter out cases with too much padding
+                                                float eff_score = GetEfficiencyScore(m_cta, n_cta, k_cta, kloop_total, m_conv, n_conv, k_conv);
+                                                if(eff_score <= 0.5) continue;
+
+                                                // filter out cases with too low occupancy
+                                                float cta_launch_times = 0.f;
+                                                float occ_score = GetOccupancyScore(cta_size_in_thd, cta_size_in_warp, \
+                                                        sm_num, cta_num, regs_per_cta, smem_per_cta,  max_ctas_per_sm, \
+                                                        max_thds_per_sm, max_regs_per_sm, max_smem_per_sm, cta_launch_times);
+                                                if(occ_score <= 0.5) continue;
+
+                                                // filter out too much split and too small splits
+                                                if( cta_launch_times > 1 ) continue;
+
+                                                // get kernel pipeline score
+                                                float pip_score = Get2spkPipelineScore(HALF_SIZE, cta_launch_times, m_conv, n_conv, k_conv, \
+                                                        kloop_num, splitk, splitf, out_w, cta_size_in_thd, cta_size_in_warp, sm_num, m_cta, \
+                                                        n_cta, k_cta, m_warp, n_warp, k_per_set, set_num, buf_num, m_mma, n_mma, k_mma, k_mma_max, \
+                                                        cpi_mma, cpi_ldg128_l1d, cpi_ldg128_l2, cpi_lds128, cpi_sts32, latency_mma, \
+                                                        latency_l2_cache, latency_dram);
+
+                                                // insert one nominee
+                                                float score = eff_score + occ_score + pip_score;
+                                                // float score = pip_score;
+                                                nominee.Set2spkKernelParam(m_cta, n_cta, k_cta, m_warp, n_warp, k_per_set, \
+                                                        flt_size, buf_num, cta_size_in_thd, smem_per_cta, splitk, splitf, mma_shape);
+
+                                                nominees.push_back(std::make_pair(nominee, score));
+                                                printf("insert 2spk nominee %s : eff %.2f occ %.2f pip %.2f launch %.2f cta_num %d warp_num %d\n", \
+                                                        nominee.algo_name.c_str(), eff_score, occ_score, pip_score, cta_launch_times, cta_num, cta_size_in_warp);
+                                            }
+
+        } else { // choose swzl kernels
+            ;
+
+        }
+
     }
 
     std::sort(nominees.begin(), nominees.end(), SortByDescendScore);
@@ -1047,12 +1176,12 @@ double PPLCUDAConvolutionJitSelectKernel(
     auto mgr = CodeGeneFactorManager::Instance();
     auto gene_factor = mgr->FindKernel(type);
 
+    // for(int i = 0; i < 64; i++) {
     for(int i = 0; i < nominees.size(); i++) {
         std::string source = "";
         auto& nominee = nominees[i].first;
 
         printf("No.%d nominee %s : score %.2f \n", i, nominee.algo_name.c_str(), nominees[i].second);
-
 
         if (nominee.conv_type == "idxn") {
             gene_factor->GeneIdxnKernel(source, nominee.algo_name, nominee.mma_shape, nominee.tiles.flt_size, nominee.tiles.m_cta, nominee.tiles.n_cta, nominee.tiles.m_warp, nominee.tiles.n_warp, nominee.tiles.k_cta, nominee.tiles.k_per_step, declare_times);
@@ -1070,6 +1199,7 @@ double PPLCUDAConvolutionJitSelectKernel(
         // if (std::find(knames.begin(), knames.end(), algo_param.algo_name) == knames.end()) {
         //     total_source = total_source + source;
         // }
+
         total_source = total_source + source;
 
         knames.push_back(nominee.algo_name);
@@ -1216,6 +1346,8 @@ void PPLCUDAConvolutionForwardJitImp(
     block_size.y = 1;
     block_size.z = 1;
 
+    int smem_size = algo_param.tiles.smem_size;
+
     if(algo_param.conv_type == "swzl") {
         grid_size.x = DivUp(conv_param.in_num * conv_param.out_height * conv_param.out_width, tile_n);
         grid_size.y = DivUp(num_flt_per_grp_pad, tile_m);
@@ -1248,6 +1380,9 @@ void PPLCUDAConvolutionForwardJitImp(
     } else if (algo_param.conv_type == "2spk") {
         int kloop_num = (flt_hw / splitf) * DivUp(num_chl_per_grp_pad, cta_k);
 
+        if(smem_size > MAX_STATIC_SMEM_SIZE_PER_CTA)
+            cuFuncSetAttribute(function, CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES, smem_size);
+
         lut_t in_lut, flt_lut;
         int in_lut_size, flt_lut_size;
 
@@ -1256,17 +1391,20 @@ void PPLCUDAConvolutionForwardJitImp(
         InitializeFilterLut(flt_lut_size, flt_lut.idx, conv_param.flt_height, conv_param.flt_width, num_chl_per_grp_pad, cta_k, pad_size);
         if (splitk == 1) {
             void *args[] = {&pad_input, &d_flt, &conv_out, &kloop_num, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &in_hw, &out_hw, &flt_hw, &splitk, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias, &fuse_param.has_activation, &clip_min, &fuse_param.has_clip, &clip_max, &fuse_param.has_prelu, &prelu, &fuse_param.has_elt, &(pre_data), &fuse_param.has_elt_activation, &elt_clip_min, &fuse_param.has_elt_clip, &elt_clip_max, &fuse_param.has_elt_prelu, &(elt_prelu), &leaky, &elt_leaky, &fuse_param.has_concat, &concat_offset_v8, &concat_stride_v8};
-            CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
+            CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, smem_size, stream, args, 0));
         } else {
             int num_chl_per_spk_head, num_chl_per_spk_tail;
 
             InitializeNumChlPerSpk(num_chl_per_spk_head, num_chl_per_spk_tail, conv_param.num_chl, conv_param.num_grp, pad_size, cta_k, splitk);
 
             void *args[] = {&pad_input, &d_flt, &conv_out, &kloop_num, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &num_chl_per_spk_head, &num_chl_per_spk_tail, &in_hw, &out_hw, &flt_hw, &splitk, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias};
-            CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
+            CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, smem_size, stream, args, 0));
         }
     } else if (algo_param.conv_type == "swzl") {
         int kloop_num = (flt_hw / splitf) * DivUp(num_chl_per_grp_pad, cta_k);
+
+        if(smem_size > MAX_STATIC_SMEM_SIZE_PER_CTA)
+            cuFuncSetAttribute(function, CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES, smem_size);
 
         lut_t in_lut, flt_lut;
         int in_lut_size, flt_lut_size;
@@ -1276,13 +1414,13 @@ void PPLCUDAConvolutionForwardJitImp(
         InitializeFilterLut(flt_lut_size, flt_lut.idx, conv_param.flt_height, conv_param.flt_width, num_chl_per_grp_pad, cta_k, pad_size);
         if (splitk == 1) {
             void *args[] = {&d_flt, &pad_input, &conv_out, &kloop_num, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &in_hw, &out_hw, &flt_hw, &splitk, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias, &fuse_param.has_activation, &clip_min, &fuse_param.has_clip, &clip_max, &fuse_param.has_prelu, &prelu, &fuse_param.has_elt, &(pre_data), &fuse_param.has_elt_activation, &elt_clip_min, &fuse_param.has_elt_clip, &elt_clip_max, &fuse_param.has_elt_prelu, &(elt_prelu), &leaky, &elt_leaky, &fuse_param.has_concat, &concat_offset_v8, &concat_stride_v8};
-            CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
+            CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, smem_size, stream, args, 0));
         } else {
             int num_chl_per_spk_head, num_chl_per_spk_tail;
 
             InitializeNumChlPerSpk(num_chl_per_spk_head, num_chl_per_spk_tail, conv_param.num_chl, conv_param.num_grp, pad_size, cta_k, splitk);
             void *args[] = {&d_flt, &pad_input, &conv_out, &kloop_num, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &num_chl_per_spk_head, &num_chl_per_spk_tail, &in_hw, &out_hw, &flt_hw, &splitk, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias};
-            CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
+            CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, smem_size, stream, args, 0));
         }
     }
 

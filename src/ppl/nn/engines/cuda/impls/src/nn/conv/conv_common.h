@@ -32,6 +32,9 @@
 #include "cudakernel/common/common.h"
 
 #define WARP_SIZE               32
+#define INT8_SIZE               1
+#define HALF_SIZE               2
+
 #define _2HALF_TO_INT_          2
 #define _4CHAR_TO_INT_          4
 #define _4INT_TO_INT4_          4
@@ -280,7 +283,7 @@ struct kernel_info_t {
             else if (strstr(kname_substrs[3].c_str(), "fn"))
                 flt_size = 0;
             else if (strstr(kname_substrs[3].c_str(), "fs"))
-                flt_size = 1;
+                flt_size = 11;
             else
                 flt_size = -1;
 

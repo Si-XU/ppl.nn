@@ -138,7 +138,6 @@ double TuringIMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
 #ifdef PPLNN_ENABLE_CUDA_JIT
     // Do select
     LOG(INFO) << "Compiling " << node->GetName();
-    PPLCUDAPredictInt8ConvKernel(device_id, shape_in0.GetDataType(), attr_param_.extra_param.algo_info, temp_conv_param);
     PPLCUDAConvolutionJitSelectKernelInt8(device_id, stream, shape_in0.GetDataType(), (int4*)input_buffer.addr,
                                                       (int4*)weight_buffer.addr, (int4*)output_buffer.addr,
                                                       (int4*)bias_buffer.addr, (int4*)temp_buffer.addr,

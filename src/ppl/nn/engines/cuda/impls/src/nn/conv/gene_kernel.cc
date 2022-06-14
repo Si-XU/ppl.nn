@@ -156,14 +156,24 @@ ppl::common::RetCode Fp16CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
         file_str << "struct lut_t{ int idx[MAX_LUT_SIZE]; };\n\n";
     }
 
+    std::string flt_size_str = "";
+    if(flt_size == 1)
+        flt_size_str = "f1";
+    else if(flt_size == 3)
+        flt_size_str = "f3";
+    else if(flt_size == 0)
+        flt_size_str = "fn";
+    else if(flt_size == 11)
+        flt_size_str = "fs";
+
     WriteIncludeFile(file_str, "/2spk/fp16/const_macros.h");
-    WriteIncludeFile(file_str, "/2spk/fp16/" + std::to_string(flt_size) + "/bound_macros.h");
+    WriteIncludeFile(file_str, "/2spk/fp16/" + flt_size_str + "/bound_macros.h");
     WriteIncludeFile(file_str, "/2spk/fp16/ldsm_macros.h");
     if (buf_size <= 2)
-        WriteIncludeFile(file_str, "/2spk/fp16/" + std::to_string(flt_size) + "/dmem_reg_macros.h");
+        WriteIncludeFile(file_str, "/2spk/fp16/" + flt_size_str + "/dmem_reg_macros.h");
     else if (buf_size > 2) {
         WriteIncludeFile(file_str, "/2spk/fp16/async_macros.h");
-        WriteIncludeFile(file_str, "/2spk/fp16/" + std::to_string(flt_size) + "/dmem_async_macros.h");
+        WriteIncludeFile(file_str, "/2spk/fp16/" + flt_size_str + "/dmem_async_macros.h");
     }
 
     WriteIncludeFile(file_str, "/2spk/fp16/hmma_macros.h");
@@ -183,7 +193,7 @@ ppl::common::RetCode Fp16CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
     file_str << "#define WRITE_sRv1(_sm_base_v1, _sRv1_write_base, _C)   WRITE_sRv1_" << warp_y / MMA_Y_HALF << "x" << warp_x / MMA_X << "(_sm_base_v1, _sRv1_write_base, _C)\n\n";
 
     if (buf_size <= 2) {
-        if (flt_size == 1) {
+        if (flt_size == 1 || flt_size == 11) {
             file_str << "#define LOAD_dAv4(_regA, _dA, _dAv4_off, _in_c_v8_id, _in_hw_valid)     LOAD_dAv4_SIZE" << GetSizeString(dAv4_size) << "(_regA, _dA, _dAv4_off, _in_c_v8_id, _in_hw_valid)\n";
             file_str << "#define WRITE_sAv4(_sm_base_v4, _sm_off, _reg)                          WRITE_sUv4_SIZE" << GetSizeString(dAv4_size) << "(_sm_base_v4, _sm_off, _reg)\n\n";
 
@@ -192,7 +202,7 @@ ppl::common::RetCode Fp16CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
 
             file_str << "#define FLT_SIZE1\n\n";
 
-        } else if (flt_size == 1) {
+        } else if (flt_size == 3) {
             file_str << "#define LOAD_dAv4(_regA, _dA, _dAv4_off, _in_c_v8_id, _flt_hw_bid)      LOAD_dAv4_SIZE" << GetSizeString(dAv4_size) << "(_regA, _dA, _dAv4_off, _in_c_v8_id, _flt_hw_bid)\n";
             file_str << "#define WRITE_sAv4(_sm_base_v4, _sm_off, _reg)                          WRITE_sUv4_SIZE" << GetSizeString(dAv4_size) << "(_sm_base_v4, _sm_off, _reg)\n\n";
 
@@ -212,7 +222,7 @@ ppl::common::RetCode Fp16CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
             file_str << "#define FLT_SIZEN\n\n";
         }
     } else if (buf_size > 2) {
-        if (flt_size == 1) {
+        if (flt_size == 1 || flt_size == 11) {
             file_str << "#define LOAD_dAv4(_sAv4, _sAv4_off, _dA, _dAv4_off, _in_c_v8_id, _in_hw_valid)     LOAD_dAv4_SIZE" << GetSizeString(dAv4_size) << "(_sAv4, _sAv4_off, _dA, _dAv4_off, _in_c_v8_id, _in_hw_valid)\n";
             file_str << "#define LOAD_dBv4(_sBv4, _sBv4_off, _dB, _dBv4_off, _flt_c_v8_id, _flt_n_valid)    LOAD_dBv4_SIZE" << GetSizeString(dBv4_size) << "(_sBv4, _sBv4_off, _dB, _dBv4_off, _flt_c_v8_id, _flt_n_valid)\n";
 
@@ -431,15 +441,23 @@ ppl::common::RetCode Fp16CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
         file_str << "struct lut_t{ int idx[MAX_LUT_SIZE]; };\n\n";
     }
 
+    std::string flt_size_str = "";
+    if(flt_size == 1)
+        flt_size_str = "f1";
+    else if(flt_size == 3)
+        flt_size_str = "f3";
+    else if(flt_size == 0)
+        flt_size_str = "fn";
+
     WriteIncludeFile(file_str, "/swzl/fp16/const_macros.h");
-    WriteIncludeFile(file_str, "/swzl/" + std::to_string(flt_size) + "/bound_macros.h");
+    WriteIncludeFile(file_str, "/swzl/" + flt_size_str + "/bound_macros.h");
     WriteIncludeFile(file_str, "/swzl/fp16/ldsm_macros.h");
 
     if (buf_size <= 2)
-        WriteIncludeFile(file_str, "/2spk/fp16/" + std::to_string(flt_size) + "/dmem_reg_macros.h");
+        WriteIncludeFile(file_str, "/2spk/fp16/" + flt_size_str + "/dmem_reg_macros.h");
     else if (buf_size > 2) {
         WriteIncludeFile(file_str, "/2spk/fp16/async_macros.h");
-        WriteIncludeFile(file_str, "/2spk/fp16/" + std::to_string(flt_size) + "/dmem_async_macros.h");
+        WriteIncludeFile(file_str, "/2spk/fp16/" + flt_size_str + "/dmem_async_macros.h");
     }
 
     WriteIncludeFile(file_str, "/swzl/fp16/hmma_macros.h");
@@ -814,14 +832,24 @@ ppl::common::RetCode Int8CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
         file_str << "struct lut_t{ int idx[MAX_LUT_SIZE]; };\n\n";
     }
 
+    std::string flt_size_str = "";
+    if(flt_size == 1)
+        flt_size_str = "f1";
+    else if(flt_size == 3)
+        flt_size_str = "f3";
+    else if(flt_size == 0)
+        flt_size_str = "fn";
+    else if(flt_size == 11)
+        flt_size_str = "fs";
+
     WriteIncludeFile(file_str, "/2spk/int8/const_macros.h");
-    WriteIncludeFile(file_str, "/2spk/int8/" + std::to_string(flt_size) + "/bound_macros.h");
+    WriteIncludeFile(file_str, "/2spk/int8/" + flt_size_str + "/bound_macros.h");
     WriteIncludeFile(file_str, "/2spk/int8/ldsm_macros.h");
     if (buf_size <= 2)
-        WriteIncludeFile(file_str, "/2spk/int8/" + std::to_string(flt_size) + "/dmem_reg_macros.h");
+        WriteIncludeFile(file_str, "/2spk/int8/" + flt_size_str + "/dmem_reg_macros.h");
     else if (buf_size > 2) {
         WriteIncludeFile(file_str, "/2spk/int8/async_macros.h");
-        WriteIncludeFile(file_str, "/2spk/int8/" + std::to_string(flt_size) + "/dmem_async_macros.h");
+        WriteIncludeFile(file_str, "/2spk/int8/" + flt_size_str + "/dmem_async_macros.h");
     }
     if (mma_shape == "imma8816")
         WriteIncludeFile(file_str, "/2spk/int8/imma8816_macros.h");
@@ -853,7 +881,7 @@ ppl::common::RetCode Int8CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
 
 
     if (buf_size <= 2) {
-        if (flt_size == 1) {
+        if (flt_size == 1 || flt_size == 11) {
             file_str << "#define LOAD_dAv4(_regA, _dA, _dAv4_off, _in_c_v16_id, _in_hw_valid)    LOAD_dAv4_SIZE" << GetSizeString(dAv4_size) << "(_regA, _dA, _dAv4_off, _in_c_v16_id, _in_hw_valid)\n";
             file_str << "#define WRITE_sAv4(_sm_base_v4, _sm_off, _reg)                          WRITE_sUv4_SIZE" << GetSizeString(dAv4_size) << "(_sm_base_v4, _sm_off, _reg)\n\n";
 
@@ -881,7 +909,7 @@ ppl::common::RetCode Int8CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
             file_str << "#define FLT_SIZEN\n\n";
         }
     } else if (buf_size > 2) {
-        if (flt_size == 1) {
+        if (flt_size == 1 || flt_size == 11) {
             file_str << "#define LOAD_dAv4(_sAv4, _sAv4_off, _dA, _dAv4_off, _in_c_v16_id, _in_hw_valid)    LOAD_dAv4_SIZE" << GetSizeString(dAv4_size) << "(_sAv4, _sAv4_off, _dA, _dAv4_off, _in_c_v16_id, _in_hw_valid)\n";
             file_str << "#define LOAD_dBv4(_sBv4, _sBv4_off, _dB, _dBv4_off, _flt_c_v16_id, _flt_n_valid)   LOAD_dBv4_SIZE" << GetSizeString(dBv4_size) << "(_sBv4, _sBv4_off, _dB, _dBv4_off, _flt_c_v16_id, _flt_n_valid)\n";
 
@@ -1122,15 +1150,23 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
         file_str << "struct lut_t{ int idx[MAX_LUT_SIZE]; };\n\n";
     }
 
+    std::string flt_size_str = "";
+    if(flt_size == 1)
+        flt_size_str = "f1";
+    else if(flt_size == 3)
+        flt_size_str = "f3";
+    else if(flt_size == 0)
+        flt_size_str = "fn";
+
     WriteIncludeFile(file_str, "/swzl/int8/const_macros.h");
-    WriteIncludeFile(file_str, "/swzl/" + std::to_string(flt_size) + "/bound_macros.h");
+    WriteIncludeFile(file_str, "/swzl/" + flt_size_str + "/bound_macros.h");
     WriteIncludeFile(file_str, "/swzl/int8/ldsm_macros.h");
 
     if (buf_size <= 2)
-        WriteIncludeFile(file_str, "/2spk/int8/" + std::to_string(flt_size) + "/dmem_reg_macros.h");
+        WriteIncludeFile(file_str, "/2spk/int8/" + flt_size_str + "/dmem_reg_macros.h");
     else if (buf_size > 2) {
         WriteIncludeFile(file_str, "/2spk/int8/async_macros.h");
-        WriteIncludeFile(file_str, "/2spk/int8/" + std::to_string(flt_size) + "/dmem_async_macros.h");
+        WriteIncludeFile(file_str, "/2spk/int8/" + flt_size_str + "/dmem_async_macros.h");
     }
 
     if (mma_shape == "imma8816")

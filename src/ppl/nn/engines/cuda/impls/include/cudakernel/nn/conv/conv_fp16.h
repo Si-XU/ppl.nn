@@ -60,6 +60,7 @@ struct tiles_param_t {
     int flt_pad_size = -1; // for idxn conv
 
     int cta_size_in_thd = -1;
+    int smem_size       = 0;
     int buf             = 1;
 };
 
@@ -91,6 +92,7 @@ struct algo_param_t {
         tiles.k_cta           = 8;
         tiles.k_per_set       = 8;
         tiles.cta_size_in_thd = 32;
+        tiles.smem_size       = 384;
         tiles.flt_size        = 1;
         tiles.buf             = 1;
         kid                   = 0;
@@ -98,7 +100,7 @@ struct algo_param_t {
     };
 
     void SetIdxnKernelParam(int m_cta, int n_cta, int k_cta, int m_warp, int n_warp, int k_per_step, int flt_pad_size,
-            int cta_size_in_thd, int splitk, int splitf, std::string mma_shape)
+            int cta_size_in_thd, int smem_size, int splitk, int splitf, std::string mma_shape)
     {
         this->tiles.m_cta = m_cta;
         this->tiles.n_cta = n_cta;
@@ -111,6 +113,7 @@ struct algo_param_t {
         this->tiles.flt_pad_size = flt_pad_size;
 
         this->tiles.cta_size_in_thd = cta_size_in_thd;
+        this->tiles.smem_size = smem_size;
 
         this->splitk = splitk;
         this->splitf = splitf;
@@ -121,7 +124,7 @@ struct algo_param_t {
     }
 
     void Set2spkKernelParam(int m_cta, int n_cta, int k_cta, int m_warp, int n_warp, int k_per_set, int flt_size,
-            int cta_size_in_thd, int splitk, int splitf, std::string mma_shape)
+            int buf_num, int cta_size_in_thd, int smem_size, int splitk, int splitf, std::string mma_shape)
     {
         this->tiles.m_cta = m_cta;
         this->tiles.n_cta = n_cta;
@@ -132,8 +135,10 @@ struct algo_param_t {
 
         this->tiles.k_per_set = k_per_set;
         this->tiles.flt_size = flt_size;
+        this->tiles.buf = buf_num;
 
         this->tiles.cta_size_in_thd = cta_size_in_thd;
+        this->tiles.smem_size = smem_size;
 
         this->splitk = splitk;
         this->splitf = splitf;
@@ -144,7 +149,7 @@ struct algo_param_t {
     }
 
     void SetSwzlKernelParam(int m_cta, int n_cta, int k_cta, int m_warp, int n_warp, int flt_size,
-            int cta_size_in_thd, int splitk, int splitf, std::string mma_shape)
+            int buf_num, int cta_size_in_thd, int smem_size, int splitk, int splitf, std::string mma_shape)
     {
         this->tiles.m_cta = m_cta;
         this->tiles.n_cta = n_cta;
@@ -154,8 +159,10 @@ struct algo_param_t {
         this->tiles.n_warp = n_warp;
 
         this->tiles.flt_size = flt_size;
+        this->tiles.buf = buf_num;
 
         this->tiles.cta_size_in_thd = cta_size_in_thd;
+        this->tiles.smem_size = smem_size;
 
         this->splitk = splitk;
         this->splitf = splitf;
