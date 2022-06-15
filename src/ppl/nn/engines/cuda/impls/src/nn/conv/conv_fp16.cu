@@ -1159,7 +1159,85 @@ double PPLCUDAConvolutionJitSelectKernel(
                                             }
 
         } else { // choose swzl kernels
-            ;
+            GetSwzlMmaInfo(device_arch, type, mma_shape, m_mma, n_mma, k_mma, m_mma_max, n_mma_max, k_mma_max, k_blk_mma, buf_num_max);
+
+            // switch m_conv <=> n_conv
+            int tmp = m_conv; m_conv = n_conv; n_conv = tmp;
+            
+            // loop over swzl kernel space
+            for(int buf_num = 1; buf_num <= buf_num_max; buf_num++)
+                for(int k_cta = k_mma; k_cta <= k_mma_max; k_cta *= 2)
+                    for(int m_warp = m_mma; m_warp <= m_mma_max; m_warp *= 2)
+                        for(int n_warp = n_mma; n_warp <= n_mma_max; n_warp *= 2)
+                            for(int m_warp_num = 1; m_warp_num <= 4; m_warp_num *= 2)
+                                for(int n_warp_num = 1; n_warp_num <= 4; n_warp_num *= 2) {
+
+                                    int m_cta = m_warp * m_warp_num;
+                                    int n_cta = n_warp * n_warp_num;
+                                    int cta_size_in_warp = m_warp_num * n_warp_num;
+                                    int cta_size_in_thd  = cta_size_in_warp * WARP_SIZE;
+
+                                    // filter out kernels that is not aligned
+                                    if( m_conv >= 64 && m_cta < 64 ) continue;
+
+                                    int m_cta_num = DivUp(m_conv, m_cta);
+                                    int n_cta_num = DivUp(n_conv, n_cta);
+                                    int cta_num = m_cta_num * n_cta_num * num_grp;
+
+                                    int kloop_total = flt_hw * DivUp(num_chl_per_grp_pad, k_cta);
+                                    int kloop_num = kloop_total;
+
+                                    // filter out too large and too small k_cta
+                                    if( k_cta != GetTileKSize(num_chl_per_grp_pad, kloop_num) ) continue;
+
+                                    // filter out cases with too large tiles
+                                    if( m_warp == m_mma && n_warp == n_mma ) continue;
+                                    if( m_warp == m_mma_max && n_warp == n_mma_max ) continue;
+                                    if( m_warp_num == 4 && n_warp_num == 4 ) continue;
+                                    if( m_warp_num == 1 && n_warp_num == 1 && k_cta == k_mma_max ) continue;
+                                    if(buf_num > kloop_num) continue;
+
+                                    // filter out cases with too much register usage
+                                    int regs_per_thd = GetSwzlRegsPerThread(HALF_SIZE, m_cta, n_cta, k_cta, m_warp, n_warp, \
+                                            m_mma, n_mma, k_mma, k_blk_mma, buf_num, cta_size_in_thd);
+                                    int regs_per_cta = regs_per_thd * cta_size_in_thd;
+                                    if (regs_per_thd > max_regs_per_thd) continue;
+                                    if (regs_per_cta > max_regs_per_cta) continue;
+
+                                    // filter out cases with too much smem usage
+                                    int smem_per_cta = GetSwzlSmemUsage(HALF_SIZE, m_cta, n_cta, k_cta, m_warp, n_warp, \
+                                            m_mma, n_mma, buf_num, cta_size_in_warp);
+                                    if (smem_per_cta > max_dyn_smem_per_cta) continue;
+
+                                    // filter out cases with too much padding
+                                    float eff_score = GetEfficiencyScore(m_cta, n_cta, k_cta, kloop_total, m_conv, n_conv, k_conv);
+                                    if(eff_score <= 0.5) continue;
+
+                                    // filter out cases with too low occupancy
+                                    float cta_launch_times = 0.f;
+                                    float occ_score = GetOccupancyScore(cta_size_in_thd, cta_size_in_warp, \
+                                            sm_num, cta_num, regs_per_cta, smem_per_cta,  max_ctas_per_sm, \
+                                            max_thds_per_sm, max_regs_per_sm, max_smem_per_sm, cta_launch_times);
+                                    if(occ_score <= 0.5) continue;
+
+                                    // get kernel pipeline score
+                                    float pip_score = GetSwzlPipelineScore(HALF_SIZE, cta_launch_times, m_conv, n_conv, k_conv, \
+                                            kloop_num, out_w, cta_size_in_thd, cta_size_in_warp, sm_num, m_cta, \
+                                            n_cta, k_cta, m_warp, n_warp, buf_num, m_mma, n_mma, k_mma, k_mma_max, \
+                                            cpi_mma, cpi_ldg128_l1d, cpi_ldg128_l2, cpi_lds128, cpi_sts32, latency_mma, \
+                                            latency_l2_cache, latency_dram);
+
+                                    // insert one nominee
+                                    float score = eff_score + occ_score + pip_score;
+                                    // float score = pip_score;
+                                    nominee.SetSwzlKernelParam(m_cta, n_cta, k_cta, m_warp, n_warp, flt_size, \
+                                            buf_num, cta_size_in_thd, smem_per_cta, splitk, splitf, mma_shape);
+
+                                    nominees.push_back(std::make_pair(nominee, score));
+                                    printf("insert swzl nominee %s : eff %.2f occ %.2f pip %.2f launch %.2f cta_num %d warp_num %d\n", \
+                                            nominee.algo_name.c_str(), eff_score, occ_score, pip_score, cta_launch_times, cta_num, cta_size_in_warp);
+                                }
+
 
         }
 
@@ -1176,7 +1254,7 @@ double PPLCUDAConvolutionJitSelectKernel(
     auto mgr = CodeGeneFactorManager::Instance();
     auto gene_factor = mgr->FindKernel(type);
 
-    // for(int i = 0; i < 64; i++) {
+    // for(int i = 0; i < 1; i++) {
     for(int i = 0; i < nominees.size(); i++) {
         std::string source = "";
         auto& nominee = nominees[i].first;

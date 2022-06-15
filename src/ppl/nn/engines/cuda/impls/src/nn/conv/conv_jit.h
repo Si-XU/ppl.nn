@@ -414,8 +414,9 @@ int GetSwzlRegsPerThread(
         int buf_num,
         int cta_size_in_thd)
 {
-    int regs_a_v4 = (m_cta * k_cta * type_size) / (_INT4_TO_16BYTE_ * cta_size_in_thd);
-    int regs_b_v4 = (n_cta * k_cta * type_size) / (_INT4_TO_16BYTE_ * cta_size_in_thd);
+    int regs_a_v4 = DivUp( m_cta * k_cta * type_size, _INT4_TO_16BYTE_ * cta_size_in_thd);
+    int regs_b_v4 = DivUp( n_cta * k_cta * type_size, _INT4_TO_16BYTE_ * cta_size_in_thd);
+
     int regs_c_v4 = (m_cta * n_cta * type_size) / (_INT4_TO_16BYTE_ * cta_size_in_thd);
 
     int regs_a_v1 = regs_a_v4 * _4INT_TO_INT4_;
@@ -425,17 +426,14 @@ int GetSwzlRegsPerThread(
     int regs_a_idx = regs_a_v4;
     int regs_b_idx = regs_b_v4;
 
-    int regs_sa_v1 = 0;
-    int regs_sb_v1 = 0;
-
     int m_thd = m_warp / 8;
     int n_thd = n_warp / 8;
     int reg_buf = (k_cta / k_mma == 1) ? 1 : 2; // single or double register buffer
 
-    regs_sa_v1 = m_thd * k_blk_mma * reg_buf;
-    regs_sb_v1 = n_thd * k_blk_mma * reg_buf;
+    int regs_sa_v1 = m_thd * k_blk_mma * reg_buf;
+    int regs_sb_v1 = n_thd * k_blk_mma * reg_buf;
 
-    int regs_common_idx = 10;
+    int regs_common_idx = 20;
     int regs_per_thd = 0;
 
     if(buf_num <= 2)
@@ -472,7 +470,7 @@ __inline__ int Get2spkSmemUsage(
     return smem_per_cta;
 }
 
-__inline__ int CheckSwzlSmemFeasible(
+__inline__ int GetSwzlSmemUsage(
         int type_size,
         int m_cta,
         int n_cta,
@@ -594,53 +592,38 @@ __inline__ float GetOccupancyScore(
     int warp_num_per_sm     = cta_num_per_sm * cta_size_in_warp;
     // int warp_num_per_launch = warp_num_per_sm * sm_num;
 
-    int max_cta_num_on_sm = 0;
-    int min_cta_num_on_sm = 0;
-    
-    int max_warp_num_on_sm = 0;
-    int min_warp_num_on_sm = 0;
-
-    int sm_num_of_max_occupy = 0;
-    int sm_num_of_min_occupy = 0;
-
-    // float cta_launch_times = 1.f * cta_num / cta_num_per_launch;
     cta_launch_times = 1.f * cta_num / cta_num_per_launch;
 
-    if (cta_launch_times >= 1) { // multiple launches
-        max_cta_num_on_sm  = cta_num_per_sm;
-        min_cta_num_on_sm  = cta_num_per_sm;
-
-        max_warp_num_on_sm = warp_num_per_sm;
-        min_warp_num_on_sm = warp_num_per_sm;
-    } else { // less than 1 launch
-        max_cta_num_on_sm  = DivUp(cta_num, sm_num);
-        min_cta_num_on_sm  = cta_num / sm_num;
-
-        max_warp_num_on_sm = max_cta_num_on_sm * cta_size_in_warp;
-        min_warp_num_on_sm = min_cta_num_on_sm * cta_size_in_warp;
+    // main part
+    float main_score_occ = 0.f;
+    if(cta_launch_times > 1) {
+        main_score_occ = GetWarpOccupySMScore(warp_num_per_sm, cta_num_per_sm);
     }
 
-    if(cta_launch_times >= 1 || max_cta_num_on_sm == min_cta_num_on_sm) {
-        sm_num_of_max_occupy = sm_num;
-        sm_num_of_min_occupy = 0;
-    } else {
-        // max_cta_num_on_sm * sm_num_of_max_occupy + min_cta_num_on_sm * (sm_num - sm_num_of_max_occupy) = cta_num
-        sm_num_of_max_occupy = (cta_num - min_cta_num_on_sm * sm_num) / (max_cta_num_on_sm - min_cta_num_on_sm);
-        sm_num_of_min_occupy = sm_num - sm_num_of_max_occupy;
-    }
+    // tail part
+    int tail_cta_num = cta_num % cta_num_per_launch;
+
+    int max_cta_num_on_sm  = DivUp(tail_cta_num, sm_num);
+    int min_cta_num_on_sm  = tail_cta_num / sm_num;
+
+    int max_warp_num_on_sm = max_cta_num_on_sm * cta_size_in_warp;
+    int min_warp_num_on_sm = min_cta_num_on_sm * cta_size_in_warp;
+
+    // max_cta_num_on_sm * sm_num_of_max_occupy + min_cta_num_on_sm * (sm_num - sm_num_of_max_occupy) = tail_cta_num
+    int sm_num_of_max_occupy = (tail_cta_num - min_cta_num_on_sm * sm_num) / (max_cta_num_on_sm - min_cta_num_on_sm);
+    int sm_num_of_min_occupy = sm_num - sm_num_of_max_occupy;
 
     float sm_num_of_max_occupy_pct = 1.f * sm_num_of_max_occupy / sm_num;
     float sm_num_of_min_occupy_pct = 1.f * sm_num_of_min_occupy / sm_num;
 
-    float score_sm_occupy = sm_num_of_max_occupy_pct * GetWarpOccupySMScore(max_warp_num_on_sm, max_cta_num_on_sm) + \
-                            sm_num_of_min_occupy_pct * GetWarpOccupySMScore(min_warp_num_on_sm, min_cta_num_on_sm);
+    float tail_score_occ = sm_num_of_max_occupy_pct * GetWarpOccupySMScore(max_warp_num_on_sm, max_cta_num_on_sm) + \
+                           sm_num_of_min_occupy_pct * GetWarpOccupySMScore(min_warp_num_on_sm, min_cta_num_on_sm);
 
-    // float score_sm_tail = 1.f * (cta_num % sm_num) / sm_num;
+    int cta_launch_times_ceil = std::ceil(cta_launch_times);
 
-    // float factor_launch = Min(2.f / cta_launch_times, 0.9);
-
-    // float score_occ = (1 - factor_launch) * score_sm_tail + factor_launch * score_sm_occupy;
-    float score_occ = score_sm_occupy;
+    // 2 scenarios: main + tail
+    float score_occ = (1.f * (cta_launch_times_ceil - 1) / cta_launch_times_ceil) * main_score_occ + \
+                       (1.f / cta_launch_times_ceil) * tail_score_occ;
 
     return score_occ;
 }
@@ -829,14 +812,110 @@ float Get2spkPipelineScore(
     // int cycles_split = (split == 1) ? 0 : (split * cpi_ldg128_l2 + latency_dram);
     // int cycles_split = (split == 1) ? 0 : (split * latency_dram);
 
-    // int cycles_kernel = Max(cycles_mma, cycles_mem) * kloop_num * std::ceil(cta_launch_times);
-    // int cycles_kernel = Max(cycles_mma, cycles_mem);
-
     // float ratio = (200.f * kloop_total / (k_mma_max * 4)) / (cycles_kernel + cycles_split);
     // float ratio = 200.0f / (cycles_kernel + cycles_split);
     // float ratio = 200.0f * buf_num / (cycles_kernel);
     // float ratio = 1.f * cycles_mma / cycles_mem;
     float ratio = 1.f * cycles_ideal / cycles_kernel;
+
+    return  ratio;
+}
+
+float GetSwzlPipelineScore(
+        int type_size,
+        float cta_launch_times,
+        int m_conv,
+        int n_conv,
+        int k_conv,
+        int kloop_num,
+        int out_w,
+        int cta_size_in_thd,
+        int cta_size_in_warp,
+        int sm_num,
+        int m_cta,
+        int n_cta,
+        int k_cta,
+        int m_warp,
+        int n_warp,
+        int buf_num,
+        int m_mma,
+        int n_mma,
+        int k_mma,
+        int k_mma_max,
+        int cpi_mma,
+        int cpi_ldg128_l1d,
+        int cpi_ldg128_l2,
+        int cpi_lds128,
+        int cpi_sts32,
+        int latency_mma,
+        int latency_l2_cache,
+        int latency_dram
+        )
+{
+    // kernel pipeline is divided into 2 stages, overlap pipeline and waiting pipeline
+    // stage-0, overlap pipeline: stalling cycles are hided by multi-buffers
+    // stage-1, waiting pipeline: mma pipe catches up exausting all buffers, thus still need to wait for mem pipe
+
+    // mma part
+    int warp_num_per_pb = DivUp(cta_size_in_warp, PB_NUM_PER_SM);
+
+    int mma_issue_cycles_per_buf = cpi_mma * (m_warp / m_mma) * (n_warp / n_mma) * (k_cta / k_mma) * warp_num_per_pb;
+
+    // memory part
+    int mr_flt_total = DivUp(m_cta * k_cta * type_size, _INT4_TO_16BYTE_ * WARP_SIZE);
+    int mr_flt_l2  = mr_flt_total;
+    int mr_flt_l1d = 0;
+
+    int mr_input_total = DivUp(n_cta * k_cta * type_size, _INT4_TO_16BYTE_ * WARP_SIZE);
+    int mr_input_l2 = DivUp(DivUp(n_cta, out_w) * Min(out_w, n_cta) * k_cta * type_size, _INT4_TO_16BYTE_ * WARP_SIZE);
+    int mr_input_l1d = mr_input_total - mr_input_l2;
+
+    int mem_issue_cycles_per_buf = cpi_ldg128_l1d * (mr_flt_l1d + mr_input_l1d) + cpi_ldg128_l2 * (mr_flt_l2 + mr_input_l2);
+
+    // int cycles_ideal = 256 * cpi_mma;
+    // int cycles_ideal = kloop_num * mma_issue_cycles_per_buf;
+    int cycles_ideal = DivUp(m_conv, m_mma) * \
+                       DivUp(n_conv, n_mma) * \
+                       DivUp(k_conv, k_mma) * \
+                       cpi_mma / \
+                       (sm_num * PB_NUM_PER_SM);
+
+
+    // stage cycles
+    int overlap_stage_num = 0;
+    int waiting_stage_num = 0;
+
+    int cycles_per_overlap_stage = Max(mma_issue_cycles_per_buf, mem_issue_cycles_per_buf);
+    int cycles_per_waiting_stage = Max(mma_issue_cycles_per_buf + latency_mma, mem_issue_cycles_per_buf + latency_l2_cache);
+
+    int min_buf = DivUp(mem_issue_cycles_per_buf, mma_issue_cycles_per_buf);
+
+    if(buf_num == 1) {
+        overlap_stage_num = 0;
+        waiting_stage_num = kloop_num;
+
+    } else if(buf_num <= min_buf) {
+        overlap_stage_num = buf_num;
+        waiting_stage_num = kloop_num - overlap_stage_num;
+
+    } else {
+        if(mem_issue_cycles_per_buf > mma_issue_cycles_per_buf)
+            overlap_stage_num = Min(kloop_num, std::ceil(buf_num / (1.f * mem_issue_cycles_per_buf / mma_issue_cycles_per_buf  - 1)) );
+        else
+            overlap_stage_num = Min(kloop_num, std::ceil(buf_num / (1.f * mma_issue_cycles_per_buf / mem_issue_cycles_per_buf  - 1)) );
+
+        if(overlap_stage_num < kloop_num)
+            waiting_stage_num = kloop_num - overlap_stage_num;
+        else
+            waiting_stage_num = 0;
+    }
+
+    int cycles_kernel = overlap_stage_num * cycles_per_overlap_stage + \
+                        waiting_stage_num * cycles_per_waiting_stage;
+
+    // float ratio = 200.0f * buf_num / (cycles_kernel);
+    // float ratio = 1.f * cycles_mma / cycles_mem;
+    float ratio = 1.f * cycles_ideal / (cycles_kernel * cta_launch_times);
 
     return  ratio;
 }

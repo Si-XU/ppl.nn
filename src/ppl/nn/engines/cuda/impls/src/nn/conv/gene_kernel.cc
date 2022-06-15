@@ -450,14 +450,14 @@ ppl::common::RetCode Fp16CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
         flt_size_str = "fn";
 
     WriteIncludeFile(file_str, "/swzl/fp16/const_macros.h");
-    WriteIncludeFile(file_str, "/swzl/" + flt_size_str + "/bound_macros.h");
+    WriteIncludeFile(file_str, "/swzl/fp16/" + flt_size_str + "/bound_macros.h");
     WriteIncludeFile(file_str, "/swzl/fp16/ldsm_macros.h");
 
     if (buf_size <= 2)
-        WriteIncludeFile(file_str, "/2spk/fp16/" + flt_size_str + "/dmem_reg_macros.h");
+        WriteIncludeFile(file_str, "/swzl/fp16/" + flt_size_str + "/dmem_reg_macros.h");
     else if (buf_size > 2) {
-        WriteIncludeFile(file_str, "/2spk/fp16/async_macros.h");
-        WriteIncludeFile(file_str, "/2spk/fp16/" + flt_size_str + "/dmem_async_macros.h");
+        WriteIncludeFile(file_str, "/swzl/fp16/async_macros.h");
+        WriteIncludeFile(file_str, "/swzl/fp16/" + flt_size_str + "/dmem_async_macros.h");
     }
 
     WriteIncludeFile(file_str, "/swzl/fp16/hmma_macros.h");
@@ -1159,14 +1159,14 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
         flt_size_str = "fn";
 
     WriteIncludeFile(file_str, "/swzl/int8/const_macros.h");
-    WriteIncludeFile(file_str, "/swzl/" + flt_size_str + "/bound_macros.h");
+    WriteIncludeFile(file_str, "/swzl/int8/" + flt_size_str + "/bound_macros.h");
     WriteIncludeFile(file_str, "/swzl/int8/ldsm_macros.h");
 
     if (buf_size <= 2)
-        WriteIncludeFile(file_str, "/2spk/int8/" + flt_size_str + "/dmem_reg_macros.h");
+        WriteIncludeFile(file_str, "/swzl/int8/" + flt_size_str + "/dmem_reg_macros.h");
     else if (buf_size > 2) {
-        WriteIncludeFile(file_str, "/2spk/int8/async_macros.h");
-        WriteIncludeFile(file_str, "/2spk/int8/" + flt_size_str + "/dmem_async_macros.h");
+        WriteIncludeFile(file_str, "/swzl/int8/async_macros.h");
+        WriteIncludeFile(file_str, "/swzl/int8/" + flt_size_str + "/dmem_async_macros.h");
     }
 
     if (mma_shape == "imma8816")
