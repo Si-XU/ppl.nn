@@ -460,41 +460,10 @@ struct kernel_info_t {
         return device_prop.major > karch_major || (device_prop.major == karch_major && device_prop.minor >= karch_minor);
     }
 
-    void AdaptLutKernelSMemSize()
-    {
-        if(smem_size <= MAX_STATIC_SMEM_SIZE_PER_CTA)
-            return;
-
-        cudaFuncSetAttribute(lut_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
-        return;
-    }
-
-    void AdaptSpkKernelSMemSize()
-    {
-        if(smem_size <= MAX_STATIC_SMEM_SIZE_PER_CTA)
-            return;
-
-        cudaFuncSetAttribute(spk_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
-        return;
-    }
-
-    void AdaptInt8LutKernelSMemSize()
-    {
-        if(smem_size <= MAX_STATIC_SMEM_SIZE_PER_CTA)
-            return;
-
-        cudaFuncSetAttribute(int8_lut_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
-        return;
-    }
-
-    void AdaptInt8SpkKernelSMemSize()
-    {
-        if(smem_size <= MAX_STATIC_SMEM_SIZE_PER_CTA)
-            return;
-
-        cudaFuncSetAttribute(int8_spk_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
-        return;
-    }
+    void AdaptLutKernelSMemSize();
+    void AdaptSpkKernelSMemSize();
+    void AdaptInt8LutKernelSMemSize();
+    void AdaptInt8SpkKernelSMemSize();
 
     bool CheckKernelTypeFeasible(int flt_height, int flt_width, int num_chl_per_grp, int splitk)
     {

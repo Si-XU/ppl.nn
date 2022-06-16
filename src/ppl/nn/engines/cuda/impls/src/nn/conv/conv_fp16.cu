@@ -729,6 +729,42 @@ void PPLCUDAConvolutionForwardImp(
     }
 }
 
+void kernel_info_t::AdaptLutKernelSMemSize()
+{
+    if(smem_size <= MAX_STATIC_SMEM_SIZE_PER_CTA)
+        return;
+
+    cudaFuncSetAttribute(lut_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
+    return;
+}
+
+void kernel_info_t::AdaptSpkKernelSMemSize()
+{
+    if(smem_size <= MAX_STATIC_SMEM_SIZE_PER_CTA)
+        return;
+
+    cudaFuncSetAttribute(spk_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
+    return;
+}
+
+void kernel_info_t::AdaptInt8LutKernelSMemSize()
+{
+    if(smem_size <= MAX_STATIC_SMEM_SIZE_PER_CTA)
+        return;
+
+    cudaFuncSetAttribute(int8_lut_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
+    return;
+}
+
+void kernel_info_t::AdaptInt8SpkKernelSMemSize()
+{
+    if(smem_size <= MAX_STATIC_SMEM_SIZE_PER_CTA)
+        return;
+
+    cudaFuncSetAttribute(int8_spk_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
+    return;
+}
+
 /* -----------------  JIT FP16 KERNEL ------------------ */
 
 #define MAX_KERNEL_SIZE (1 + 12 + 30)

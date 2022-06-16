@@ -1,3 +1,20 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 #ifndef __PPLCUDA_CONV_JIT_H__
 #define __PPLCUDA_CONV_JIT_H__
 
@@ -54,22 +71,11 @@
 #define PB_NUM_PER_SM           4
 
 #include "ppl/common/types.h"
-#include "cudakernel/nn/conv/conv_fp16.h"
-#include "cudakernel/common/common.h"
 
-// sort by ascending order
-bool SortByAscendScore(const std::pair<algo_param_t, float> &a, const std::pair<algo_param_t, float> &b)
-{
-    return (a.second < b.second);
-}
+bool SortByAscendScore(const std::pair<algo_param_t, float> &a, const std::pair<algo_param_t, float> &b);
+bool SortByDescendScore(const std::pair<algo_param_t, float> &a, const std::pair<algo_param_t, float> &b);
 
-// sort by descending order
-bool SortByDescendScore(const std::pair<algo_param_t, float> &a, const std::pair<algo_param_t, float> &b)
-{
-    return (a.second > b.second);
-}
-
-__inline__ void GetHardwareInfo(
+void GetHardwareInfo(
         int device_arch,
         ppl::common::datatype_t type,
         int &cpi_mma,
@@ -88,87 +94,14 @@ __inline__ void GetHardwareInfo(
         int &cpi_sts128,
         int &latency_l2_cache,
         int &latency_dram,
-        int &max_dyn_smem_per_cta)
-{
-    if (device_arch == 75) {
-        if( type == ppl::common::DATATYPE_FLOAT16 ) {
-            cpi_mma = CPI_SM75_HMMA1688;
-            latency_mma = LATENCY_SM75_HMMA1688;
+        int &max_dyn_smem_per_cta);
 
-        } else if( type == ppl::common::DATATYPE_INT8 ) {
-            cpi_mma = CPI_SM75_IMMA8816;
-            latency_mma = LATENCY_SM75_IMMA8816;
-        }
-
-        cpi_ldg32_l1d  = CPI_SM75_LDG32_L1D;
-        cpi_ldg64_l1d  = CPI_SM75_LDG64_L1D;
-        cpi_ldg128_l1d = CPI_SM75_LDG128_L1D;
-
-        cpi_ldg32_l2  = CPI_SM75_LDG32_L2;
-        cpi_ldg64_l2  = CPI_SM75_LDG64_L2;
-        cpi_ldg128_l2 = CPI_SM75_LDG128_L2;
-
-        cpi_lds32  = CPI_SM75_LDS32;
-        cpi_lds64  = CPI_SM75_LDS64;
-        cpi_lds128 = CPI_SM75_LDS128;
-
-        cpi_sts32  = CPI_SM75_STS32;
-        cpi_sts64  = CPI_SM75_STS64;
-        cpi_sts128 = CPI_SM75_STS128;
-
-        latency_l2_cache = LATENCY_SM75_L2_CACHE;
-        latency_dram = LATENCY_SM75_DRAM;
-
-        max_dyn_smem_per_cta = SM75_MAX_DYN_SMEM_SIZE_PER_CTA;
-
-    } else if (device_arch >= 80) {
-        if( type == ppl::common::DATATYPE_FLOAT16 ) {
-            cpi_mma = CPI_SM80_HMMA16816;
-            latency_mma = LATENCY_SM80_HMMA16816;
-
-        } else if( type == ppl::common::DATATYPE_INT8 ) {
-            cpi_mma = CPI_SM80_IMMA16832;
-            latency_mma = LATENCY_SM80_IMMA16832;
-        }
-        cpi_ldg32_l1d  = CPI_SM80_LDG32_L1D;
-        cpi_ldg64_l1d  = CPI_SM80_LDG64_L1D;
-        cpi_ldg128_l1d = CPI_SM80_LDG128_L1D;
-
-        cpi_ldg32_l2  = CPI_SM80_LDG32_L2;
-        cpi_ldg64_l2  = CPI_SM80_LDG64_L2;
-        cpi_ldg128_l2 = CPI_SM80_LDG128_L2;
-
-        cpi_lds32  = CPI_SM80_LDS32;
-        cpi_lds64  = CPI_SM80_LDS64;
-        cpi_lds128 = CPI_SM80_LDS128;
-
-        cpi_sts32  = CPI_SM80_STS32;
-        cpi_sts64  = CPI_SM80_STS64;
-        cpi_sts128 = CPI_SM80_STS128;
-
-        latency_l2_cache = LATENCY_SM80_L2_CACHE;
-        latency_dram = LATENCY_SM80_DRAM;
-
-        max_dyn_smem_per_cta = SM80_MAX_DYN_SMEM_SIZE_PER_CTA;
-    }
-}
-
-__inline__ int GetEstimateCtaNumber(
+int GetEstimateCtaNumber(
         int m_conv,
         int n_conv,
-        int num_grp)
-{
-    int cta_num = 0;
+        int num_grp);
 
-    const int M_CTA = 128;
-    const int N_CTA = 128;
-
-    cta_num = DivUp((m_conv * n_conv), (M_CTA * N_CTA)) * num_grp;
-
-    return cta_num;
-}
-
-__inline__ void GetIdxnMmaInfo(
+void GetIdxnMmaInfo(
         int device_arch,
         ppl::common::datatype_t type,
         std::string &mma_shape,
@@ -177,44 +110,9 @@ __inline__ void GetIdxnMmaInfo(
         int &k_mma,
         int &m_mma_max,
         int &n_mma_max,
-        int &k_mma_max)
-{
-    if (device_arch == 75) {
-        if( type == ppl::common::DATATYPE_FLOAT16 ) {
-            mma_shape = "hmma1688";
-            m_mma = 16;
-            n_mma = 8;
-            k_mma = 8;
-            k_mma_max = k_mma * 4;
-        } else if( type == ppl::common::DATATYPE_INT8 ) {
-            mma_shape = "imma8816";
-            m_mma = 8;
-            n_mma = 8;
-            k_mma = 16;
-            k_mma_max = k_mma * 4;
-        }
-    } else if (device_arch >= 80) {
-        if( type == ppl::common::DATATYPE_FLOAT16 ) {
-            mma_shape = "hmma16816";
-            m_mma = 16;
-            n_mma = 8;
-            k_mma = 16;
-            k_mma_max = k_mma * 2;
+        int &k_mma_max);
 
-        } else if( type == ppl::common::DATATYPE_INT8 ) {
-            mma_shape = "imma16832";
-            m_mma = 16;
-            n_mma = 8;
-            k_mma = 32;
-            k_mma_max = k_mma * 2;
-        }
-    }
-
-    m_mma_max = m_mma * 8;
-    n_mma_max = n_mma * 8;
-}
-
-__inline__ void Get2spkMmaInfo(
+void Get2spkMmaInfo(
         int device_arch,
         ppl::common::datatype_t type,
         std::string &mma_shape,
@@ -225,48 +123,9 @@ __inline__ void Get2spkMmaInfo(
         int &n_mma_max,
         int &k_mma_max,
         int &k_blk_mma,
-        int &buf_num_max)
-{
-    if (device_arch == 75) {
-        if( type == ppl::common::DATATYPE_FLOAT16 ) {
-            mma_shape = "hmma1688";
-            m_mma = 16;
-            n_mma = 8;
-            k_mma = 8;
-            k_blk_mma = 1;
-            buf_num_max = 2;
-        } else if( type == ppl::common::DATATYPE_INT8 ) {
-            mma_shape = "imma8816";
-            m_mma = 8;
-            n_mma = 8;
-            k_mma = 16;
-            k_blk_mma = 1;
-            buf_num_max = 2;
-        }
-    } else if (device_arch >= 80) {
-        if( type == ppl::common::DATATYPE_FLOAT16 ) {
-            mma_shape = "hmma16816";
-            m_mma = 16;
-            n_mma = 8;
-            k_mma = 16;
-            k_blk_mma = 2;
-            buf_num_max = 6;
-        } else if( type == ppl::common::DATATYPE_INT8 ) {
-            mma_shape = "imma16832";
-            m_mma = 16;
-            n_mma = 8;
-            k_mma = 32;
-            k_blk_mma = 2;
-            buf_num_max = 6;
-        }
-    }
+        int &buf_num_max);
 
-    m_mma_max = m_mma * 8;
-    n_mma_max = n_mma * 8;
-    k_mma_max = k_mma * 4;
-}
-
-__inline__ void GetSwzlMmaInfo(
+void GetSwzlMmaInfo(
         int device_arch,
         ppl::common::datatype_t type,
         std::string &mma_shape,
@@ -277,49 +136,7 @@ __inline__ void GetSwzlMmaInfo(
         int &n_mma_max,
         int &k_mma_max,
         int &k_blk_mma,
-        int &buf_num_max)
-{
-    if (device_arch == 75) {
-        if( type == ppl::common::DATATYPE_FLOAT16 ) {
-            mma_shape = "hmma1688";
-            m_mma = 8;
-            n_mma = 16;
-            k_mma = 8;
-            buf_num_max = 2;
-            k_blk_mma = 1;
-            k_mma_max = k_mma * 8;
-        } else if( type == ppl::common::DATATYPE_INT8 ) {
-            mma_shape = "imma8816";
-            m_mma = 8;
-            n_mma = 8;
-            k_mma = 16;
-            buf_num_max = 2;
-            k_blk_mma = 1;
-            k_mma_max = k_mma * 4;
-        }
-    } else if (device_arch >= 80) {
-        if( type == ppl::common::DATATYPE_FLOAT16 ) {
-            mma_shape = "hmma16816";
-            m_mma = 8;
-            n_mma = 16;
-            k_mma = 16;
-            buf_num_max = 6;
-            k_blk_mma = 2;
-            k_mma_max = k_mma * 4;
-        } else if( type == ppl::common::DATATYPE_INT8 ) {
-            mma_shape = "imma16832";
-            m_mma = 8;
-            n_mma = 16;
-            k_mma = 32;
-            buf_num_max = 6;
-            k_blk_mma = 2;
-            k_mma_max = k_mma * 4;
-        }
-    }
-
-    m_mma_max = m_mma * 8;
-    n_mma_max = n_mma * 8;
-}
+        int &buf_num_max);
 
 int GetIdxnRegsPerThread(
         ppl::common::datatype_t type,
@@ -331,28 +148,7 @@ int GetIdxnRegsPerThread(
         int m_mma,
         int n_mma,
         int k_mma,
-        int cta_size_in_thd)
-{
-    int m_blk_num = m_warp / 8;
-    int n_blk_num = n_warp / 8;
-
-    int regs_a_v1 = m_blk_num * (k_per_step / k_mma);
-    int regs_b_v1 = n_blk_num * (k_per_step / k_mma);
-
-    int regs_c_v1 = DivUp(m_cta * n_cta, cta_size_in_thd * GetPadSize(type) / 4);
-
-    int regs_a_idx = (m_blk_num + 1) * 4;
-    int regs_b_idx =  n_blk_num * 2;
-    int regs_c_idx =  n_blk_num * 2  + 4;
-
-    int regs_idx = Max(regs_a_idx + regs_b_idx, regs_c_idx);
-
-    int regs_common = 20;
-
-    int regs_per_thd = regs_a_v1 + regs_b_v1 + regs_c_v1 + regs_idx + regs_common;
-
-    return regs_per_thd;
-}
+        int cta_size_in_thd);
 
 int Get2spkRegsPerThread(
         int type_size,
@@ -368,37 +164,7 @@ int Get2spkRegsPerThread(
         int k_blk_mma,
         int buf_num,
         int cta_size_in_thd,
-        int set_size_in_thd)
-{
-    int regs_a_v4 = DivUp( m_cta * k_cta * type_size, _INT4_TO_16BYTE_ * cta_size_in_thd);
-    int regs_b_v4 = DivUp( n_cta * k_cta * type_size, _INT4_TO_16BYTE_ * cta_size_in_thd);
-
-    int regs_c_v4 = (m_cta * n_cta * type_size) / (_INT4_TO_16BYTE_ * set_size_in_thd);
-
-    int regs_a_v1 = regs_a_v4 * _4INT_TO_INT4_;
-    int regs_b_v1 = regs_b_v4 * _4INT_TO_INT4_;
-    int regs_c_v1 = regs_c_v4 * _4INT_TO_INT4_;
-
-    int regs_a_idx = regs_a_v4;
-    int regs_b_idx = regs_b_v4;
-
-    int m_thd = m_warp / 8;
-    int n_thd = n_warp / 8;
-    int reg_buf = (k_per_set / k_mma == 1) ? 1 : 2; // single or double register buffer
-
-    int regs_sa_v1 = m_thd * k_blk_mma * reg_buf;
-    int regs_sb_v1 = n_thd * k_blk_mma * reg_buf;
-
-    int regs_common_idx = 41;
-    int regs_per_thd = 0;
-
-    if(buf_num <= 2)
-        regs_per_thd = regs_c_v1 + regs_a_idx + regs_b_idx + regs_sa_v1 + regs_sb_v1 + regs_common_idx + regs_a_v1 + regs_b_v1;
-    else if(buf_num > 2)
-        regs_per_thd = regs_c_v1 + regs_a_idx + regs_b_idx + regs_sa_v1 + regs_sb_v1 + regs_common_idx;
-
-    return regs_per_thd;
-}
+        int set_size_in_thd);
 
 int GetSwzlRegsPerThread(
         int type_size,
@@ -412,65 +178,21 @@ int GetSwzlRegsPerThread(
         int k_mma,
         int k_blk_mma,
         int buf_num,
-        int cta_size_in_thd)
-{
-    int regs_a_v4 = DivUp( m_cta * k_cta * type_size, _INT4_TO_16BYTE_ * cta_size_in_thd);
-    int regs_b_v4 = DivUp( n_cta * k_cta * type_size, _INT4_TO_16BYTE_ * cta_size_in_thd);
+        int cta_size_in_thd);
 
-    int regs_c_v4 = (m_cta * n_cta * type_size) / (_INT4_TO_16BYTE_ * cta_size_in_thd);
-
-    int regs_a_v1 = regs_a_v4 * _4INT_TO_INT4_;
-    int regs_b_v1 = regs_b_v4 * _4INT_TO_INT4_;
-    int regs_c_v1 = regs_c_v4 * _4INT_TO_INT4_;
-
-    int regs_a_idx = regs_a_v4;
-    int regs_b_idx = regs_b_v4;
-
-    int m_thd = m_warp / 8;
-    int n_thd = n_warp / 8;
-    int reg_buf = (k_cta / k_mma == 1) ? 1 : 2; // single or double register buffer
-
-    int regs_sa_v1 = m_thd * k_blk_mma * reg_buf;
-    int regs_sb_v1 = n_thd * k_blk_mma * reg_buf;
-
-    int regs_common_idx = 20;
-    int regs_per_thd = 0;
-
-    if(buf_num <= 2)
-        regs_per_thd = regs_c_v1 + regs_a_idx + regs_b_idx + regs_sa_v1 + regs_sb_v1 + regs_common_idx + regs_a_v1 + regs_b_v1;
-    else if(buf_num > 2)
-        regs_per_thd = regs_c_v1 + regs_a_idx + regs_b_idx + regs_sa_v1 + regs_sb_v1 + regs_common_idx;
-
-    return regs_per_thd;
-}
-
-__inline__ int GetIdxnSmemUsage(
+int GetIdxnSmemUsage(
         int m_cta,
-        int cta_size_in_thd)
-{
-    int smem_per_cta = (m_cta + cta_size_in_thd) * _INT4_TO_4INT_ * _INT_TO_4BYTE_; // in byte
-    
-    return smem_per_cta;
-}
+        int cta_size_in_thd);
 
-__inline__ int Get2spkSmemUsage(
+int Get2spkSmemUsage(
         int type_size,
         int m_cta,
         int n_cta,
         int k_cta,
         int set_num,
-        int buf_num)
-{
-    int smem_a = m_cta * k_cta * buf_num * type_size;
-    int smem_b = n_cta * k_cta * buf_num * type_size;
-    int smem_c = m_cta * n_cta * type_size;
+        int buf_num);
 
-    int smem_per_cta = Max(smem_a + smem_b, smem_c * set_num);
-    
-    return smem_per_cta;
-}
-
-__inline__ int GetSwzlSmemUsage(
+int GetSwzlSmemUsage(
         int type_size,
         int m_cta,
         int n_cta,
@@ -480,96 +202,27 @@ __inline__ int GetSwzlSmemUsage(
         int m_mma,
         int n_mma,
         int buf_num,
-        int cta_size_in_warp)
-{
-    int smem_a = m_cta * k_cta * buf_num * type_size;
-    int smem_b = n_cta * k_cta * buf_num * type_size;
+        int cta_size_in_warp);
 
-    int smem_r = 0;
-    if(m_warp == 8)
-        smem_r = m_cta * n_mma * cta_size_in_warp * type_size * 2;
-    else 
-        smem_r = m_cta * n_mma * cta_size_in_warp * type_size;
-
-    int smem_per_cta = Max(smem_a + smem_b, smem_r);
-    
-    return smem_per_cta;
-}
-
-__inline__ int GetTileKSize(
+int GetTileKSize(
         int num_chl_per_grp_pad,
-        int kloop_num)
-{
-    int k_cta = 0;
-    if(kloop_num == 1) {
-        if(num_chl_per_grp_pad > 32 && num_chl_per_grp_pad <= 48) {
-            k_cta = 32;
-        } else if(num_chl_per_grp_pad > 48 && num_chl_per_grp_pad <= 96) {
-            k_cta = 64;
-        } else if(num_chl_per_grp_pad > 96 && num_chl_per_grp_pad <= 256) {
-            k_cta = 128;
-        } else if(num_chl_per_grp_pad > 256) {
-            k_cta = 256;
-        }
+        int kloop_num);
 
-    } else {
-        if(num_chl_per_grp_pad > 32 && num_chl_per_grp_pad <= 48) {
-            k_cta = 32;
-        } else if(num_chl_per_grp_pad > 48 && num_chl_per_grp_pad <= 96) {
-            k_cta = 64;
-        } else if(num_chl_per_grp_pad > 96 && num_chl_per_grp_pad <= 256) {
-            k_cta = 128;
-        } else if(num_chl_per_grp_pad > 256) {
-            k_cta = 256;
-        }
-    }
-
-    return k_cta;
-}
-
-
-__inline__ float GetWarpOccupySMScore(
+float GetWarpOccupySMScore(
         int warp_num_per_sm,
         int cta_num_per_sm 
-        )
-{
-    if(warp_num_per_sm >= 0 && warp_num_per_sm <= 4)
-        return 0.6 - 0.15 * (cta_num_per_sm - 1);
-    else if(warp_num_per_sm > 4 && warp_num_per_sm < 8)
-        return 0.8 - 0.15 * (cta_num_per_sm - 1);
-    else if(warp_num_per_sm >= 8 && warp_num_per_sm <= 12)
-        return 1 - 0.15 * (cta_num_per_sm - 1);
-    else if(warp_num_per_sm > 12 && warp_num_per_sm < 16)
-        return 0.8 - 0.15 * (cta_num_per_sm - 1);
-    else // if(warp_num_per_sm >= 16)
-        return 0.6 - 0.15 * (cta_num_per_sm - 1);
+        );
 
-    // if(warp_num_per_sm >= 10)
-    //     return (1 - (1.f * (warp_num_per_sm - 10) / 100));
-    // else
-    //     return (1 - (1.f * (10 - warp_num_per_sm) / 100));
-}
-
-__inline__ float GetEfficiencyScore(
+float GetEfficiencyScore(
         int m_cta,
         int n_cta,
         int k_cta,
         int kloop_total,
         int m_conv,
         int n_conv,
-        int k_conv)
-{
-    int workload_conv   = m_conv * n_conv * k_conv;
-    int workload_kernel = m_cta * DivUp(m_conv, m_cta) * \
-                          n_cta * DivUp(n_conv, n_cta) * \
-                          k_cta * kloop_total;
+        int k_conv);
 
-    float eff_score = 1.0 * workload_conv / workload_kernel;
-
-    return eff_score;
-}
-
-__inline__ float GetOccupancyScore(
+float GetOccupancyScore(
         int cta_size_in_thd,
         int cta_size_in_warp,
         int sm_num,
@@ -580,53 +233,7 @@ __inline__ float GetOccupancyScore(
         int max_thds_per_sm,
         int max_regs_per_sm,
         int max_smem_per_sm,
-        float& cta_launch_times)
-{
-    int cta_num_limit_by_thds = max_thds_per_sm / cta_size_in_thd;
-    int cta_num_limit_by_regs = max_regs_per_sm / regs_per_cta;
-    int cta_num_limit_by_smem = max_smem_per_sm / smem_per_cta; 
-
-    int cta_num_per_sm      = Min(max_ctas_per_sm, Min(cta_num_limit_by_thds, Min(cta_num_limit_by_regs, cta_num_limit_by_smem)));
-    int cta_num_per_launch  = cta_num_per_sm * sm_num;
-
-    int warp_num_per_sm     = cta_num_per_sm * cta_size_in_warp;
-    // int warp_num_per_launch = warp_num_per_sm * sm_num;
-
-    cta_launch_times = 1.f * cta_num / cta_num_per_launch;
-
-    // main part
-    float main_score_occ = 0.f;
-    if(cta_launch_times > 1) {
-        main_score_occ = GetWarpOccupySMScore(warp_num_per_sm, cta_num_per_sm);
-    }
-
-    // tail part
-    int tail_cta_num = cta_num % cta_num_per_launch;
-
-    int max_cta_num_on_sm  = DivUp(tail_cta_num, sm_num);
-    int min_cta_num_on_sm  = tail_cta_num / sm_num;
-
-    int max_warp_num_on_sm = max_cta_num_on_sm * cta_size_in_warp;
-    int min_warp_num_on_sm = min_cta_num_on_sm * cta_size_in_warp;
-
-    // max_cta_num_on_sm * sm_num_of_max_occupy + min_cta_num_on_sm * (sm_num - sm_num_of_max_occupy) = tail_cta_num
-    int sm_num_of_max_occupy = (tail_cta_num - min_cta_num_on_sm * sm_num) / (max_cta_num_on_sm - min_cta_num_on_sm);
-    int sm_num_of_min_occupy = sm_num - sm_num_of_max_occupy;
-
-    float sm_num_of_max_occupy_pct = 1.f * sm_num_of_max_occupy / sm_num;
-    float sm_num_of_min_occupy_pct = 1.f * sm_num_of_min_occupy / sm_num;
-
-    float tail_score_occ = sm_num_of_max_occupy_pct * GetWarpOccupySMScore(max_warp_num_on_sm, max_cta_num_on_sm) + \
-                           sm_num_of_min_occupy_pct * GetWarpOccupySMScore(min_warp_num_on_sm, min_cta_num_on_sm);
-
-    int cta_launch_times_ceil = std::ceil(cta_launch_times);
-
-    // 2 scenarios: main + tail
-    float score_occ = (1.f * (cta_launch_times_ceil - 1) / cta_launch_times_ceil) * main_score_occ + \
-                       (1.f / cta_launch_times_ceil) * tail_score_occ;
-
-    return score_occ;
-}
+        float& cta_launch_times);
 
 float GetIdxnPipelineScore(
         int type_size,
@@ -652,61 +259,7 @@ float GetIdxnPipelineScore(
         int cpi_ldg128_l2,
         int latency_mma,
         int latency_l2_cache,
-        int latency_dram
-        )
-{
-    int warp_num_per_pb = DivUp(cta_size_in_warp, PB_NUM_PER_SM);
-
-    int cycles_mma = cpi_mma * (m_warp / m_mma) * (n_warp / n_mma) * (k_per_step/ k_mma) * warp_num_per_pb + latency_mma;
-
-    int cycles_mem = 0;
-
-    int mr_flt_total = 0;
-    int mr_flt_l2  = 0;
-    int mr_flt_l1d = 0;
-
-    int mr_input_total = 0;
-    int mr_input_l2 = 0;
-    int mr_input_l1d = 0;
-    
-    if(k_per_step == 8) {
-        mr_flt_total = DivUp(n_cta * k_per_step * type_size, _INT_TO_4BYTE_ * WARP_SIZE);
-        mr_flt_l2  = mr_flt_total;
-        mr_flt_l1d = 0;
-
-        mr_input_total = DivUp(m_cta * k_per_step * type_size, _INT_TO_4BYTE_  * WARP_SIZE);
-        mr_input_l2 = DivUp(DivUp(m_cta, out_w) * Min(out_w, m_cta) * (k_per_step >> 2) * type_size, _INT_TO_4BYTE_  * WARP_SIZE);
-        mr_input_l1d = mr_input_total - mr_input_l2;
-
-        cycles_mem = cpi_ldg32_l1d * (mr_flt_l1d + mr_input_l1d) + cpi_ldg32_l2 * (mr_flt_l2 + mr_input_l2) + latency_l2_cache;
-    }
-    else if(k_per_step == 16) {
-        mr_flt_total = DivUp(n_cta * k_per_step * type_size, _INT2_TO_8BYTE_ * WARP_SIZE);
-        mr_flt_l2  = mr_flt_total;
-        mr_flt_l1d = 0;
-
-        mr_input_total = DivUp(m_cta * k_per_step * type_size, _INT2_TO_8BYTE_  * WARP_SIZE);
-        mr_input_l2 = DivUp(DivUp(m_cta, out_w) * Min(out_w, m_cta) * (k_per_step >> 2) * type_size, _INT2_TO_8BYTE_  * WARP_SIZE);
-        mr_input_l1d = mr_input_total - mr_input_l2;
-
-        cycles_mem = cpi_ldg64_l1d * (mr_flt_l1d + mr_input_l1d) + cpi_ldg64_l2 * (mr_flt_l2 + mr_input_l2) + latency_l2_cache;
-    }
-    else if(k_per_step == 32) {
-        mr_flt_total = DivUp(n_cta * k_per_step * type_size, _INT4_TO_16BYTE_ * WARP_SIZE);
-        mr_flt_l2  = mr_flt_total;
-        mr_flt_l1d = 0;
-
-        mr_input_total = DivUp(m_cta * k_per_step * type_size, _INT4_TO_16BYTE_  * WARP_SIZE);
-        mr_input_l2 = DivUp(DivUp(m_cta, out_w) * Min(out_w, m_cta) * (k_per_step >> 2) * type_size, _INT4_TO_16BYTE_  * WARP_SIZE);
-        mr_input_l1d = mr_input_total - mr_input_l2;
-
-        cycles_mem = cpi_ldg128_l1d * (mr_flt_l1d + mr_input_l1d) + cpi_ldg128_l2 * (mr_flt_l2 + mr_input_l2) + latency_l2_cache;
-    }
-
-    float ratio = 200.f / (Max(cycles_mma, cycles_mem) * std::ceil(cta_launch_times));
-
-    return  ratio;
-}
+        int latency_dram);
 
 float Get2spkPipelineScore(
         int type_size,
@@ -740,86 +293,7 @@ float Get2spkPipelineScore(
         int cpi_sts32,
         int latency_mma,
         int latency_l2_cache,
-        int latency_dram
-        )
-{
-    // kernel pipeline is divided into 2 stages, overlap pipeline and waiting pipeline
-    // stage-0, overlap pipeline: stalling cycles are hided by multi-buffers
-    // stage-1, waiting pipeline: mma pipe catches up exausting all buffers, thus still need to wait for mem pipe
-
-    // mma part
-    int warp_num_per_pb = DivUp(cta_size_in_warp, PB_NUM_PER_SM);
-
-    int mma_issue_cycles_per_buf = cpi_mma * (m_warp / m_mma) * (n_warp / n_mma) * (k_per_set / k_mma) * warp_num_per_pb;
-
-    // memory part
-    int mr_flt_total = DivUp(n_cta * k_cta * type_size, _INT4_TO_16BYTE_ * WARP_SIZE);
-    int mr_flt_l2  = mr_flt_total;
-    int mr_flt_l1d = 0;
-
-    int mr_input_total = DivUp(m_cta * k_cta * type_size, _INT4_TO_16BYTE_ * WARP_SIZE);
-    int mr_input_l2 = DivUp(DivUp(m_cta, out_w) * Min(out_w, m_cta) * k_cta * type_size, _INT4_TO_16BYTE_ * WARP_SIZE);
-    int mr_input_l1d = mr_input_total - mr_input_l2;
-
-    int mem_issue_cycles_per_buf = cpi_ldg128_l1d * (mr_flt_l1d + mr_input_l1d) + cpi_ldg128_l2 * (mr_flt_l2 + mr_input_l2);
-
-    // int cycles_ideal = (kloop_num / k_mma) * cpi_mma;
-    // int cycles_ideal = kloop_num * mma_issue_cycles_per_buf;
-    int cycles_ideal = DivUp(m_conv, m_mma) * \
-                       DivUp(n_conv, n_mma) * \
-                       DivUp(k_conv, k_mma) * \
-                       cpi_mma / \
-                       (sm_num * PB_NUM_PER_SM);
-
-    // stage cycles
-    int overlap_stage_num = 0;
-    int waiting_stage_num = 0;
-
-    int cycles_per_overlap_stage = Max(mma_issue_cycles_per_buf, mem_issue_cycles_per_buf);
-    int cycles_per_waiting_stage = Max(mma_issue_cycles_per_buf + latency_mma, mem_issue_cycles_per_buf + latency_l2_cache);
-
-    int min_buf = DivUp(mem_issue_cycles_per_buf, mma_issue_cycles_per_buf);
-
-    if(buf_num == 1) {
-        overlap_stage_num = 0;
-        waiting_stage_num = kloop_num;
-
-    } else if(buf_num <= min_buf) {
-        overlap_stage_num = buf_num;
-        waiting_stage_num = kloop_num - overlap_stage_num;
-
-    } else {
-        if(mem_issue_cycles_per_buf > mma_issue_cycles_per_buf)
-            overlap_stage_num = Min(kloop_num, std::ceil(buf_num / (1.f * mem_issue_cycles_per_buf / mma_issue_cycles_per_buf  - 1)) );
-        else
-            overlap_stage_num = Min(kloop_num, std::ceil(buf_num / (1.f * mma_issue_cycles_per_buf / mem_issue_cycles_per_buf  - 1)) );
-
-        if(overlap_stage_num < kloop_num)
-            waiting_stage_num = kloop_num - overlap_stage_num;
-        else
-            waiting_stage_num = 0;
-    }
-
-    int cycles_reduce = cpi_sts32  * (m_cta / m_mma) * (n_cta / n_mma) * buf_num + \
-                        cpi_lds128 * (m_cta / m_mma) * (n_cta / n_mma) * buf_num / _INT4_TO_4INT_;
-
-    int cycles_kernel = overlap_stage_num * cycles_per_overlap_stage + \
-                        waiting_stage_num * cycles_per_waiting_stage + \
-                        cycles_reduce;
-
-    // int split = splitk * splitf;
-
-    // int cycles_split = (split == 1) ? 0 : (split * cpi_ldg128_l2 + latency_dram);
-    // int cycles_split = (split == 1) ? 0 : (split * latency_dram);
-
-    // float ratio = (200.f * kloop_total / (k_mma_max * 4)) / (cycles_kernel + cycles_split);
-    // float ratio = 200.0f / (cycles_kernel + cycles_split);
-    // float ratio = 200.0f * buf_num / (cycles_kernel);
-    // float ratio = 1.f * cycles_mma / cycles_mem;
-    float ratio = 1.f * cycles_ideal / cycles_kernel;
-
-    return  ratio;
-}
+        int latency_dram);
 
 float GetSwzlPipelineScore(
         int type_size,
@@ -849,75 +323,6 @@ float GetSwzlPipelineScore(
         int cpi_sts32,
         int latency_mma,
         int latency_l2_cache,
-        int latency_dram
-        )
-{
-    // kernel pipeline is divided into 2 stages, overlap pipeline and waiting pipeline
-    // stage-0, overlap pipeline: stalling cycles are hided by multi-buffers
-    // stage-1, waiting pipeline: mma pipe catches up exausting all buffers, thus still need to wait for mem pipe
-
-    // mma part
-    int warp_num_per_pb = DivUp(cta_size_in_warp, PB_NUM_PER_SM);
-
-    int mma_issue_cycles_per_buf = cpi_mma * (m_warp / m_mma) * (n_warp / n_mma) * (k_cta / k_mma) * warp_num_per_pb;
-
-    // memory part
-    int mr_flt_total = DivUp(m_cta * k_cta * type_size, _INT4_TO_16BYTE_ * WARP_SIZE);
-    int mr_flt_l2  = mr_flt_total;
-    int mr_flt_l1d = 0;
-
-    int mr_input_total = DivUp(n_cta * k_cta * type_size, _INT4_TO_16BYTE_ * WARP_SIZE);
-    int mr_input_l2 = DivUp(DivUp(n_cta, out_w) * Min(out_w, n_cta) * k_cta * type_size, _INT4_TO_16BYTE_ * WARP_SIZE);
-    int mr_input_l1d = mr_input_total - mr_input_l2;
-
-    int mem_issue_cycles_per_buf = cpi_ldg128_l1d * (mr_flt_l1d + mr_input_l1d) + cpi_ldg128_l2 * (mr_flt_l2 + mr_input_l2);
-
-    // int cycles_ideal = 256 * cpi_mma;
-    // int cycles_ideal = kloop_num * mma_issue_cycles_per_buf;
-    int cycles_ideal = DivUp(m_conv, m_mma) * \
-                       DivUp(n_conv, n_mma) * \
-                       DivUp(k_conv, k_mma) * \
-                       cpi_mma / \
-                       (sm_num * PB_NUM_PER_SM);
-
-
-    // stage cycles
-    int overlap_stage_num = 0;
-    int waiting_stage_num = 0;
-
-    int cycles_per_overlap_stage = Max(mma_issue_cycles_per_buf, mem_issue_cycles_per_buf);
-    int cycles_per_waiting_stage = Max(mma_issue_cycles_per_buf + latency_mma, mem_issue_cycles_per_buf + latency_l2_cache);
-
-    int min_buf = DivUp(mem_issue_cycles_per_buf, mma_issue_cycles_per_buf);
-
-    if(buf_num == 1) {
-        overlap_stage_num = 0;
-        waiting_stage_num = kloop_num;
-
-    } else if(buf_num <= min_buf) {
-        overlap_stage_num = buf_num;
-        waiting_stage_num = kloop_num - overlap_stage_num;
-
-    } else {
-        if(mem_issue_cycles_per_buf > mma_issue_cycles_per_buf)
-            overlap_stage_num = Min(kloop_num, std::ceil(buf_num / (1.f * mem_issue_cycles_per_buf / mma_issue_cycles_per_buf  - 1)) );
-        else
-            overlap_stage_num = Min(kloop_num, std::ceil(buf_num / (1.f * mma_issue_cycles_per_buf / mem_issue_cycles_per_buf  - 1)) );
-
-        if(overlap_stage_num < kloop_num)
-            waiting_stage_num = kloop_num - overlap_stage_num;
-        else
-            waiting_stage_num = 0;
-    }
-
-    int cycles_kernel = overlap_stage_num * cycles_per_overlap_stage + \
-                        waiting_stage_num * cycles_per_waiting_stage;
-
-    // float ratio = 200.0f * buf_num / (cycles_kernel);
-    // float ratio = 1.f * cycles_mma / cycles_mem;
-    float ratio = 1.f * cycles_ideal / (cycles_kernel * cta_launch_times);
-
-    return  ratio;
-}
+        int latency_dram);
 
 #endif
