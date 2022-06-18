@@ -228,17 +228,19 @@ uint64_t PPLCUDAConvolutionGetRuntimeBufSize(
     unsigned int splitf,
     uint64_t workspace = ((uint64_t)8) * 1024 * 1024 * 1024);
 
-ppl::common::RetCode PPLCUDAPredictFp16ConvKernel(
-    int device_id,
-    ppl::common::datatype_t type,
-    algo_param_t& algo_param,
-    conv_param_t& conv_param);
-
 ppl::common::RetCode PPLCUDAPredictInt8ConvKernel(
     int device_id,
     ppl::common::datatype_t type,
     algo_param_t &algo_param,
     conv_param_t &conv_param);
+
+ppl::common::RetCode GetFp16ConvKernelNominees(
+    int device_id,
+    ppl::common::datatype_t type,
+    conv_param_t &conv_param,
+    std::vector<std::string> & knames,
+    std::vector<algo_param_t> & params,
+    std::string & sources);
 
 double PPLCUDAConvolutionSelectKernel(
     int device_id,

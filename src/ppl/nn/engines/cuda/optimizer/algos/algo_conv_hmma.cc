@@ -135,6 +135,7 @@ double TuringHMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
                                                    (int4*)weight_buffer.addr, (int4*)output_buffer.addr,
                                                    (int4*)bias_buffer.addr, (int4*)temp_buffer.addr,
                                                    attr_param_.extra_param.algo_info, temp_conv_param, temp_fuse_param);
+    LOG(INFO) << "select kernel " << attr_param_.extra_param.algo_info.algo_name;
 #else
     // Do select
     int device_id = options.device->GetDeviceId();

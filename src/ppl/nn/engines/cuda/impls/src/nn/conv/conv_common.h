@@ -32,8 +32,6 @@
 #include "cudakernel/common/common.h"
 
 #define WARP_SIZE               32
-#define INT8_SIZE               1
-#define HALF_SIZE               2
 
 #define _2HALF_TO_INT_          2
 #define _4CHAR_TO_INT_          4

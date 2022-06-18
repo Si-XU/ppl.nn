@@ -577,9 +577,16 @@ float GetOccupancyScore(
     int max_warp_num_on_sm = max_cta_num_on_sm * cta_size_in_warp;
     int min_warp_num_on_sm = min_cta_num_on_sm * cta_size_in_warp;
 
-    // max_cta_num_on_sm * sm_num_of_max_occupy + min_cta_num_on_sm * (sm_num - sm_num_of_max_occupy) = tail_cta_num
-    int sm_num_of_max_occupy = (tail_cta_num - min_cta_num_on_sm * sm_num) / (max_cta_num_on_sm - min_cta_num_on_sm);
-    int sm_num_of_min_occupy = sm_num - sm_num_of_max_occupy;
+    int sm_num_of_max_occupy;
+    int sm_num_of_min_occupy;
+    if(tail_cta_num % sm_num != 0) {
+        // max_cta_num_on_sm * sm_num_of_max_occupy + min_cta_num_on_sm * (sm_num - sm_num_of_max_occupy) = tail_cta_num
+        sm_num_of_max_occupy = (tail_cta_num - min_cta_num_on_sm * sm_num) / (max_cta_num_on_sm - min_cta_num_on_sm);
+        sm_num_of_min_occupy = sm_num - sm_num_of_max_occupy;
+    } else {
+        sm_num_of_max_occupy = sm_num;
+        sm_num_of_min_occupy = 0;
+    }
 
     float sm_num_of_max_occupy_pct = 1.f * sm_num_of_max_occupy / sm_num;
     float sm_num_of_min_occupy_pct = 1.f * sm_num_of_min_occupy / sm_num;

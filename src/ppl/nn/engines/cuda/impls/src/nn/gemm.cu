@@ -290,72 +290,15 @@ double PPLCUDAGemmJITSelectKernel(
     algo_param_t &algo_param,
     uint64_t workspace)
 {
-    auto pre_algo_param     = algo_param;
-    int pad_size            = GetPadSize(type);
-    int num_chl_per_grp     = conv_param.num_chl / conv_param.num_grp;
-    int num_flt_per_grp     = conv_param.num_flt / conv_param.num_grp;
-    int num_flt_per_grp_pad = Align(num_flt_per_grp, pad_size);
-    int flt_hw              = conv_param.flt_height * conv_param.flt_width;
-
-    int size_x    = DivUp(conv_param.in_num * conv_param.out_height * conv_param.out_width, algo_param.tiles.m_cta);
-    int size_y    = DivUp(num_flt_per_grp_pad, algo_param.tiles.n_cta);
-    int grid_size = size_x * size_y;
-
     std::vector<std::string> knames;
     std::vector<algo_param_t> params;
-    std::string total_source = "";
-    int declare_times        = 0;
-    float elapsed            = 0.0f;
+    std::string sources = "";
 
-    unsigned int splitk = 1;
-    unsigned int splitf = 1;
-
-    for (unsigned int index = 0; index < MAX_KERNEL_SIZE; index++) {
-        conv_ktype_t ktype;
-        algo_param = pre_algo_param;
-        PPLCUDAConvolutionModifyAlgoParam(algo_param, index); // change algo_param
-        algo_param.splitk = splitk;
-        algo_param.splitf = splitf;
-
-        algo_param.tiles.cta_size_in_thd = (algo_param.tiles.m_cta / algo_param.tiles.m_warp) *
-                                           (algo_param.tiles.n_cta / algo_param.tiles.n_warp) *
-                                           (algo_param.tiles.k_cta / algo_param.tiles.k_per_set) *
-                                           WARP_SIZE;
-        ktype                     = CONV_2SPK_F1;
-        std::string f_size        = "f1";
-        algo_param.tiles.flt_size = 1;
-        algo_param.algo_name      = "nv2spkConv_hmma1688_nhwc_" + f_size + "_b" + ToString(algo_param.tiles.m_cta) + "x" + ToString(algo_param.tiles.n_cta) +
-                               "_w" + ToString(algo_param.tiles.m_warp) + "x" + ToString(algo_param.tiles.n_warp) +
-                               "_k" + ToString(algo_param.tiles.k_cta) + "_s" + ToString(algo_param.tiles.k_per_set) + "_buf1";
-
-        kernel_info_t temp_kernel(-1, ktype, algo_param.algo_name.c_str());
-        if (!temp_kernel.CheckKernelTilesFeasible(type, device_id))
-            continue;
-        if (!temp_kernel.CheckKernelTypeFeasible(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk))
-            continue;
-        if (!temp_kernel.CheckSplitkFeasible(num_chl_per_grp, splitk))
-            continue;
-        if (!temp_kernel.CheckSplitfFeasible(splitf, splitk))
-            continue;
-        if (!temp_kernel.CheckQuickSelectFeasible(algo_param, num_chl_per_grp, grid_size, flt_hw, splitk, splitf, device_id))
-            continue;
-
-        auto mgr = CodeGeneFactorManager::Instance();
-        auto gene_factor = mgr->FindKernel(type);
-        std::string source = "";
-        gene_factor->Gene2spkKernel(source, algo_param.algo_name, algo_param.mma_shape, algo_param.tiles.flt_size, algo_param.tiles.m_cta, algo_param.tiles.n_cta, algo_param.tiles.m_warp, algo_param.tiles.n_warp, algo_param.tiles.k_cta, algo_param.tiles.k_per_set, algo_param.splitk, algo_param.splitf, algo_param.tiles.buf, declare_times);
-        declare_times++;
-
-        if (std::find(knames.begin(), knames.end(), algo_param.algo_name) == knames.end()) {
-            total_source = total_source + source;
-        }
-        knames.push_back(algo_param.algo_name);
-        params.push_back(algo_param);
-    }
+    GetFp16ConvKernelNominees(device_id, type, conv_param, knames, params, sources);
 
     int index = 0;
     std::vector<const char *> compile_params;
-    elapsed = AlgoForwardTime(device_id, stream, knames, total_source, index, compile_params, device_id, true, type, (int4 *)input, (int4 *)weight, (int4 *)output, (int4 *)bias, (int4 *)temp_buffer, params, conv_param, fuse_param, workspace);
+    double elapsed = AlgoForwardTime(device_id, stream, knames, sources, index, compile_params, device_id, true, type, (int4 *)input, (int4 *)weight, (int4 *)output, (int4 *)bias, (int4 *)temp_buffer, params, conv_param, fuse_param, workspace);
 
     algo_param = params[index];
     return elapsed;
@@ -533,7 +476,7 @@ ppl::common::RetCode PPLCUDAGemmForwardImp(
     __half2 elt_clip_min        = __float2half2_rn(fuse_param.elt_clip_min);
     __half2 elt_clip_max        = __float2half2_rn(fuse_param.elt_clip_max);
     ppl::common::RetCode status = ppl::common::RC_SUCCESS;
-    if (M == 0) { // TODO, only work for A100, need to diff with T4
+    if (M == 1) { // TODO, only work for A100, need to diff with T4
         status = PPLCUDAGemvForwardImp<__half>(stream,
                                                M,
                                                N_pad,

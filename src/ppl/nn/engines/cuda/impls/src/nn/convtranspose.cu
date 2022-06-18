@@ -691,7 +691,6 @@ double PPLCUDAConvTransposeSelectKernel(
             gemm_conv_param.out_width = 1;
             gemm_conv_param.has_bias = false;
 
-            PPLCUDAPredictFp16ConvKernel(device_id, input_shape->GetDataType(), algo_param, gemm_conv_param);
             min_time = PPLCUDAGemmJITSelectKernel(
                                 device_id, stream,
                                 input_shape->GetDataType(), &a_shape, (void*)cvt_input, &b_shape,
@@ -742,7 +741,6 @@ double PPLCUDAConvTransposeSelectKernel(
 
             void *d_temp_buf = temp_buffer;
 #ifdef PPLNN_ENABLE_CUDA_JIT
-            PPLCUDAPredictFp16ConvKernel(device_id, input_shape->GetDataType(), algo_param, conv_param);
             min_time = PPLCUDAConvolutionJitSelectKernel(
                             device_id, stream, input_shape->GetDataType(),
                             (int4*)cvt_input, (int4*)rev_flt, (int4*)output, (int4*)bias,

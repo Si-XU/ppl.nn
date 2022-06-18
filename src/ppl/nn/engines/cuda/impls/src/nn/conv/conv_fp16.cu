@@ -859,6 +859,21 @@ ppl::common::RetCode algo_param_t::ParseAlgoName()
 
     this->mma_shape = algo_name_substrs[1];
 
+    int n_mma = 0;
+    if(this->mma_shape == "hmma16816" || this->mma_shape == "hmma1688" || this->mma_shape == "imma16816" || \
+       this->mma_shape == "imma16832")
+        n_mma = 16;
+    else if (this->mma_shape == "imma8816")
+        n_mma = 8;
+
+    int type_size = 0;
+
+    if (strstr(algo_name_substrs[0].c_str(), "Int8")) {
+        type_size = 1;
+    } else if (strstr(algo_name_substrs[0].c_str(), "Fp16")) {
+        type_size = 2;
+    }
+
     if ( strstr(algo_name_substrs[0].c_str(), "Idxn") ) {
         this->conv_type = "idxn";
 
@@ -898,6 +913,12 @@ ppl::common::RetCode algo_param_t::ParseAlgoName()
                                       (this->tiles.k_cta / this->tiles.k_per_set) *
                                       WARP_SIZE;
 
+        int smem_a = this->tiles.m_cta * this->tiles.k_cta * this->tiles.buf * type_size;
+        int smem_b = this->tiles.n_cta * this->tiles.k_cta * this->tiles.buf * type_size;
+        int smem_c = this->tiles.m_cta * this->tiles.n_cta * (this->tiles.k_cta / this->tiles.k_per_set) * type_size;
+
+        this->tiles.smem_size = Max(smem_a + smem_b, smem_c);
+
     } else if ( strstr(algo_name_substrs[0].c_str(), "Swzl") ) {
         this->conv_type = "swzl";
 
@@ -918,25 +939,31 @@ ppl::common::RetCode algo_param_t::ParseAlgoName()
         this->tiles.cta_size_in_thd = (this->tiles.m_cta / this->tiles.m_warp) *
                                       (this->tiles.n_cta / this->tiles.n_warp) *
                                       WARP_SIZE;
+
+        int smem_a = this->tiles.m_cta * this->tiles.k_cta * this->tiles.buf * type_size;
+        int smem_b = this->tiles.n_cta * this->tiles.k_cta * this->tiles.buf * type_size;
+
+        int smem_c = 0;
+        if(this->tiles.m_warp == 8)
+            smem_c = this->tiles.m_cta * n_mma * this->tiles.cta_size_in_thd * type_size * 2;
+        else 
+            smem_c = this->tiles.m_cta * n_mma * this->tiles.cta_size_in_thd * type_size;
+
+        this->tiles.smem_size = Max(smem_a + smem_b, smem_c);
+
     } else {
         return ppl::common::RC_NOT_FOUND;
     }
     return ppl::common::RC_SUCCESS;
 }
 
-double PPLCUDAConvolutionJitSelectKernel(
+ppl::common::RetCode GetFp16ConvKernelNominees(
     int device_id,
-    cudaStream_t &stream,
     ppl::common::datatype_t type,
-    int4 *d_input,
-    int4 *d_flt,
-    int4 *d_output,
-    int4 *bias,
-    int4 *d_temp_buf,
-    algo_param_t &algo_param,
     conv_param_t &conv_param,
-    fuse_param_t &fuse_param,
-    uint64_t workspace)
+    std::vector<std::string> & knames,
+    std::vector<algo_param_t> & params,
+    std::string & sources)
 {
     int pad_size            = GetPadSize(type);
     int num_grp             = conv_param.num_grp;
@@ -952,6 +979,8 @@ double PPLCUDAConvolutionJitSelectKernel(
     // int in_hw               = conv_param.in_height  * conv_param.in_width;
     int out_w               = conv_param.out_width;
     int out_hw              = conv_param.out_height * conv_param.out_width;
+
+    int type_size = ppl::common::GetSizeOfDataType(type)
 
     cudaDeviceProp device_prop;
     cudaGetDeviceProperties(&device_prop, device_id);
@@ -1072,7 +1101,7 @@ double PPLCUDAConvolutionJitSelectKernel(
                             if(occ_score <= 0.5) continue;
 
                             // get kernel pipeline score
-                            float pip_score = GetIdxnPipelineScore(HALF_SIZE, cta_launch_times, out_w, cta_size_in_thd, cta_size_in_warp, m_cta, n_cta, k_cta, m_warp, n_warp, \
+                            float pip_score = GetIdxnPipelineScore(type_size, cta_launch_times, out_w, cta_size_in_thd, cta_size_in_warp, m_cta, n_cta, k_cta, m_warp, n_warp, \
                                     k_per_step, m_mma, n_mma, k_mma, cpi_mma, cpi_ldg32_l1d, cpi_ldg64_l1d, cpi_ldg128_l1d, cpi_ldg32_l2, \
                                     cpi_ldg64_l2, cpi_ldg128_l2, latency_mma, latency_l2_cache, latency_dram);
 
@@ -1081,7 +1110,7 @@ double PPLCUDAConvolutionJitSelectKernel(
                             nominee.SetIdxnKernelParam(m_cta, n_cta, k_cta, m_warp, n_warp, k_per_step, flt_pad_size, cta_size_in_thd, smem_per_cta, splitk, splitf, mma_shape);
 
                             nominees.push_back(std::make_pair(nominee, score));
-                            printf("insert nominee %s : eff %.2f occ %.2f pip %.2f launch %.2f\n", nominee.algo_name.c_str(), eff_score, occ_score, pip_score, cta_launch_times);
+                            // printf("insert nominee %s : eff %.2f occ %.2f pip %.2f launch %.2f\n", nominee.algo_name.c_str(), eff_score, occ_score, pip_score, cta_launch_times);
                         }
     } else {
         int flt_size = 0;
@@ -1152,14 +1181,14 @@ double PPLCUDAConvolutionJitSelectKernel(
                                                 if(buf_num > kloop_num) continue;
 
                                                 // filter out cases with too much register usage
-                                                int regs_per_thd = Get2spkRegsPerThread(HALF_SIZE, m_cta, n_cta, k_cta, m_warp, n_warp, k_per_set, \
+                                                int regs_per_thd = Get2spkRegsPerThread(type_size, m_cta, n_cta, k_cta, m_warp, n_warp, k_per_set, \
                                                         m_mma, n_mma, k_mma, k_blk_mma, buf_num, cta_size_in_thd, set_size_in_thd);
                                                 int regs_per_cta = regs_per_thd * cta_size_in_thd;
                                                 if (regs_per_thd > max_regs_per_thd) continue;
                                                 if (regs_per_cta > max_regs_per_cta) continue;
 
                                                 // filter out cases with too much smem usage
-                                                int smem_per_cta = Get2spkSmemUsage(HALF_SIZE, m_cta, n_cta, k_cta, set_num, buf_num);
+                                                int smem_per_cta = Get2spkSmemUsage(type_size, m_cta, n_cta, k_cta, set_num, buf_num);
                                                 if (smem_per_cta > max_dyn_smem_per_cta) continue;
 
                                                 // filter out cases with too much padding
@@ -1177,7 +1206,7 @@ double PPLCUDAConvolutionJitSelectKernel(
                                                 if( cta_launch_times > 1 ) continue;
 
                                                 // get kernel pipeline score
-                                                float pip_score = Get2spkPipelineScore(HALF_SIZE, cta_launch_times, m_conv, n_conv, k_conv, \
+                                                float pip_score = Get2spkPipelineScore(type_size, cta_launch_times, m_conv, n_conv, k_conv, \
                                                         kloop_num, splitk, splitf, out_w, cta_size_in_thd, cta_size_in_warp, sm_num, m_cta, \
                                                         n_cta, k_cta, m_warp, n_warp, k_per_set, set_num, buf_num, m_mma, n_mma, k_mma, k_mma_max, \
                                                         cpi_mma, cpi_ldg128_l1d, cpi_ldg128_l2, cpi_lds128, cpi_sts32, latency_mma, \
@@ -1190,8 +1219,8 @@ double PPLCUDAConvolutionJitSelectKernel(
                                                         flt_size, buf_num, cta_size_in_thd, smem_per_cta, splitk, splitf, mma_shape);
 
                                                 nominees.push_back(std::make_pair(nominee, score));
-                                                printf("insert 2spk nominee %s : eff %.2f occ %.2f pip %.2f launch %.2f cta_num %d warp_num %d\n", \
-                                                        nominee.algo_name.c_str(), eff_score, occ_score, pip_score, cta_launch_times, cta_num, cta_size_in_warp);
+                                                // printf("insert 2spk nominee %s : eff %.2f occ %.2f pip %.2f launch %.2f cta_num %d warp_num %d\n",
+                                                //         nominee.algo_name.c_str(), eff_score, occ_score, pip_score, cta_launch_times, cta_num, cta_size_in_warp);
                                             }
 
         } else { // choose swzl kernels
@@ -1234,14 +1263,14 @@ double PPLCUDAConvolutionJitSelectKernel(
                                     if(buf_num > kloop_num) continue;
 
                                     // filter out cases with too much register usage
-                                    int regs_per_thd = GetSwzlRegsPerThread(HALF_SIZE, m_cta, n_cta, k_cta, m_warp, n_warp, \
+                                    int regs_per_thd = GetSwzlRegsPerThread(type_size, m_cta, n_cta, k_cta, m_warp, n_warp, \
                                             m_mma, n_mma, k_mma, k_blk_mma, buf_num, cta_size_in_thd);
                                     int regs_per_cta = regs_per_thd * cta_size_in_thd;
                                     if (regs_per_thd > max_regs_per_thd) continue;
                                     if (regs_per_cta > max_regs_per_cta) continue;
 
                                     // filter out cases with too much smem usage
-                                    int smem_per_cta = GetSwzlSmemUsage(HALF_SIZE, m_cta, n_cta, k_cta, m_warp, n_warp, \
+                                    int smem_per_cta = GetSwzlSmemUsage(type_size, m_cta, n_cta, k_cta, m_warp, n_warp, \
                                             m_mma, n_mma, buf_num, cta_size_in_warp);
                                     if (smem_per_cta > max_dyn_smem_per_cta) continue;
 
@@ -1257,7 +1286,7 @@ double PPLCUDAConvolutionJitSelectKernel(
                                     if(occ_score <= 0.5) continue;
 
                                     // get kernel pipeline score
-                                    float pip_score = GetSwzlPipelineScore(HALF_SIZE, cta_launch_times, m_conv, n_conv, k_conv, \
+                                    float pip_score = GetSwzlPipelineScore(type_size, cta_launch_times, m_conv, n_conv, k_conv, \
                                             kloop_num, out_w, cta_size_in_thd, cta_size_in_warp, sm_num, m_cta, \
                                             n_cta, k_cta, m_warp, n_warp, buf_num, m_mma, n_mma, k_mma, k_mma_max, \
                                             cpi_mma, cpi_ldg128_l1d, cpi_ldg128_l2, cpi_lds128, cpi_sts32, latency_mma, \
@@ -1270,32 +1299,32 @@ double PPLCUDAConvolutionJitSelectKernel(
                                             buf_num, cta_size_in_thd, smem_per_cta, splitk, splitf, mma_shape);
 
                                     nominees.push_back(std::make_pair(nominee, score));
-                                    printf("insert swzl nominee %s : eff %.2f occ %.2f pip %.2f launch %.2f cta_num %d warp_num %d\n", \
-                                            nominee.algo_name.c_str(), eff_score, occ_score, pip_score, cta_launch_times, cta_num, cta_size_in_warp);
+                                    // printf("insert swzl nominee %s : eff %.2f occ %.2f pip %.2f launch %.2f cta_num %d warp_num %d\n",
+                                    //         nominee.algo_name.c_str(), eff_score, occ_score, pip_score, cta_launch_times, cta_num, cta_size_in_warp);
                                 }
-
-
         }
-
     }
 
-    std::sort(nominees.begin(), nominees.end(), SortByDescendScore);
+    if(nominees.size() == 0) { // insert default kernel
+        // nv2spkConv_hmma1688_b64x64_w32x32_k64_s64_buf1
+        nominee.Set2spkKernelParam(64, 64, 64, 32, 32, 64, 1, 1, 128, 16384, 1, 1, "hmma1688");
+        nominees.push_back(std::make_pair(nominee, 0.f));
+    } else {
+        std::sort(nominees.begin(), nominees.end(), SortByDescendScore);
+    }
 
-    std::vector<std::string> knames;
-    std::vector<algo_param_t> params;
-    std::string total_source = "";
+
     int declare_times        = 0;
-    float elapsed;
 
     auto mgr = CodeGeneFactorManager::Instance();
     auto gene_factor = mgr->FindKernel(type);
 
     // for(int i = 0; i < 1; i++) {
-    for(int i = 0; i < nominees.size(); i++) {
+    for(int i = 0; i < Min(32, nominees.size()); i++) {
         std::string source = "";
         auto& nominee = nominees[i].first;
 
-        printf("No.%d nominee %s : score %.2f \n", i, nominee.algo_name.c_str(), nominees[i].second);
+        // printf("No.%d nominee %s : score %.2f \n", i, nominee.algo_name.c_str(), nominees[i].second);
 
         if (nominee.conv_type == "idxn") {
             gene_factor->GeneIdxnKernel(source, nominee.algo_name, nominee.mma_shape, nominee.tiles.flt_size, nominee.tiles.m_cta, nominee.tiles.n_cta, nominee.tiles.m_warp, nominee.tiles.n_warp, nominee.tiles.k_cta, nominee.tiles.k_per_step, declare_times);
@@ -1311,21 +1340,44 @@ double PPLCUDAConvolutionJitSelectKernel(
         // printf("source is %s\n", source.c_str());
 
         // if (std::find(knames.begin(), knames.end(), algo_param.algo_name) == knames.end()) {
-        //     total_source = total_source + source;
+        //     sources = sources + source;
         // }
 
-        total_source = total_source + source;
+        sources = sources + source;
 
         knames.push_back(nominee.algo_name);
         params.push_back(nominee);
 
     }
 
+    return ppl::common::RC_SUCCESS;
+}
+
+double PPLCUDAConvolutionJitSelectKernel(
+    int device_id,
+    cudaStream_t &stream,
+    ppl::common::datatype_t type,
+    int4 *d_input,
+    int4 *d_flt,
+    int4 *d_output,
+    int4 *bias,
+    int4 *d_temp_buf,
+    algo_param_t &algo_param,
+    conv_param_t &conv_param,
+    fuse_param_t &fuse_param,
+    uint64_t workspace)
+{
+    std::vector<std::string> knames;
+    std::vector<algo_param_t> params;
+    std::string sources = "";
+
+    GetFp16ConvKernelNominees(device_id, type, conv_param, knames, params, sources);
+
     int index = 0;
     std::vector<const char *> compile_params;
-    elapsed = AlgoForwardTime(device_id, stream, knames, total_source, index, compile_params, device_id, true, type, d_input, d_flt, d_output, bias, d_temp_buf, params, conv_param, fuse_param, workspace);
+    double elapsed = AlgoForwardTime(device_id, stream, knames, sources, index, compile_params, device_id, true, type, d_input, d_flt, d_output, bias, d_temp_buf, params, conv_param, fuse_param, workspace);
 
-    algo_param                         = params[index];
+    algo_param = params[index];
     return elapsed;
 }
 
@@ -1559,111 +1611,6 @@ void PPLCUDAConvolutionForwardJitImp(
 }
 
 // TODO: delete later
-ppl::common::RetCode PPLCUDAPredictFp16ConvKernel(
-        int device_id,
-    ppl::common::datatype_t type,
-    algo_param_t &algo_param,
-    conv_param_t &conv_param)
-{
-    int in_hw       = conv_param.in_num * conv_param.in_height * conv_param.in_width;
-    int out_hw      = conv_param.in_num * conv_param.out_height * conv_param.out_width;
-    int flt_hw      = conv_param.flt_height * conv_param.flt_width;
-    int chl_per_grp = conv_param.num_chl / conv_param.num_grp;
-
-    if (chl_per_grp <= 32) { // Use non-shared memory algo for small channel
-        if (flt_hw > 9) {
-            algo_param.tiles.m_cta  = 128;
-            algo_param.tiles.m_warp = 64;
-        } else {
-            algo_param.tiles.m_cta  = 32;
-            algo_param.tiles.m_warp = 16;
-        }
-
-        if (in_hw == out_hw) {
-            algo_param.tiles.n_cta  = 64;
-            algo_param.tiles.n_warp = 32;
-        } else {
-            algo_param.tiles.n_cta  = 32;
-            algo_param.tiles.n_warp = 16;
-        }
-
-        algo_param.tiles.cta_size_in_thd = (algo_param.tiles.m_cta / algo_param.tiles.m_warp) *
-                                           (algo_param.tiles.n_cta / algo_param.tiles.n_warp) *
-                                           WARP_SIZE;
-
-        if (chl_per_grp <= 2) {
-            algo_param.tiles.k_cta      = 8;
-            algo_param.tiles.k_per_step = 8;
-        } else if (chl_per_grp <= 4) {
-            algo_param.tiles.k_cta      = 16;
-            algo_param.tiles.k_per_step = 16;
-        } else {
-            algo_param.tiles.k_cta      = 32;
-            algo_param.tiles.k_per_step = 32;
-        }
-        if (type == ppl::common::DATATYPE_INT8) {
-            algo_param.tiles.k_cta      *= 2;
-            algo_param.tiles.k_per_step *= 2;            
-        }
-    } else { // Use 2spk or swizzle algo for large channel
-        float min_pad          = 1.0;
-        algo_param.tiles.m_cta = 16;
-        for (int32_t i = 128; i >= 16; i = i / 2) {
-            if (out_hw < i)
-                continue;
-            float pad = 1.0 * (DivUp(out_hw, i) * i - out_hw) / out_hw;
-            if (pad < min_pad) {
-                min_pad                = pad;
-                algo_param.tiles.m_cta = i;
-            }
-            if (min_pad < 0.1)
-                break;
-        }
-
-        algo_param.tiles.n_cta = 16;
-        for (int32_t i = 128; i >= 16; i = i / 2) {
-            int cout = conv_param.num_flt;
-            if ((cout < 64 && i / cout == 1) || (cout >= 64 && cout % i == 0)) {
-                algo_param.tiles.n_cta = i;
-                break;
-            }
-        }
-
-        if (conv_param.num_chl >= 128) {
-            algo_param.tiles.k_cta = 64;
-        } else {
-            algo_param.tiles.k_cta = 32;
-        }
-
-        if (algo_param.tiles.m_cta == 128 && algo_param.tiles.n_cta == 128) {
-            algo_param.tiles.m_cta = 64;
-        }
-
-        if (algo_param.tiles.m_cta * 4 < algo_param.tiles.n_cta) {
-            algo_param.tiles.m_cta *= 2;
-            algo_param.tiles.n_cta /= 2;
-        }
-        if (algo_param.tiles.n_cta * 4 < algo_param.tiles.m_cta) {
-            algo_param.tiles.m_cta /= 2;
-            algo_param.tiles.n_cta *= 2;
-        }
-
-        algo_param.tiles.m_warp    = algo_param.tiles.m_cta / 2;
-        algo_param.tiles.n_warp    = algo_param.tiles.n_cta / 2;
-        algo_param.tiles.k_per_set = algo_param.tiles.k_cta / 2;
-        if (algo_param.tiles.k_per_set <= 8) {
-            algo_param.tiles.k_per_set = 16;
-        }
-        if (algo_param.tiles.m_warp <= 8) {
-            algo_param.tiles.m_warp = 16;
-        }
-        if (algo_param.tiles.n_warp <= 8) {
-            algo_param.tiles.n_warp = 16;
-        }
-    }
-    return ppl::common::RC_SUCCESS;
-}
-
 void ModifySingleParam(algo_param_t &algo_param, int pos, int offset)
 {
     switch (pos) {
