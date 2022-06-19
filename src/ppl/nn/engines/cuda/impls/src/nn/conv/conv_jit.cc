@@ -40,6 +40,7 @@ bool SortByDescendScore(const std::pair<algo_param_t, float> &a, const std::pair
 void GetHardwareInfo(
         int device_arch,
         ppl::common::datatype_t type,
+        int num_chl_per_grp,
         int &cpi_mma,
         int &latency_mma,
         int &cpi_ldg32_l1d,
@@ -91,12 +92,22 @@ void GetHardwareInfo(
 
     } else if (device_arch >= 80) {
         if( type == ppl::common::DATATYPE_FLOAT16 ) {
-            cpi_mma = CPI_SM80_HMMA16816;
-            latency_mma = LATENCY_SM80_HMMA16816;
+            if(num_chl_per_grp <= 2) {
+                cpi_mma = CPI_SM80_HMMA1688;
+                latency_mma = LATENCY_SM80_HMMA1688;
+            } else {
+                cpi_mma = CPI_SM80_HMMA16816;
+                latency_mma = LATENCY_SM80_HMMA16816;
+            }
 
         } else if( type == ppl::common::DATATYPE_INT8 ) {
-            cpi_mma = CPI_SM80_IMMA16832;
-            latency_mma = LATENCY_SM80_IMMA16832;
+            if(num_chl_per_grp <= 4) {
+                cpi_mma = CPI_SM80_IMMA16816;
+                latency_mma = LATENCY_SM80_IMMA16816;
+            } else {
+                cpi_mma = CPI_SM80_IMMA16832;
+                latency_mma = LATENCY_SM80_IMMA16832;
+            }
         }
         cpi_ldg32_l1d  = CPI_SM80_LDG32_L1D;
         cpi_ldg64_l1d  = CPI_SM80_LDG64_L1D;
@@ -139,6 +150,7 @@ int GetEstimateCtaNumber(
 void GetIdxnMmaInfo(
         int device_arch,
         ppl::common::datatype_t type,
+        int num_chl_per_grp,
         std::string &mma_shape,
         int &m_mma,
         int &n_mma,
@@ -163,18 +175,34 @@ void GetIdxnMmaInfo(
         }
     } else if (device_arch >= 80) {
         if( type == ppl::common::DATATYPE_FLOAT16 ) {
-            mma_shape = "hmma16816";
-            m_mma = 16;
-            n_mma = 8;
-            k_mma = 16;
-            k_mma_max = k_mma * 2;
+            if(num_chl_per_grp <= 2) {
+                mma_shape = "hmma1688";
+                m_mma = 16;
+                n_mma = 8;
+                k_mma = 8;
+                k_mma_max = k_mma * 4;
+            } else {
+                mma_shape = "hmma16816";
+                m_mma = 16;
+                n_mma = 8;
+                k_mma = 16;
+                k_mma_max = k_mma * 2;
+            }
 
         } else if( type == ppl::common::DATATYPE_INT8 ) {
-            mma_shape = "imma16832";
-            m_mma = 16;
-            n_mma = 8;
-            k_mma = 32;
-            k_mma_max = k_mma * 2;
+            if(num_chl_per_grp <= 4) {
+                mma_shape = "imma16816";
+                m_mma = 16;
+                n_mma = 8;
+                k_mma = 16;
+                k_mma_max = k_mma * 4;
+            } else {
+                mma_shape = "imma16832";
+                m_mma = 16;
+                n_mma = 8;
+                k_mma = 32;
+                k_mma_max = k_mma * 2;
+            }
         }
     }
 
@@ -323,6 +351,7 @@ int GetIdxnRegsPerThread(
 }
 
 int Get2spkRegsPerThread(
+        ppl::common::datatype_t type,
         int type_size,
         int m_cta,
         int n_cta,
@@ -341,7 +370,12 @@ int Get2spkRegsPerThread(
     int regs_a_v4 = DivUp( m_cta * k_cta * type_size, _INT4_TO_16BYTE_ * cta_size_in_thd);
     int regs_b_v4 = DivUp( n_cta * k_cta * type_size, _INT4_TO_16BYTE_ * cta_size_in_thd);
 
-    int regs_c_v4 = (m_cta * n_cta * type_size) / (_INT4_TO_16BYTE_ * set_size_in_thd);
+    int regs_c_v4 = 0;
+    if( type == ppl::common::DATATYPE_FLOAT16 ) {
+        regs_c_v4 = (m_cta * n_cta * type_size) / (_INT4_TO_16BYTE_ * set_size_in_thd);
+    } else if( type == ppl::common::DATATYPE_INT8 ) {
+        regs_c_v4 = (m_cta * n_cta * _INT_TO_4BYTE_) / (_INT4_TO_16BYTE_ * set_size_in_thd);
+    }
 
     int regs_a_v1 = regs_a_v4 * _4INT_TO_INT4_;
     int regs_b_v1 = regs_b_v4 * _4INT_TO_INT4_;
@@ -369,6 +403,7 @@ int Get2spkRegsPerThread(
 }
 
 int GetSwzlRegsPerThread(
+        ppl::common::datatype_t type,
         int type_size,
         int m_cta,
         int n_cta,
@@ -385,7 +420,12 @@ int GetSwzlRegsPerThread(
     int regs_a_v4 = DivUp( m_cta * k_cta * type_size, _INT4_TO_16BYTE_ * cta_size_in_thd);
     int regs_b_v4 = DivUp( n_cta * k_cta * type_size, _INT4_TO_16BYTE_ * cta_size_in_thd);
 
-    int regs_c_v4 = (m_cta * n_cta * type_size) / (_INT4_TO_16BYTE_ * cta_size_in_thd);
+    int regs_c_v4 = 0;
+    if( type == ppl::common::DATATYPE_FLOAT16 ) {
+        regs_c_v4 = (m_cta * n_cta * type_size) / (_INT4_TO_16BYTE_ * cta_size_in_thd);
+    } else if( type == ppl::common::DATATYPE_INT8 ) {
+        regs_c_v4 = (m_cta * n_cta * _INT_TO_4BYTE_) / (_INT4_TO_16BYTE_ * cta_size_in_thd);
+    }
 
     int regs_a_v1 = regs_a_v4 * _4INT_TO_INT4_;
     int regs_b_v1 = regs_b_v4 * _4INT_TO_INT4_;
@@ -422,6 +462,7 @@ int GetIdxnSmemUsage(
 }
 
 int Get2spkSmemUsage(
+        ppl::common::datatype_t type,
         int type_size,
         int m_cta,
         int n_cta,
@@ -431,7 +472,13 @@ int Get2spkSmemUsage(
 {
     int smem_a = m_cta * k_cta * buf_num * type_size;
     int smem_b = n_cta * k_cta * buf_num * type_size;
-    int smem_c = m_cta * n_cta * type_size;
+
+    int smem_c = 0;
+    if( type == ppl::common::DATATYPE_FLOAT16 ) {
+        smem_c = m_cta * n_cta * type_size;
+    } else if( type == ppl::common::DATATYPE_INT8 ) {
+        smem_c = m_cta * n_cta * _INT_TO_4BYTE_;
+    }
 
     int smem_per_cta = Max(smem_a + smem_b, smem_c * set_num);
     
@@ -439,6 +486,7 @@ int Get2spkSmemUsage(
 }
 
 int GetSwzlSmemUsage(
+        ppl::common::datatype_t type,
         int type_size,
         int m_cta,
         int n_cta,
@@ -454,10 +502,17 @@ int GetSwzlSmemUsage(
     int smem_b = n_cta * k_cta * buf_num * type_size;
 
     int smem_r = 0;
-    if(m_warp == 8)
-        smem_r = m_cta * n_mma * cta_size_in_warp * type_size * 2;
-    else 
-        smem_r = m_cta * n_mma * cta_size_in_warp * type_size;
+    if( type == ppl::common::DATATYPE_FLOAT16 ) {
+        if(m_warp == 8)
+            smem_r = m_cta * n_mma * cta_size_in_warp * type_size * 2;
+        else 
+            smem_r = m_cta * n_mma * cta_size_in_warp * type_size;
+    } else if( type == ppl::common::DATATYPE_INT8 ) {
+        if(m_warp == 8)
+            smem_r = m_cta * n_mma * cta_size_in_warp * _INT_TO_4BYTE_ * 2;
+        else 
+            smem_r = m_cta * n_mma * cta_size_in_warp * _INT_TO_4BYTE_;
+    }
 
     int smem_per_cta = Max(smem_a + smem_b, smem_r);
     

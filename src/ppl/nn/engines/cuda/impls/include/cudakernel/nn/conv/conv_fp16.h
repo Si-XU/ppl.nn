@@ -214,8 +214,6 @@ struct fuse_info_t {
 
 std::string GetConvShapeString(const conv_param_t& conv_param);
 
-ppl::common::RetCode PPLCUDAConvolutionModifyAlgoParam(algo_param_t& algo_param, uint32_t index);
-
 uint64_t PPLCUDAConvolutionGetCompilationBufSize(
     ppl::common::datatype_t type,
     conv_param_t& conv_param,
@@ -228,11 +226,13 @@ uint64_t PPLCUDAConvolutionGetRuntimeBufSize(
     unsigned int splitf,
     uint64_t workspace = ((uint64_t)8) * 1024 * 1024 * 1024);
 
-ppl::common::RetCode PPLCUDAPredictInt8ConvKernel(
+ppl::common::RetCode GetInt8ConvKernelNominees(
     int device_id,
     ppl::common::datatype_t type,
-    algo_param_t &algo_param,
-    conv_param_t &conv_param);
+    conv_param_t &conv_param,
+    std::vector<std::string> & knames,
+    std::vector<algo_param_t> & params,
+    std::string & sources);
 
 ppl::common::RetCode GetFp16ConvKernelNominees(
     int device_id,

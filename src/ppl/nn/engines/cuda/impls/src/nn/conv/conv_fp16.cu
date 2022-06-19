@@ -980,7 +980,7 @@ ppl::common::RetCode GetFp16ConvKernelNominees(
     int out_w               = conv_param.out_width;
     int out_hw              = conv_param.out_height * conv_param.out_width;
 
-    int type_size = ppl::common::GetSizeOfDataType(type)
+    int type_size = ppl::common::GetSizeOfDataType(type);
 
     cudaDeviceProp device_prop;
     cudaGetDeviceProperties(&device_prop, device_id);
@@ -1032,9 +1032,9 @@ ppl::common::RetCode GetFp16ConvKernelNominees(
     algo_param_t nominee;
     nominee.algo_type = "TuringHMMAImpgemm";
 
-    GetHardwareInfo(device_arch, type, cpi_mma, latency_mma, cpi_ldg32_l1d, cpi_ldg64_l1d, cpi_ldg128_l1d, \
-            cpi_ldg32_l2, cpi_ldg64_l2, cpi_ldg128_l2, cpi_lds32, cpi_lds64, cpi_lds128, cpi_sts32, cpi_sts64, \
-            cpi_sts128, latency_l2_cache, latency_dram, max_dyn_smem_per_cta);
+    GetHardwareInfo(device_arch, type, num_chl_per_grp, cpi_mma, latency_mma, cpi_ldg32_l1d, cpi_ldg64_l1d, \
+            cpi_ldg128_l1d, cpi_ldg32_l2, cpi_ldg64_l2, cpi_ldg128_l2, cpi_lds32, cpi_lds64, cpi_lds128, \
+            cpi_sts32, cpi_sts64, cpi_sts128, latency_l2_cache, latency_dram, max_dyn_smem_per_cta);
 
     if (num_chl_per_grp <= 32) {
         int k_per_step = 0;
@@ -1046,7 +1046,7 @@ ppl::common::RetCode GetFp16ConvKernelNominees(
             k_per_step = 32;
         }
         
-        GetIdxnMmaInfo(device_arch, type, mma_shape, m_mma, n_mma, k_mma, m_mma_max, n_mma_max, k_mma_max);
+        GetIdxnMmaInfo(device_arch, type, num_chl_per_grp, mma_shape, m_mma, n_mma, k_mma, m_mma_max, n_mma_max, k_mma_max);
 
         int flt_pad_size = k_per_step >> 2;
         int flt_chl_per_grp_pad = Align(num_chl_per_grp, flt_pad_size);
@@ -1181,14 +1181,14 @@ ppl::common::RetCode GetFp16ConvKernelNominees(
                                                 if(buf_num > kloop_num) continue;
 
                                                 // filter out cases with too much register usage
-                                                int regs_per_thd = Get2spkRegsPerThread(type_size, m_cta, n_cta, k_cta, m_warp, n_warp, k_per_set, \
+                                                int regs_per_thd = Get2spkRegsPerThread(type, type_size, m_cta, n_cta, k_cta, m_warp, n_warp, k_per_set, \
                                                         m_mma, n_mma, k_mma, k_blk_mma, buf_num, cta_size_in_thd, set_size_in_thd);
                                                 int regs_per_cta = regs_per_thd * cta_size_in_thd;
                                                 if (regs_per_thd > max_regs_per_thd) continue;
                                                 if (regs_per_cta > max_regs_per_cta) continue;
 
                                                 // filter out cases with too much smem usage
-                                                int smem_per_cta = Get2spkSmemUsage(type_size, m_cta, n_cta, k_cta, set_num, buf_num);
+                                                int smem_per_cta = Get2spkSmemUsage(type, type_size, m_cta, n_cta, k_cta, set_num, buf_num);
                                                 if (smem_per_cta > max_dyn_smem_per_cta) continue;
 
                                                 // filter out cases with too much padding
@@ -1263,14 +1263,14 @@ ppl::common::RetCode GetFp16ConvKernelNominees(
                                     if(buf_num > kloop_num) continue;
 
                                     // filter out cases with too much register usage
-                                    int regs_per_thd = GetSwzlRegsPerThread(type_size, m_cta, n_cta, k_cta, m_warp, n_warp, \
+                                    int regs_per_thd = GetSwzlRegsPerThread(type, type_size, m_cta, n_cta, k_cta, m_warp, n_warp, \
                                             m_mma, n_mma, k_mma, k_blk_mma, buf_num, cta_size_in_thd);
                                     int regs_per_cta = regs_per_thd * cta_size_in_thd;
                                     if (regs_per_thd > max_regs_per_thd) continue;
                                     if (regs_per_cta > max_regs_per_cta) continue;
 
                                     // filter out cases with too much smem usage
-                                    int smem_per_cta = GetSwzlSmemUsage(type_size, m_cta, n_cta, k_cta, m_warp, n_warp, \
+                                    int smem_per_cta = GetSwzlSmemUsage(type, type_size, m_cta, n_cta, k_cta, m_warp, n_warp, \
                                             m_mma, n_mma, buf_num, cta_size_in_warp);
                                     if (smem_per_cta > max_dyn_smem_per_cta) continue;
 
@@ -1578,16 +1578,9 @@ void PPLCUDAConvolutionForwardJitImp(
         InitializeInputLut(in_lut_size, in_lut.idx, conv_param.flt_height, conv_param.flt_width, conv_param.in_height, conv_param.in_width, conv_param.pad_height, conv_param.pad_width, conv_param.hole_height, conv_param.hole_width, num_chl_per_grp_pad, conv_param.num_grp, cta_k, pad_size);
 
         InitializeFilterLut(flt_lut_size, flt_lut.idx, conv_param.flt_height, conv_param.flt_width, num_chl_per_grp_pad, cta_k, pad_size);
-        if (splitk == 1) {
-            void *args[] = {&d_flt, &pad_input, &conv_out, &kloop_num, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &in_hw, &out_hw, &flt_hw, &splitk, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias, &fuse_param.has_activation, &clip_min, &fuse_param.has_clip, &clip_max, &fuse_param.has_prelu, &prelu, &fuse_param.has_elt, &(pre_data), &fuse_param.has_elt_activation, &elt_clip_min, &fuse_param.has_elt_clip, &elt_clip_max, &fuse_param.has_elt_prelu, &(elt_prelu), &leaky, &elt_leaky, &fuse_param.has_concat, &concat_offset_v8, &concat_stride_v8};
-            CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, smem_size, stream, args, 0));
-        } else {
-            int num_chl_per_spk_head, num_chl_per_spk_tail;
 
-            InitializeNumChlPerSpk(num_chl_per_spk_head, num_chl_per_spk_tail, conv_param.num_chl, conv_param.num_grp, pad_size, cta_k, splitk);
-            void *args[] = {&d_flt, &pad_input, &conv_out, &kloop_num, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &num_chl_per_spk_head, &num_chl_per_spk_tail, &in_hw, &out_hw, &flt_hw, &splitk, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias};
-            CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, smem_size, stream, args, 0));
-        }
+        void *args[] = {&d_flt, &pad_input, &conv_out, &kloop_num, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &in_hw, &out_hw, &flt_hw, &splitk, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias, &fuse_param.has_activation, &clip_min, &fuse_param.has_clip, &clip_max, &fuse_param.has_prelu, &prelu, &fuse_param.has_elt, &(pre_data), &fuse_param.has_elt_activation, &elt_clip_min, &fuse_param.has_elt_clip, &elt_clip_max, &fuse_param.has_elt_prelu, &(elt_prelu), &leaky, &elt_leaky, &fuse_param.has_concat, &concat_offset_v8, &concat_stride_v8};
+        CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, smem_size, stream, args, 0));
     }
 
     if (splitk > 1 || splitf > 1) {
@@ -1608,55 +1601,5 @@ void PPLCUDAConvolutionForwardJitImp(
     if (is_out_grp_pad) {
         PPLCUDAConvolutionCvtOutput(stream, d_output, final_out, type, conv_param);
     }
-}
-
-// TODO: delete later
-void ModifySingleParam(algo_param_t &algo_param, int pos, int offset)
-{
-    switch (pos) {
-        case 0:
-            algo_param.tiles.m_cta = offset > 0 ? algo_param.tiles.m_cta * 2 : algo_param.tiles.m_cta / 2;
-            break;
-        case 1:
-            algo_param.tiles.n_cta = offset > 0 ? algo_param.tiles.n_cta * 2 : algo_param.tiles.n_cta / 2;
-            break;
-        case 2:
-            algo_param.tiles.m_warp = offset > 0 ? algo_param.tiles.m_warp * 2 : algo_param.tiles.m_warp / 2;
-            break;
-        case 3:
-            algo_param.tiles.n_warp = offset > 0 ? algo_param.tiles.n_warp * 2 : algo_param.tiles.n_warp / 2;
-            break;
-        case 4:
-            algo_param.tiles.k_cta = offset > 0 ? algo_param.tiles.k_cta * 2 : algo_param.tiles.k_cta / 2;
-            break;
-        case 5:
-            algo_param.tiles.k_per_step = offset > 0 ? algo_param.tiles.k_per_step * 2 : algo_param.tiles.k_per_step / 2;
-            algo_param.tiles.k_per_set  = offset > 0 ? algo_param.tiles.k_per_set * 2 : algo_param.tiles.k_per_set / 2;
-            break;
-    }
-}
-
-ppl::common::RetCode PPLCUDAConvolutionModifyAlgoParam(
-    algo_param_t &algo_param,
-    uint32_t index)
-{
-    if (index == 0) {
-        return ppl::common::RC_SUCCESS;
-    } else if (index <= 12) {
-        index      = index - 1;
-        int pos    = index / 6;
-        int offset = index % 2;
-        ModifySingleParam(algo_param, pos, offset);
-    } else {
-        index     = index - 13;
-        int pos_1 = index / 5;
-        int pos_2 = index % 5;
-        if (pos_2 >= pos_1)
-            pos_2++;
-        ModifySingleParam(algo_param, pos_1, 1);
-        ModifySingleParam(algo_param, pos_2, 0);
-    }
-
-    return ppl::common::RC_SUCCESS;
 }
 

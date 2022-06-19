@@ -264,15 +264,6 @@ ppl::common::RetCode PPLCUDAGemmModifyBias(
     return ppl::common::RC_SUCCESS;
 }
 
-#define MAX_KERNEL_SIZE (1 + 12 + 30)
-
-__inline__ std::string ToString(int v)
-{
-    std::stringstream ss;
-    ss << v;
-    return ss.str();
-}
-
 double PPLCUDAGemmJITSelectKernel(
     int device_id,
     cudaStream_t &stream,
