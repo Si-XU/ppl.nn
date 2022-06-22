@@ -107,21 +107,60 @@ void init_f1_kvec(std::vector<kernel_info_t> &g_fp16_kvec, int device_id, ppl::c
 #endif
 }
 
-uint64_t PPLGemmCUDAGetBufSize(
+uint64_t PPLGemmCUDAGetCompilationBufSize(
     const ppl::nn::TensorShape *input_shape,
+    conv_param_t& conv_param,
     int transA)
 {
     auto type     = input_shape->GetDataType();
-    int type_size = ppl::common::GetSizeOfDataType(type);
-
+    int pad_size = GetPadSize(type); // ldg 128 bytes
+                  
+    uint64_t cvt_input_size = 0;
     if (transA) {
-        int pad_size = GetPadSize(type); // ldg 128 bytes
         int K        = input_shape->GetDim(0);
         int M        = input_shape->GetDim(1);
         int K_pad    = Align(K, pad_size);
-        return M * K_pad * type_size;
+        uint64_t type_size = ppl::common::GetSizeOfDataType(type);
+        cvt_input_size = M * K_pad * type_size;
     }
-    return 0;
+
+    uint64_t num_flt_per_grp = conv_param.num_flt / conv_param.num_grp;
+    uint64_t num_flt_per_grp_pad = Align(num_flt_per_grp, pad_size);
+
+    uint64_t split_size = GetMaxSplitSize(type, conv_param, num_flt_per_grp_pad);
+
+    uint64_t total_size = cvt_input_size + split_size;
+    return total_size;
+}
+
+uint64_t PPLGemmCUDAGetRuntimeBufSize(
+    const ppl::nn::TensorShape *input_shape,
+    conv_param_t& conv_param,
+    int splitk,
+    int splitf,
+    int transA)
+{
+    auto type     = input_shape->GetDataType();
+    int pad_size = GetPadSize(type); // ldg 128 bytes
+                  
+    uint64_t cvt_input_size = 0;
+    if (transA) {
+        int K        = input_shape->GetDim(0);
+        int M        = input_shape->GetDim(1);
+        int K_pad    = Align(K, pad_size);
+        uint64_t type_size = ppl::common::GetSizeOfDataType(type);
+        cvt_input_size = M * K_pad * type_size;
+    }
+
+    uint64_t num_flt_per_grp = conv_param.num_flt / conv_param.num_grp;
+    uint64_t num_flt_per_grp_pad = Align(num_flt_per_grp, pad_size);
+
+    uint64_t split_size = 0;
+    if(splitk > 1 || splitf > 1)
+        split_size = GetSplitKFSize(type, conv_param, num_flt_per_grp_pad, splitk, splitf);
+
+    uint64_t total_size = cvt_input_size + split_size;
+    return total_size;
 }
 
 unsigned int PPLCUDAGemmGetBiasSize(
@@ -487,6 +526,7 @@ ppl::common::RetCode PPLCUDAGemmForwardImp(
     int tile_n_per_cta  = algo_param.tiles.n_cta;
     int tile_k_per_cta  = algo_param.tiles.k_cta;
     int cta_size_in_thd = algo_param.tiles.cta_size_in_thd;
+    int smem_size       = algo_param.tiles.smem_size;
 #else
     int kid             = algo_param.kid;
     int tile_m_per_cta  = g_fp16_kvec[kid].tile_m_per_cta;
@@ -532,7 +572,11 @@ ppl::common::RetCode PPLCUDAGemmForwardImp(
 
     void *args[]        = {&input0_tmp, &weight, &final_out, &kLoopNum, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &in_hw, &out_hw, &flt_hw, &splitk, &in_height, &in_width, &batch, &num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &flt_height, &flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &out_height, &out_width, &stride_height, &stride_width, &pad_height, &pad_width, &hole_height, &hole_width, &has_bias, &bias, &fuse_param.has_activation, &clip_min, &fuse_param.has_clip, &clip_max, &fuse_param.has_prelu, &prelu, &fuse_param.has_elt, &(pre_data), &fuse_param.has_elt_activation, &elt_clip_min, &fuse_param.has_elt_clip, &elt_clip_max, &fuse_param.has_elt_prelu, &(elt_prelu), &leaky, &elt_leaky, &fuse_param.has_concat, &concat_offset_v8, &concat_stride_v8};
     CUfunction function = module->GetKernelFunc();
-    CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
+
+    if(smem_size > MAX_STATIC_SMEM_SIZE_PER_CTA)
+        cuFuncSetAttribute(function, CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES, smem_size);
+
+    CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, smem_size, stream, args, 0));
 #else
         g_fp16_kvec[kid].AdaptLutKernelSMemSize();
         (g_fp16_kvec[kid].lut_kptr)<<<grid_size, block_size, smem_size, stream>>>(GEMM_FUNC_PARAM);

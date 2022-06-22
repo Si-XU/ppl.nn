@@ -148,7 +148,7 @@ double GemmAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& option
     ALLOC_BUFFERF_FOR_ALGO_SELECT(bias_buffer, shape_in2.GetBytesIncludingPadding(), ALGO_MAX_TIME)
     ALLOC_BUFFERF_FOR_ALGO_SELECT(output_buffer, shape_out.GetBytesIncludingPadding(), ALGO_MAX_TIME)
 
-    uint64_t size = PPLGemmCUDAGetBufSize(&shape_in0, attr_param_.param.transA);
+    uint64_t size = PPLGemmCUDAGetCompilationBufSize(&shape_in0, temp_conv_param, attr_param_.param.transA);
     ALLOC_BUFFERF_FOR_ALGO_SELECT(temp_buffer, size, ALGO_MAX_TIME)
 
     auto stream = options.device->GetStream();
