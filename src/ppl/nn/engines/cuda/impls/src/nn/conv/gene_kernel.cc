@@ -557,11 +557,11 @@ ppl::common::RetCode Fp16CodeGeneFactor::ReplaceFusionFor2spk(std::string& file_
     int fuse_index = 0;
     int fuse_size  = fuse_info.types.size();
 
-    auto begin = file_res.find("uint concatV4_off = 0;");
+    auto begin = file_res.find("uint concat_v4_off = 0;");
     auto end   = file_res.find("#endif", begin);
 
     std::stringstream file_str;
-    file_str << "uint concatV4_off = 0;\n";
+    file_str << "uint concat_v4_off = 0;\n";
     file_str << "if(dCv4_x_valid  && dCv4_y_valid ) {\n";
 
     if (fuse_index < fuse_size && relu_set.find(fuse_info.types[fuse_index]) != relu_set.end()) {
@@ -608,7 +608,7 @@ ppl::common::RetCode Fp16CodeGeneFactor::ReplaceFusionFor2spk(std::string& file_
     }
 
     if (fuse_info.channel_offset >= 0) {
-        file_str << "JIT_SET_CONCAT_OFF_V4(concatV4_off)\n";
+        file_str << "JIT_SET_CONCAT_OFF_V4(concat_v4_off)\n";
     }
 
     file_str << "}\n";
@@ -827,6 +827,7 @@ ppl::common::RetCode Int8CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
     file_str << "#define int8_t char\n\n";
 
     if (declare_times == 0) {
+        file_str << "#define Max(x, y)     (((x) > (y)) ? (x) : (y))\n\n";
         file_str << "#define MAX_LUT_SIZE 128\n\n";
         file_str << "#define MAX_SPLITK_SIZE 8\n\n";
         file_str << "struct lut_t{ int idx[MAX_LUT_SIZE]; };\n\n";
@@ -927,6 +928,8 @@ ppl::common::RetCode Int8CodeGeneFactor::Gene2spkKernel(std::string& file_res, s
 
             file_str << "#define FLT_SIZEN\n\n";
         }
+
+        file_str << "#define CP_ASYNC(_pred, _sm_v4, _sm_v4_off, _gm_v4, _gm_v4_off)                 PRED_CP_ASYNC_ZFILL_CG(_pred, _sm_v4 + _INT4_TO_16BYTE_ * (_sm_v4_off), _gm_v4 + _gm_v4_off)\n\n";
     }
 
     WriteIncludeFile(file_str, "/2spk/int8/output_macros.h");
@@ -986,8 +989,8 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
     file_str << "#define TILE_K_PER_MMA       " << MMA_K << "\n";
     file_str << "#define TILE_M_PER_MMA       " << MMA_Y << "\n\n";
 
-    file_str << "#define BLK_M_PER_CTA        " << (MMA_Y / 8) << "\n";
-    file_str << "#define BLK_N_PER_CTA        " << (MMA_X / 8) << "\n\n";
+    file_str << "#define BLK_M_PER_MMA        " << (MMA_Y / 8) << "\n";
+    file_str << "#define BLK_N_PER_MMA        " << (MMA_X / 8) << "\n\n";
 
     file_str << "#define TILE_N_PER_CTA       " << cta_x << "\n";
     file_str << "#define TILE_M_PER_CTA       " << cta_y << "\n\n";
@@ -1018,7 +1021,11 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
         file_str << "#define LOAD_dAv1(_regA, _dAv1, _in_id, _in_off)    LOAD_dAv1_SIZE" << dAvn_size << "(_regA, _dAv1, _in_id, _in_off)\n";
         file_str << "#define LOAD_dBv1(_regB, _dBv1, _dBv1_off)          LOAD_dBv1_SIZE" << dBvn_size << "(_regB, _dBv1, _dBv1_off)\n\n";
 
-        file_str << "#define MMA_INSTS(_C, _A, _B)                       MMA_INST_1INT_" << dAvn_size << "x" << dBvn_size << "(_C, _A, _B)\n\n";
+        if(mma_shape == "imma8816")
+            file_str << "#define MMA_INSTS(_C, _A, _B)                       MMA_INST_1INT_" << dAvn_size << "x" << dBvn_size << "(_C, _A, _B)\n\n";
+        else if(mma_shape == "imma16816" || mma_shape == "imma16832")
+            file_str << "#define MMA_INSTS(_C, _A, _B)                       MMA_INST_1INT_" << dAvn_size / 2 << "x" << dBvn_size << "(_C, _A, _B)\n\n";
+
     } else if (s_size == 32) {
         WriteIncludeFile(file_str, "/idxn/int8/dmem_i2_macros.h");
         if(mma_shape == "imma8816")
@@ -1031,7 +1038,11 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
         file_str << "#define LOAD_dAv2(_regA, _dAv2, _in_id, _in_off)    LOAD_dAv2_SIZE" << dAvn_size << "(_regA, _dAv2, _in_id, _in_off)\n";
         file_str << "#define LOAD_dBv2(_regB, _dBv2, _dBv2_off)          LOAD_dBv2_SIZE" << dBvn_size << "(_regB, _dBv2, _dBv2_off)\n\n";
 
-        file_str << "#define MMA_INSTS(_C, _A, _B)                       MMA_INST_2INT_" << dAvn_size << "x" << dBvn_size << "(_C, _A, _B)\n\n";
+        if(mma_shape == "imma8816")
+            file_str << "#define MMA_INSTS(_C, _A, _B)                       MMA_INST_2INT_" << dAvn_size << "x" << dBvn_size << "(_C, _A, _B)\n\n";
+        else if(mma_shape == "imma16816" || mma_shape == "imma16832")
+            file_str << "#define MMA_INSTS(_C, _A, _B)                       MMA_INST_2INT_" << dAvn_size / 2 << "x" << dBvn_size << "(_C, _A, _B)\n\n";
+
     } else if (s_size == 64) {
         WriteIncludeFile(file_str, "/idxn/int8/dmem_i4_macros.h");
         if(mma_shape == "imma8816")
@@ -1044,7 +1055,11 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneIdxnKernel(std::string& file_res, s
         file_str << "#define LOAD_dAv4(_regA, _dAv4, _in_id, _in_off)    LOAD_dAv4_SIZE" << dAvn_size << "(_regA, _dAv4, _in_id, _in_off)\n";
         file_str << "#define LOAD_dBv4(_regB, _dBv4, _dBv4_off)          LOAD_dBv4_SIZE" << dBvn_size << "(_regB, _dBv4, _dBv4_off)\n\n";
 
-        file_str << "#define MMA_INSTS(_C, _A, _B)                       MMA_INST_4INT_" << dAvn_size << "x" << dBvn_size << "(_C, _A, _B)\n\n";
+        if(mma_shape == "imma8816")
+            file_str << "#define MMA_INSTS(_C, _A, _B)                       MMA_INST_4INT_" << dAvn_size << "x" << dBvn_size << "(_C, _A, _B)\n\n";
+        else if(mma_shape == "imma16816" || mma_shape == "imma16832")
+            file_str << "#define MMA_INSTS(_C, _A, _B)                       MMA_INST_4INT_" << dAvn_size / 2 << "x" << dBvn_size << "(_C, _A, _B)\n\n";
+
     }
 
     if(mma_shape == "imma8816")
@@ -1099,8 +1114,8 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
     file_str << "#define TILE_K_PER_MMA       " << MMA_K << "\n";
     file_str << "#define TILE_M_PER_MMA       " << MMA_Y << "\n\n";
 
-    file_str << "#define BLK_M_PER_CTA        " << (MMA_Y / 8) << "\n";
-    file_str << "#define BLK_N_PER_CTA        " << (MMA_X / 8) << "\n\n";
+    file_str << "#define BLK_M_PER_MMA        " << (MMA_Y / 8) << "\n";
+    file_str << "#define BLK_N_PER_MMA        " << (MMA_X / 8) << "\n\n";
 
     file_str << "#define TILE_N_PER_CTA       " << cta_x << "\n";
     file_str << "#define TILE_M_PER_CTA       " << cta_y << "\n\n";
@@ -1276,11 +1291,11 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionFor2spk(std::string& file_
     int fuse_index = 0;
     int fuse_size  = fuse_info.types.size();
 
-    auto begin = file_res.find("uint concatV4_off = 0;");
-    auto end   = file_res.find("#endif", begin);
+    auto begin = file_res.find("uint concat_v4_off = 0;");
+    auto end   = file_res.find("QUANT_V4(R, fR, out_scale);", begin);
 
     std::stringstream file_str;
-    file_str << "uint concatV4_off = 0;\n";
+    file_str << "uint concat_v4_off = 0;\n";
     file_str << "if(dCv4_x_valid  && dCv4_y_valid ) {\n";
 
     if (fuse_index < fuse_size && relu_set.find(fuse_info.types[fuse_index]) != relu_set.end()) {
@@ -1327,11 +1342,15 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionFor2spk(std::string& file_
     }
 
     if (fuse_info.channel_offset >= 0) {
-        file_str << "JIT_SET_CONCAT_OFF_V4(concatV4_off)\n";
+        file_str << "JIT_SET_CONCAT_OFF_V4(concat_v4_off)\n";
     }
 
     file_str << "}\n";
+
+    // std::cout << file_str.str();
     file_res.replace(begin, end - begin, file_str.str());
+    // std::cout << file_res;
+
     return ppl::common::RC_SUCCESS;
 }
 
@@ -1343,14 +1362,14 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionForIdxn(std::string& file_
     int fuse_index = 0;
 
     auto begin = file_res.find("uint concat_v2_off0 = 0;");
-    auto inter = file_res.find("SET_CONCAT_OFF_V2", begin);
+    auto inter = file_res.find("QUANT_V2(Cv2, fCv2, out_scale);", begin);
     auto end   = file_res.find("#endif", inter);
 
     std::stringstream file_str;
     file_str << "uint concat_v2_off0 = dCv2_idy[0] * num_flt_v2;\n";
     file_str << "#if BLK_M_PER_MMA == 2\n";
     file_str << "uint concat_v2_off1 = dCv2_idy[1] * num_flt_v2;\n";
-    file_str << "endif";
+    file_str << "#endif\n";
 
     if (fuse_index < fuse_size && relu_set.find(fuse_info.types[fuse_index]) != relu_set.end()) {
         auto type = fuse_info.types[fuse_index];
@@ -1400,6 +1419,7 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionForIdxn(std::string& file_
         file_str << "JIT_SET_CONCAT_OFF_V2(concat_v2_off0);\n";
         file_str << "#elif BLK_M_PER_MMA == 2\n";
         file_str << "JIT_SET_CONCAT_OFF_V2(concat_v2_off0, concat_v2_off1);\n";
+        file_str << "#endif\n";
     }
 
     file_res.replace(begin, end - begin, file_str.str());

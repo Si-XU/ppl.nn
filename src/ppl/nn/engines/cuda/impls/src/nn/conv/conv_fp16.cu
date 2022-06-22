@@ -859,19 +859,17 @@ ppl::common::RetCode algo_param_t::ParseAlgoName()
 
     this->mma_shape = algo_name_substrs[1];
 
+    int m_mma = 0;
     int n_mma = 0;
-    if(this->mma_shape == "hmma16816" || this->mma_shape == "hmma1688" || this->mma_shape == "imma16816" || \
-       this->mma_shape == "imma16832")
-        n_mma = 16;
-    else if (this->mma_shape == "imma8816")
-        n_mma = 8;
-
     int type_size = 0;
+    ppl::common::datatype_t type;
 
     if (strstr(algo_name_substrs[0].c_str(), "Int8")) {
         type_size = 1;
+        type =  ppl::common::DATATYPE_INT8;
     } else if (strstr(algo_name_substrs[0].c_str(), "Fp16")) {
         type_size = 2;
+        type =  ppl::common::DATATYPE_FLOAT16;
     }
 
     if ( strstr(algo_name_substrs[0].c_str(), "Idxn") ) {
@@ -891,6 +889,14 @@ ppl::common::RetCode algo_param_t::ParseAlgoName()
     } else if ( strstr(algo_name_substrs[0].c_str(), "2spk") ) {
         this->conv_type = "2spk";
 
+        if(this->mma_shape == "hmma16816" || this->mma_shape == "hmma1688" || this->mma_shape == "imma16816" || \
+                this->mma_shape == "imma16832") {
+            m_mma = 16;
+            n_mma = 8;
+        } else if (this->mma_shape == "imma8816") {
+            m_mma = 8;
+            n_mma = 8;
+        }
         if (strstr(algo_name_substrs[3].c_str(), "f1"))
             this->tiles.flt_size = 1;
         else if (strstr(algo_name_substrs[3].c_str(), "f3"))
@@ -913,14 +919,20 @@ ppl::common::RetCode algo_param_t::ParseAlgoName()
                                       (this->tiles.k_cta / this->tiles.k_per_set) *
                                       WARP_SIZE;
 
-        int smem_a = this->tiles.m_cta * this->tiles.k_cta * this->tiles.buf * type_size;
-        int smem_b = this->tiles.n_cta * this->tiles.k_cta * this->tiles.buf * type_size;
-        int smem_c = this->tiles.m_cta * this->tiles.n_cta * (this->tiles.k_cta / this->tiles.k_per_set) * type_size;
-
-        this->tiles.smem_size = Max(smem_a + smem_b, smem_c);
+        this->tiles.smem_size = Get2spkSmemUsage(type, type_size, this->tiles.m_cta, this->tiles.n_cta, \
+                this->tiles.k_cta, (this->tiles.k_cta / this->tiles.k_per_set), this->tiles.buf);
 
     } else if ( strstr(algo_name_substrs[0].c_str(), "Swzl") ) {
         this->conv_type = "swzl";
+
+        if(this->mma_shape == "hmma16816" || this->mma_shape == "hmma1688" || this->mma_shape == "imma16816" || \
+                this->mma_shape == "imma16832") {
+            m_mma = 8;
+            n_mma = 16;
+        } else if (this->mma_shape == "imma8816") {
+            m_mma = 8;
+            n_mma = 8;
+        }
 
         if (strstr(algo_name_substrs[3].c_str(), "f1"))
             this->tiles.flt_size = 1;
@@ -940,16 +952,9 @@ ppl::common::RetCode algo_param_t::ParseAlgoName()
                                       (this->tiles.n_cta / this->tiles.n_warp) *
                                       WARP_SIZE;
 
-        int smem_a = this->tiles.m_cta * this->tiles.k_cta * this->tiles.buf * type_size;
-        int smem_b = this->tiles.n_cta * this->tiles.k_cta * this->tiles.buf * type_size;
-
-        int smem_c = 0;
-        if(this->tiles.m_warp == 8)
-            smem_c = this->tiles.m_cta * n_mma * this->tiles.cta_size_in_thd * type_size * 2;
-        else 
-            smem_c = this->tiles.m_cta * n_mma * this->tiles.cta_size_in_thd * type_size;
-
-        this->tiles.smem_size = Max(smem_a + smem_b, smem_c);
+        this->tiles.smem_size = GetSwzlSmemUsage(type, type_size, this->tiles.m_cta, this->tiles.n_cta, \
+                this->tiles.k_cta, this->tiles.m_warp, this->tiles.n_warp, m_mma, n_mma, \
+                this->tiles.buf, this->tiles.cta_size_in_thd / WARP_SIZE);
 
     } else {
         return ppl::common::RC_NOT_FOUND;
@@ -1319,8 +1324,7 @@ ppl::common::RetCode GetFp16ConvKernelNominees(
     auto mgr = CodeGeneFactorManager::Instance();
     auto gene_factor = mgr->FindKernel(type);
 
-    // for(int i = 0; i < 1; i++) {
-    for(int i = 0; i < Min(32, nominees.size()); i++) {
+    for(size_t i = 0; i < Min(32, nominees.size()); i++) {
         std::string source = "";
         auto& nominee = nominees[i].first;
 

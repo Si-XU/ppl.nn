@@ -1102,7 +1102,7 @@ ppl::common::RetCode GetInt8ConvKernelNominees(
     auto mgr = CodeGeneFactorManager::Instance();
     auto gene_factor = mgr->FindKernel(type);
 
-    for(int i = 0; i < Min(32, nominees.size()); i++) {
+    for(size_t i = 0; i < Min(32, nominees.size()); i++) {
         std::string source = "";
         auto& nominee = nominees[i].first;
 

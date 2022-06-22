@@ -238,7 +238,7 @@
             _Pragma("unroll") \
             for(int i = 0; i < _INT4_TO_4INT_; i++) \
             { \
-                fR[i] = MAX(fR[i], 0); \
+                fR[i] = Max(fR[i], 0); \
             } \
         }
 
@@ -256,8 +256,8 @@
             _Pragma("unroll") \
             for(int i = 0; i < _INT4_TO_4INT_; i++) \
             { \
-                fR[i] = MIN(fR[i], _clip_max); \
-                fR[i] = MAX(fR[i], _clip_min); \
+                fR[i] = Min(fR[i], _clip_max); \
+                fR[i] = Max(fR[i], _clip_min); \
             } \
         }
 
@@ -312,7 +312,7 @@
             } \
         }
 
-#define JIT_SET_CONCAT_OFF_V4(_concatV4_off) \
+#define JIT_SET_CONCAT_OFF_V4(_concat_v4_off) \
         { \
             dCv4_off = concat_offset_v4 + dCv4_idy * concat_stride_v4 + dCv4_base + dCv4_idx; \
         }
