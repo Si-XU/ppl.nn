@@ -214,7 +214,8 @@
             _Pragma("unroll") \
             for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
             { \
-	            _concat_v4_off[i] = (_has_concat) ? dCv4_idx[i] * concat_stride_v8 + concat_offset_v8 : dCv4_idx[i] * num_flt_per_grp_pad_v8 * num_grp; \
+                if(_has_concat) \
+	                _concat_v4_off[i] = dCv4_idx[i] * concat_stride_v8 + concat_offset_v8; \
 	        } \
         }
         
@@ -340,11 +341,11 @@
 // concat macros
 //////////////////////////////////////////////////////
 
-#define JIT_SET_CONCAT_OFF_V4(_has_concat, _concat_v4_off) \
+#define JIT_SET_CONCAT_OFF_V4(_concat_v4_off) \
         { \
             _Pragma("unroll") \
             for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
             { \
-	            _concat_v4_off[i] = (_has_concat) ? dCv4_idx[i] * concat_stride_v8 + concat_offset_v8 : dCv4_idx[i] * num_flt_per_grp_pad_v8 * num_grp; \
+	            _concat_v4_off[i] = dCv4_idx[i] * concat_stride_v8 + concat_offset_v8; \
 	        } \
         }

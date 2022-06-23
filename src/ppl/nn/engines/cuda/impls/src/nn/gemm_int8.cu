@@ -388,6 +388,7 @@ ppl::common::RetCode PPLCUDAGemmForwardImpInt8(
     int tile_n_per_cta  = algo_param.tiles.n_cta;
     int tile_k_per_cta  = algo_param.tiles.k_cta;
     int cta_size_in_thd = algo_param.tiles.cta_size_in_thd;
+    int smem_size       = algo_param.tiles.smem_size;
 #else
     int kid             = algo_param.kid;
     int tile_m_per_cta  = g_int8_kvec[kid].tile_m_per_cta;
@@ -430,7 +431,11 @@ ppl::common::RetCode PPLCUDAGemmForwardImpInt8(
 
     void *args[]        = {&input0_tmp, &weight, &final_out, &kLoopNum, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &in_hw, &out_hw, &flt_hw, &splitk, &in_height, &in_width, &batch, &num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &flt_height, &flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &out_height, &out_width, &stride_height, &stride_width,  &pad_height, &pad_width, &hole_height, &hole_width, &has_bias, &bias, &(in_quant), &(flt_quant), &(out_quant), &(pre_quant), &fuse_param.has_activation, &fuse_param.clip_min, &fuse_param.has_clip, &fuse_param.clip_max, &fuse_param.has_prelu, &(prelu), &fuse_param.has_elt, &(pre_data), &fuse_param.has_elt_activation, &fuse_param.elt_clip_min, &fuse_param.has_elt_clip,  &fuse_param.elt_clip_max, &fuse_param.has_elt_prelu, &(elt_prelu), &fuse_param.leaky, &fuse_param.elt_leaky, &fuse_param.has_concat, &concat_offset_v8, &concat_stride_v8};
     CUfunction function = module->GetKernelFunc();
-    CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, 0, stream, args, 0));
+
+    if(smem_size > MAX_STATIC_SMEM_SIZE_PER_CTA)
+        cuFuncSetAttribute(function, CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES, smem_size);
+
+    CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, smem_size, stream, args, 0));
 #else
         g_int8_kvec[kid].AdaptInt8LutKernelSMemSize();
         (g_int8_kvec[kid].int8_lut_kptr)<<<grid_size, block_size, smem_size, stream>>>(INT8_GEMM_FUNC_PARAM);

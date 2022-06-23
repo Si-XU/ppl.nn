@@ -738,8 +738,10 @@ ppl::common::RetCode Fp16CodeGeneFactor::ReplaceFusionForSwzl(std::string& file_
         fuse_index++;
     }
 
+    if (fuse_info.channel_offset >= 0) {
+        file_str << "JIT_SET_CONCAT_OFF_V4(concat_v4_off)\n";
+    }
     file_str << "}\n";
-    file_str << "JIT_SET_CONCAT_OFF_V4(has_concat, concat_v4_off)\n";
 
     file_res.replace(begin, end - begin, file_str.str());
     return ppl::common::RC_SUCCESS;
@@ -1156,8 +1158,10 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
     if (splitk > 1)
         file_str << "#define ENABLE_SPLITK\n";
 
-    file_str << "#define uint int\n\n";
-    file_str << "#define uint32_t int\n\n";
+    file_str << "#define uint unsigned int\n\n";
+    file_str << "#define uint32_t unsigned int\n\n";
+    file_str << "#define int16_t short\n\n";
+    file_str << "#define int8_t char\n\n";
 
     if (declare_times == 0) {
         file_str << "#define MAX_LUT_SIZE 128\n\n";
@@ -1434,7 +1438,7 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionForSwzl(std::string& file_
     int fuse_size  = fuse_info.types.size();
 
     auto begin = file_res.find("FUSE_RELU_V4(has_relu);");
-    auto end   = file_res.find("#endif", begin);
+    auto end   = file_res.find("QUANT_V4(R, fR, out_scale);", begin);
 
     std::stringstream file_str;
     file_str << "if(dCv4_y_valid) {\n";
@@ -1482,8 +1486,11 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionForSwzl(std::string& file_
         fuse_index++;
     }
 
+    if (fuse_info.channel_offset >= 0) {
+        file_str << "JIT_SET_CONCAT_OFF_V4(concat_v4_off)\n";
+    }
+
     file_str << "}\n";
-    file_str << "JIT_SET_CONCAT_OFF_V4(has_concat, concat_v4_off)\n";
 
     file_res.replace(begin, end - begin, file_str.str());
     return ppl::common::RC_SUCCESS;

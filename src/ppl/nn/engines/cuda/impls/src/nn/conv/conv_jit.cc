@@ -508,10 +508,7 @@ int GetSwzlSmemUsage(
         else 
             smem_r = m_cta * n_mma * cta_size_in_warp * type_size;
     } else if( type == ppl::common::DATATYPE_INT8 ) {
-        if(m_warp == 8)
-            smem_r = m_cta * n_mma * cta_size_in_warp * _INT_TO_4BYTE_ * 2;
-        else 
-            smem_r = m_cta * n_mma * cta_size_in_warp * _INT_TO_4BYTE_;
+        smem_r = m_cta * n_mma * cta_size_in_warp * _INT_TO_4BYTE_;
     }
 
     int smem_per_cta = Max(smem_a + smem_b, smem_r);
