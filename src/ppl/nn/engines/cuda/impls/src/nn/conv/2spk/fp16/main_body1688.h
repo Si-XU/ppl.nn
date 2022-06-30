@@ -73,23 +73,25 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     uint grp_id = blockIdx.z / (splitk * flt_hw);
 
     uint num_chl_per_spk = (spk_id != splitk - 1) ? num_chl_per_spk_head: num_chl_per_spk_tail;
+
+    int kloop = DivUp(num_chl_per_spk, TILE_K_PER_CTA);
 #elif defined(ENABLE_SPLITK) && !defined(ENABLE_SPLITF)
     uint spk_id    = blockIdx.z % splitk;
     uint grp_id    = blockIdx.z / splitk;
 
     uint num_chl_per_spk = (spk_id != splitk - 1) ? num_chl_per_spk_head: num_chl_per_spk_tail;
+
+    int kloop = flt_hw * DivUp(num_chl_per_spk, TILE_K_PER_CTA);
 #elif !defined(ENABLE_SPLITK) && defined(ENABLE_SPLITF)
     uint spf_id    = blockIdx.z % flt_hw;
     uint grp_id    = blockIdx.z / flt_hw;
+
+    int kloop = kloop_num;
 #elif defined(ENABLE_FUSE)
     uint grp_id    = blockIdx.z % num_grp;
     // only for batch gemm, can also work in parallel multi-convs fusion.
     uint batch_id  = blockIdx.z / num_grp;
-#endif
 
-#if defined(ENABLE_SPLITK)
-    int kloop = flt_hw * DivUp(num_chl_per_spk, TILE_K_PER_SET);
-#elif defined(ENABLE_SPLITF) || defined(ENABLE_FUSE)
     int kloop = kloop_num;
 #endif
 
@@ -490,9 +492,9 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
             dCv4_idx;
 
 #if defined(ENABLE_FUSE)
-        uint concatV4_off = 0;
-
         ADD_BIAS_V4(has_bias, bias);
+
+        uint concatV4_off = 0;
 
         FUSE_RELU_V4(has_relu);
         FUSE_CLIP_V4(has_clip, clip_max, clip_min);
