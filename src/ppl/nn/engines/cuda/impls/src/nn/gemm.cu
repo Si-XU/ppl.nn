@@ -536,7 +536,7 @@ ppl::common::RetCode PPLCUDAGemmForwardImp(
     __half2 elt_clip_min        = __float2half2_rn(fuse_param.elt_clip_min);
     __half2 elt_clip_max        = __float2half2_rn(fuse_param.elt_clip_max);
     ppl::common::RetCode status = ppl::common::RC_SUCCESS;
-    if (M == 0) { // TODO, only work for A100, need to diff with T4
+    if (M == 1) { // TODO, only work for A100, need to diff with T4
         status = PPLCUDAGemvForwardImp<__half>(stream,
                                                M,
                                                N_pad,
