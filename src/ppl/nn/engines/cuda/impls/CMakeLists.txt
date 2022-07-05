@@ -87,6 +87,9 @@ if(PPLNN_ENABLE_CUDA_JIT)
     list(APPEND PPLCUDA_COMPILE_DEFINITIONS PPLNN_ENABLE_CUDA_JIT)
 endif()
 
+file(GLOB_RECURSE CUDA_CC_SRC src/nn/conv/conv_jit.cc
+			      src/nn/conv/common/init_lut.cc)
+
 file(GLOB_RECURSE CUDA_SRC ${CUDA_SRC} src/arithmetic/*.cu
                                        src/memory/*.cu
                                        src/reduce/*.cu
@@ -96,10 +99,10 @@ file(GLOB_RECURSE CUDA_SRC ${CUDA_SRC} src/arithmetic/*.cu
 				       src/unary/*.cu)
 file(GLOB CUDA_SRC ${CUDA_SRC} src/nn/*.cu)
 file(GLOB CUDA_SRC ${CUDA_SRC} src/nn/depthwise/*.cu)
-#set_source_files_properties(${CUDA_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_75,code=sm_75")
+set_source_files_properties(${CUDA_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_75,code=sm_75")
 set_source_files_properties(${CUDA_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_87,code=sm_87")
 
-add_library(pplkernelcuda_static STATIC ${CUDA_SRC} ${SM75_SRC} ${SM80_SRC})
+add_library(pplkernelcuda_static STATIC ${CUDA_SRC} ${CUDA_CC_SRC} ${SM75_SRC} ${SM80_SRC})
 target_compile_features(pplkernelcuda_static PRIVATE cxx_std_11)
 
 set(__PPLNN_SOURCE_DIR__ ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../..)

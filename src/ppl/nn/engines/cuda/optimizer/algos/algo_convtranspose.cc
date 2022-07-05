@@ -183,7 +183,7 @@ RetCode ConvTransposeAlgorithm::ModifyParam(ir::Node* node, OptKernelOptions& op
             return status;
         }
 
-        int device_id = options.device->GetDeviceId();
+    	int device_id = options.opt_stage_device->GetDeviceId();
         PPLCUDAConvTransposeCvt(device_id, stream, filter_input_buffer.addr, filter_temp_buffer.addr,
                                 weight_constat_info.GetBufferDesc().addr, &shape_in1, &attr_param_.param);
         postshape.SetDataFormat(ppl::common::DATAFORMAT_NHWC8);

@@ -176,10 +176,10 @@ double MatMulAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& opti
     auto stream = options.opt_stage_device->GetStream();
 
     double timer = ALGO_MAX_TIME;
+    int device_id = options.opt_stage_device->GetDeviceId();
 #ifdef PPLNN_ENABLE_CUDA_JIT
     // Do select
     LOG(INFO) << "Compiling " << node->GetName();
-    int device_id = options.opt_stage_device->GetDeviceId();
     if (shape_in0.GetDataType() == ppl::common::DATATYPE_FLOAT16) {
         PPLCUDAConvolutionPredictKernel(shape_in0.GetDataType(), attr_param_.extra_param.algo_info, temp_conv_param);
         timer = PPLCUDABgemmJITSelectKernel(device_id, stream, shape_in0.GetDataType(), &shape_in0, input_buffer.addr,
@@ -189,7 +189,6 @@ double MatMulAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& opti
     }
 #else
     // Do Select
-    int device_id = options.device->GetDeviceId();
     if (shape_in0.GetDataType()==ppl::common::DATATYPE_FLOAT16) {
         timer = PPLCUDABgemmSelectKernel(device_id, stream, &shape_in0, input_buffer.addr, &shape_in1, weight_buffer.addr,
                                         &shape_out, output_buffer.addr, temp_buffer.addr,

@@ -158,10 +158,10 @@ double GemmAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& option
     temp_quant_param.d_flt_scale = wegiht_quant.addr;
     temp_quant_param.pre_scale = 0.0f;
     double timer = ALGO_MAX_TIME;
+    int device_id = options.opt_stage_device->GetDeviceId();
 #ifdef PPLNN_ENABLE_CUDA_JIT
     // Do select
     LOG(INFO) << "Compiling " << node->GetName();
-    int device_id = options.opt_stage_device->GetDeviceId();
     if (shape_in0.GetDataType() == ppl::common::DATATYPE_FLOAT16) {
         PPLCUDAConvolutionPredictKernel(shape_in0.GetDataType(), attr_param_.extra_param.algo_info, temp_conv_param);
         timer = PPLCUDAGemmJITSelectKernel(device_id, stream, shape_in0.GetDataType(), &shape_in0, input_buffer.addr,
@@ -178,7 +178,6 @@ double GemmAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& option
     }
 #else
     // Do Select
-    int device_id = options.device->GetDeviceId();
     if (shape_in0.GetDataType()==ppl::common::DATATYPE_FLOAT16) {
         timer = PPLCUDAGemmSelectKernel(device_id, stream, &shape_in0, input_buffer.addr, &shape_in1, weight_buffer.addr,
                                         bias_buffer.addr, &shape_out, output_buffer.addr, temp_buffer.addr,

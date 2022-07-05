@@ -100,24 +100,9 @@ double TuringHMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
         PPLCUDAConvolutionLoadAlgoParam(attr_param_.extra_param.algo_info);
     }
 
-    auto shape_in0 = *options.tensors->find(node->GetInput(0))->second->GetShape();
-    auto shape_in1 = *options.tensors->find(node->GetInput(1))->second->GetShape();
-    auto shape_in2 = TensorShape();
-    const TensorShape& shape_out = *options.tensors->find(node->GetOutput(0))->second->GetShape();
-    auto align_size = ppl::common::cuda::GetDataFormatChannelAlignment(shape_in0.GetDataFormat());
-    conv_param_t temp_conv_param;
-    fuse_param_t temp_fuse_param;
-    ConvertToForwardConvParam(shape_in0, shape_in1, shape_out, attr_param_, temp_conv_param);
-
     // input shape is invalid
     if (shape_in0.GetDimCount() != 4 || shape_in1.GetDimCount() != 4) {
         return 0.0f;
-    }
-    // input H or W is too small
-    if (shape_in0.GetDim(2) + 2 * temp_conv_param.pad_height < shape_in1.GetDim(2) ||
-        shape_in0.GetDim(3) + 2 * temp_conv_param.pad_width < shape_in1.GetDim(3)) {
-        shape_in0.SetDim(2, shape_in1.GetDim(2));
-        shape_in0.SetDim(3, shape_in1.GetDim(3));
     }
 
     if (options.args->quick_select) {
@@ -144,11 +129,11 @@ double TuringHMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
     ALLOC_BUFFERF_FOR_ALGO_SELECT(temp_buffer, size, ALGO_MAX_TIME)
 
     auto stream = options.opt_stage_device->GetStream();
+    int device_id = options.opt_stage_device->GetDeviceId();
 
 #ifdef PPLNN_ENABLE_CUDA_JIT
     // Do select
     LOG(INFO) << "Compiling " << node->GetName();
-    int device_id = options.opt_stage_device->GetDeviceId();
     PPLCUDAConvolutionPredictKernel(shape_in0.GetDataType(), attr_param_.extra_param.algo_info, temp_conv_param);
     auto timer = PPLCUDAConvolutionJitSelectKernel(device_id, stream, shape_in0.GetDataType(), (int4*)input_buffer.addr,
                                                    (int4*)weight_buffer.addr, (int4*)output_buffer.addr,
@@ -156,7 +141,6 @@ double TuringHMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
                                                    attr_param_.extra_param.algo_info, temp_conv_param, temp_fuse_param);
 #else
     // Do select
-    int device_id = options.device->GetDeviceId();
     auto timer = PPLCUDAConvolutionSelectKernel(device_id, stream, shape_in0.GetDataType(), (int4*)input_buffer.addr,
                                                 (int4*)weight_buffer.addr, (int4*)output_buffer.addr,
                                                 (int4*)bias_buffer.addr, (int4*)temp_buffer.addr,
