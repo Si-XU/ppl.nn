@@ -555,14 +555,15 @@ ppl::common::RetCode PPLCUDAConvTransposeForward(
             fuse_param_t gemm_fuse_param;
             int M     = batch*cvt_in_h*cvt_in_w;
             int K_pad = kernel_u*kernel_v*in_c_pad;
+            if (out_c <= 4 && ((pattern_num&1)==0)) {
+                out_c_pad = 4;
+            }
             int N_pad = out_c_pad*pattern_num;
 
-            gemm_param.bias_term = 0;
             gemm_param.transA    = 0;
             gemm_param.transB    = 1;
             gemm_param.alpha     = 1.f;
             gemm_param.beta      = 0.f;
-            gemm_param.N         = N_pad;
             ppl::nn::TensorShape a_shape, b_shape, c_shape;
             a_shape.SetDataType(input_shape->GetDataType());
             b_shape.SetDataType(input_shape->GetDataType());
@@ -588,14 +589,30 @@ ppl::common::RetCode PPLCUDAConvTransposeForward(
 
             int pad_height = kernel_h-1 - DivUp(kernel_h-stride_h, stride_h)*stride_h - pad_h;
             int pad_width  = kernel_w-1 - DivUp(kernel_w-stride_w, stride_w)*stride_w - pad_w;
-            nhwuvc2nhwc<<<cvt_grid, cvt_cta_size, 0, stream>>>(
-                    (int4 *)output, (const int4 *)gemm_output,
-                    batch, out_h, out_w, out_c_v4,
-                    cvt_in_h, cvt_in_w,
-                    kernel_h, kernel_w,
-                    pad_height, pad_width,
-                    stride_h, stride_w,
-                    (const int4 *)bias, has_relu);
+
+            if (out_c_pad != 4) {
+                nhwuvc2nhwc<1><<<cvt_grid, cvt_cta_size, 0, stream>>>(
+                        (int4 *)output, (const int4 *)gemm_output,
+                        batch, out_h, out_w, out_c_v4,
+                        cvt_in_h, cvt_in_w,
+                        kernel_h, kernel_w,
+                        pad_height, pad_width,
+                        stride_h, stride_w,
+                        (const int4 *)bias, has_relu);
+            }
+            else {
+                const int out_c_v2 = 1;//DivUp(out_c, 4);
+                cvt_grid.x = DivUp(cvt_in_h*cvt_in_w*pattern_num*out_c_v2, cvt_cta_size);
+                nhwuvc2nhwc<0><<<cvt_grid, cvt_cta_size, 0, stream>>>(
+                        (int4 *)output, (const int4 *)gemm_output,
+                        batch, out_h, out_w, out_c_v2,
+                        cvt_in_h, cvt_in_w,
+                        kernel_h, kernel_w,
+                        pad_height, pad_width,
+                        stride_h, stride_w,
+                        (const int4 *)bias, has_relu);
+            }
+
         }
         else{
             cvt_input = (void*)input;
@@ -769,7 +786,6 @@ double PPLCUDAConvTransposeSelectKernel(
             gemm_param.transB    = 1;
             gemm_param.alpha     = 1.f;
             gemm_param.beta      = 1.f;
-            gemm_param.N         = N_pad;
             min_time = PPLCUDAGemmSelectKernel(device_id, stream,
                                 &a_shape, cvt_input, &b_shape, rev_flt,
                                 gemm_bias, &c_shape, gemm_output,

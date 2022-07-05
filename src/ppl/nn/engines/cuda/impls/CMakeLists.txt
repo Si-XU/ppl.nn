@@ -75,8 +75,8 @@ else()
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk/sm75/*/*/init*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/swzl/sm75/*/*/init*.cu
                                        )
-    set_source_files_properties(${SM75_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_75,code=sm_75")
-    set_source_files_properties(${SM80_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_80,code=sm_80")
+    set_source_files_properties(${SM75_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_87,code=sm_87")
+    set_source_files_properties(${SM80_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_87,code=sm_87")
 endif()
 
 hpcc_populate_dep(pplcommon)
@@ -93,12 +93,11 @@ file(GLOB_RECURSE CUDA_SRC ${CUDA_SRC} src/arithmetic/*.cu
                                        src/reformat/*.cu
                                        src/nn/conv/conv_*.cu
                                        src/nn/conv/common/*.cu
-                                       src/nn/conv/common/init_lut.cc
-				                       src/unary/*.cu)
+				       src/unary/*.cu)
 file(GLOB CUDA_SRC ${CUDA_SRC} src/nn/*.cu)
 file(GLOB CUDA_SRC ${CUDA_SRC} src/nn/depthwise/*.cu)
-set_source_files_properties(${CUDA_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_75,code=sm_75")
-set_source_files_properties(${CUDA_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_80,code=sm_80")
+#set_source_files_properties(${CUDA_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_75,code=sm_75")
+set_source_files_properties(${CUDA_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_87,code=sm_87")
 
 add_library(pplkernelcuda_static STATIC ${CUDA_SRC} ${SM75_SRC} ${SM80_SRC})
 target_compile_features(pplkernelcuda_static PRIVATE cxx_std_11)
