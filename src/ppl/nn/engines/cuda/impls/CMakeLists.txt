@@ -99,7 +99,7 @@ file(GLOB_RECURSE CUDA_SRC ${CUDA_SRC} src/arithmetic/*.cu
 				       src/unary/*.cu)
 file(GLOB CUDA_SRC ${CUDA_SRC} src/nn/*.cu)
 file(GLOB CUDA_SRC ${CUDA_SRC} src/nn/depthwise/*.cu)
-set_source_files_properties(${CUDA_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_75,code=sm_75")
+#set_source_files_properties(${CUDA_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_75,code=sm_75")
 set_source_files_properties(${CUDA_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_87,code=sm_87")
 
 add_library(pplkernelcuda_static STATIC ${CUDA_SRC} ${CUDA_CC_SRC} ${SM75_SRC} ${SM80_SRC})
