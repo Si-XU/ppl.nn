@@ -214,17 +214,17 @@ __inline__ void InitializeFP16ConvKernelContainer(std::vector<kernel_info_t> &g_
             InitializeSwzlSM75FP16Hmma1688ConvF3KernelContainer(g_fp16_kvec);
             InitializeSwzlSM75FP16Hmma1688ConvFNKernelContainer(g_fp16_kvec);
         } else if (device_prop.major > 8 || (device_prop.major == 8 && device_prop.minor >= 0)) {
-            // // sm75 kernels
-            // Initialize2spkSM75FP16Hmma1688ConvF1KernelContainer(g_fp16_kvec);
-            // Initialize2spkSM75FP16Hmma1688ConvF3KernelContainer(g_fp16_kvec);
-            // Initialize2spkSM75FP16Hmma1688ConvFNKernelContainer(g_fp16_kvec);
-            // Initialize2spkSM75FP16Hmma1688ConvFSKernelContainer(g_fp16_kvec);
+            // sm75 kernels
+            Initialize2spkSM75FP16Hmma1688ConvF1KernelContainer(g_fp16_kvec);
+            Initialize2spkSM75FP16Hmma1688ConvF3KernelContainer(g_fp16_kvec);
+            Initialize2spkSM75FP16Hmma1688ConvFNKernelContainer(g_fp16_kvec);
+            Initialize2spkSM75FP16Hmma1688ConvFSKernelContainer(g_fp16_kvec);
 
-            // InitializeIdxnSM75FP16Hmma1688ConvKernelContainer(g_fp16_kvec);
+            InitializeIdxnSM75FP16Hmma1688ConvKernelContainer(g_fp16_kvec);
 
-            // InitializeSwzlSM75FP16Hmma1688ConvF1KernelContainer(g_fp16_kvec);
-            // InitializeSwzlSM75FP16Hmma1688ConvF3KernelContainer(g_fp16_kvec);
-            // InitializeSwzlSM75FP16Hmma1688ConvFNKernelContainer(g_fp16_kvec);
+            InitializeSwzlSM75FP16Hmma1688ConvF1KernelContainer(g_fp16_kvec);
+            InitializeSwzlSM75FP16Hmma1688ConvF3KernelContainer(g_fp16_kvec);
+            InitializeSwzlSM75FP16Hmma1688ConvFNKernelContainer(g_fp16_kvec);
 
             // sm80 kernels
             Initialize2spkSM80FP16Hmma1688ConvF1KernelContainer(g_fp16_kvec);
