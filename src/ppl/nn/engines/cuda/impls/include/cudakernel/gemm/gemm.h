@@ -26,8 +26,16 @@
 
 #include "cuda.h"
 
-uint64_t PPLGemmCUDAGetBufSize(
+uint64_t PPLGemmCUDAGetCompilationBufSize(
     const ppl::nn::TensorShape* input_shape,
+    conv_param_t& conv_param,
+    int transA);
+
+uint64_t PPLGemmCUDAGetRuntimeBufSize(
+    const ppl::nn::TensorShape* input_shape,
+    conv_param_t& conv_param,
+    int splitk,
+    int splitf,
     int transA);
 
 unsigned int PPLCUDAGemmGetBiasSize(

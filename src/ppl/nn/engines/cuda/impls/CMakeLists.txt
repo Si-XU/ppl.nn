@@ -86,6 +86,29 @@ set(PPLNN_FRAMEWORK_INCLUDE_DIRECTORIES ${PPLNN_SOURCE_DIR}/include ${PPLNN_SOUR
 
 if(PPLNN_ENABLE_CUDA_JIT)
     list(APPEND PPLCUDA_COMPILE_DEFINITIONS PPLNN_ENABLE_CUDA_JIT)
+else()
+    add_library(sm75_cuda_kernels OBJECT ${SM75_SRC})
+    add_library(sm80_cuda_kernels OBJECT ${SM80_SRC})
+
+    set_target_properties(sm75_cuda_kernels PROPERTIES COMPILE_FLAGS "-gencode arch=compute_75,code=sm_75 -fno-var-tracking-assignments")
+    set_target_properties(sm80_cuda_kernels PROPERTIES COMPILE_FLAGS "-gencode arch=compute_80,code=sm_80 -fno-var-tracking-assignments")
+
+    target_include_directories(sm75_cuda_kernels PUBLIC
+        include
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+        ${CMAKE_CURRENT_BINARY_DIR}/conv
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv
+        ${PPLNN_FRAMEWORK_INCLUDE_DIRECTORIES})
+
+    target_include_directories(sm80_cuda_kernels PUBLIC
+        include
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+        ${CMAKE_CURRENT_BINARY_DIR}/conv
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv
+        ${PPLNN_FRAMEWORK_INCLUDE_DIRECTORIES})
+
+    target_link_libraries(sm75_cuda_kernels PUBLIC pplcommon_static)
+    target_link_libraries(sm80_cuda_kernels PUBLIC pplcommon_static)
 endif()
 
 file(GLOB_RECURSE CUDA_CC_SRC src/nn/conv/conv_jit.cc

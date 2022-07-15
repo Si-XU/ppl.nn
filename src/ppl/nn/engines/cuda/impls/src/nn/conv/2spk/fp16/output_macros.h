@@ -20,7 +20,7 @@
 #define OUTPUT_PRC_HALF(_Rv4)                      \
     {                                              \
         if (dCv4_x_valid && dCv4_y_valid) {        \
-            dC[concatV4_off + dCv4_off] = _Rv4[0]; \
+            dC[concat_v4_off + dCv4_off] = _Rv4[0]; \
         }                                          \
     }
 
@@ -144,7 +144,7 @@
         }                                                                \
     }
 
-#define SET_CONCAT_OFF_V4(_has_concat, _concatV4_off)                                         \
+#define SET_CONCAT_OFF_V4(_has_concat, _concat_v4_off)                                         \
     {                                                                                         \
         if (_has_concat && dCv4_x_valid && dCv4_y_valid) {                                    \
             dCv4_off = concat_offset_v8 + dCv4_idy * concat_stride_v8 + dCv4_base + dCv4_idx; \
@@ -226,7 +226,7 @@
         }                                                            \
     }
 
-#define JIT_SET_CONCAT_OFF_V4(concatV4_off)                                               \
+#define JIT_SET_CONCAT_OFF_V4(concat_v4_off)                                               \
     {                                                                                     \
         dCv4_off = concat_offset_v8 + dCv4_idy * concat_stride_v8 + dCv4_base + dCv4_idx; \
     }

@@ -174,7 +174,7 @@
                     } \
                 } \
                 \
-                if (_has_prelu == 2) \
+                else if (_has_prelu == 2) \
                 { \
                     int4 _scale_v4  = ((int4 *)_prelu)[grp_id * num_flt_per_grp_pad_v4 + dCv4_idx]; \
                     float * _f_scale = (float *) &_scale_v4; \
@@ -187,7 +187,7 @@
                     } \
                 } \
                 \
-                if (_has_prelu == 3) \
+                else if (_has_prelu == 3) \
                 { \
                     int4 _scale_v4  = ((int4 *)_prelu)[dCv4_off]; \
                     float * _f_scale = (float *) &_scale_v4; \
@@ -229,3 +229,90 @@
             } \
         }
         
+//////////////////////////////////////////////////////
+// jit macros
+//////////////////////////////////////////////////////
+
+#define JIT_FUSE_RELU_V4() \
+        { \
+            _Pragma("unroll") \
+            for(int i = 0; i < _INT4_TO_4INT_; i++) \
+            { \
+                fR[i] = Max(fR[i], 0); \
+            } \
+        }
+
+#define JIT_FUSE_SIGMOID_V4() \
+        { \
+            _Pragma("unroll") \
+            for(int i = 0; i < _INT4_TO_4INT_; i++) \
+            { \
+              fR[i] = __expf(fR[i]) / (1.f + __expf(fR[i])); \
+            } \
+        }
+
+#define JIT_FUSE_CLIP_V4(_clip_max, _clip_min) \
+        { \
+            _Pragma("unroll") \
+            for(int i = 0; i < _INT4_TO_4INT_; i++) \
+            { \
+                fR[i] = Min(fR[i], _clip_max); \
+                fR[i] = Max(fR[i], _clip_min); \
+            } \
+        }
+
+#define JIT_FUSE_PRELU_V4(_has_prelu, _prelu) \
+        { \
+            if(_has_prelu == 2) \
+            { \
+                int4 _scale_v4  = ((int4 *)_prelu)[grp_id * num_flt_per_grp_pad_v4 + dCv4_idx]; \
+	            float *_f_scale  = (float *) &_scale_v4; \
+                \
+                _Pragma("unroll") \
+	            for(int i = 0; i < _INT4_TO_4INT_; i++) \
+                { \
+                    if(fR[i] < _FLOAT_ZERO_) \
+                        fR[i] *= _f_scale[i]; \
+	            } \
+            } \
+            \
+	        else if(_has_prelu == 3) \
+            { \
+                int4 _scale_v4 = ((int4  *) _prelu) [dCv4_off]; \
+	            float* _f_scale  = (float *) &_scale_v4; \
+                \
+                _Pragma("unroll") \
+	            for(int i = 0; i < _INT4_TO_4INT_; i++) \
+                { \
+                    if(fR[i] < _FLOAT_ZERO_) \
+                        fR[i] *= _f_scale[i]; \
+	            } \
+	        } \
+        }
+
+#define JIT_FUSE_LEAKY_V4(_leaky) \
+        { \
+            _Pragma("unroll") \
+            for(int i = 0; i < _INT4_TO_4INT_; i++) \
+            { \
+                if(fR[i] < _FLOAT_ZERO_) \
+                    fR[i] *= _leaky; \
+            } \
+        }
+
+#define JIT_FUSE_ELT_V4(_pre_data) \
+        { \
+            int  _elt_v4 = ((int *)   _pre_data) [dCv4_off]; \
+            int8_t *_elt_v1 = (int8_t *) &_elt_v4; \
+            \
+            _Pragma("unroll") \
+            for(int i = 0; i < _INT4_TO_4INT_; i++) \
+            { \
+                fR[i] += (int)_elt_v1[i] * pre_scale; \
+            } \
+        }
+
+#define JIT_SET_CONCAT_OFF_V4(_concat_v4_off) \
+        { \
+            dCv4_off = concat_offset_v4 + dCv4_idy * concat_stride_v4 + dCv4_base + dCv4_idx; \
+        }

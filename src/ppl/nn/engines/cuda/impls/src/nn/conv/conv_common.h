@@ -32,10 +32,13 @@
 #include "cudakernel/common/common.h"
 
 #define WARP_SIZE               32
+
 #define _2HALF_TO_INT_          2
 #define _4CHAR_TO_INT_          4
 #define _4INT_TO_INT4_          4
 #define _INT_TO_4BYTE_          4
+#define _INT2_TO_8BYTE_         8
+#define _INT4_TO_16BYTE_        16
 #define _INT4_TO_4INT_          4
 #define _INT4_TO_4FLOAT_        4
 #define _INT4_TO_8HALF_         8
@@ -47,6 +50,7 @@
 #define _BYTE1024_              1024
 
 #define Max(x, y)         (((x) > (y))  ? (x) : (y))
+#define Min(x, y)         (((x) < (y))  ? (x) : (y))
 
 #define MAX_SPLIT_SIZE          18
 
@@ -184,6 +188,53 @@ struct kernel_info_t {
         parse_kname();
     }
 
+    kernel_info_t(struct algo_param_t& algo_param)
+    {
+        kid   = algo_param.kid;
+
+        if(algo_param.splitk == 1)
+            kname = algo_param.algo_name;
+        else if(algo_param.splitk > 1 && algo_param.splitk < 10)
+            kname = algo_param.algo_name.substr(0, algo_param.algo_name.size() - 5);
+        else if(algo_param.splitk >= 10 && algo_param.splitk < 100)
+            kname = algo_param.algo_name.substr(0, algo_param.algo_name.size() - 6);
+        else if(algo_param.splitk >= 100 && algo_param.splitk < 1000)
+            kname = algo_param.algo_name.substr(0, algo_param.algo_name.size() - 7);
+
+        if(algo_param.conv_type == "idxn") {
+            if (algo_param.tiles.k_per_step == 8)
+                ktype = CONV_IDXN_C2;
+            else if (algo_param.tiles.k_per_step == 16)
+                ktype = CONV_IDXN_C4;
+            else if (algo_param.tiles.k_per_step == 32 && strstr(algo_param.mma_shape.c_str(), "hmma"))
+                ktype = CONV_IDXN_C8;
+            else if (algo_param.tiles.k_per_step == 32 && strstr(algo_param.mma_shape.c_str(), "imma"))
+                ktype = CONV_IDXN_C32;
+            else if (algo_param.tiles.k_per_step == 64)
+                ktype = CONV_IDXN_C64;
+
+        } else if(algo_param.conv_type == "2spk") {
+            if (algo_param.tiles.flt_size == 1)
+                ktype = CONV_2SPK_F1;
+            else if (algo_param.tiles.flt_size == 3)
+                ktype = CONV_2SPK_F3;
+            else if (algo_param.tiles.flt_size == 0)
+                ktype = CONV_2SPK_FN;
+            else if (algo_param.tiles.flt_size == 11)
+                ktype = CONV_2SPK_FS;
+
+        } else if(algo_param.conv_type == "swzl") {
+            if (algo_param.tiles.flt_size == 1)
+                ktype = CONV_SWZL_F1;
+            else if (algo_param.tiles.flt_size == 3)
+                ktype = CONV_SWZL_F3;
+            else if (algo_param.tiles.flt_size == 0)
+                ktype = CONV_SWZL_FN;
+        }
+
+        parse_kname();
+    }
+
     void parse_kname()
     {
         std::stringstream kname_str(kname);
@@ -232,7 +283,7 @@ struct kernel_info_t {
             else if (strstr(kname_substrs[3].c_str(), "fn"))
                 flt_size = 0;
             else if (strstr(kname_substrs[3].c_str(), "fs"))
-                flt_size = 1;
+                flt_size = 11;
             else
                 flt_size = -1;
 
@@ -313,86 +364,6 @@ struct kernel_info_t {
         }
     }
 
-    bool CheckKernelTilesFeasible(ppl::common::datatype_t kernel_type, int device_id)
-    {
-        cudaDeviceProp device_prop;
-        cudaGetDeviceProperties(&device_prop, device_id);
-        if (ktype == CONV_IDXN_C2 || ktype == CONV_IDXN_C4 || ktype == CONV_IDXN_C32) {
-            int max_m_warp_size = 64;
-            int min_s_size = 8;
-            int max_s_size = 32;
-
-            if (kernel_type == ppl::common::DATATYPE_INT8) {
-                max_m_warp_size = 32;
-                min_s_size = 16;
-                max_s_size = 64;
-            }
-            return tile_m_per_warp >= 16 && tile_m_per_warp <= max_m_warp_size &&
-                   tile_n_per_warp >= 8 && tile_n_per_warp <= 32 &&
-                   tile_k_per_step >= min_s_size && tile_k_per_step <= max_s_size &&
-                   tile_m_per_cta >= tile_m_per_warp && tile_m_per_cta / tile_m_per_warp <= 4 &&
-                   tile_n_per_cta >= tile_n_per_warp && tile_n_per_cta / tile_n_per_warp <= 4 &&
-                   tile_k_per_cta >= tile_k_per_step && tile_k_per_cta / tile_k_per_step <= 2 &&
-                   (tile_m_per_cta / tile_m_per_warp != 4 || tile_n_per_cta / tile_n_per_warp != 4);
-        } else if (ktype == CONV_2SPK_F1 || ktype == CONV_2SPK_F3 || ktype == CONV_2SPK_FN || ktype == CONV_2SPK_FS) { 
-            int MAX_SMEM_V4_PER_CTA = device_prop.sharedMemPerBlock / 16;
-            int INT4_TO_4HALF2      = 8;
-            int BUF_SIZE            = 1;
-            int min_m_warp_size = 16;
-            int min_s_size = 8;
-            int max_s_size = 32;
-
-            int sm_a_v4 = tile_m_per_cta * tile_k_per_cta * BUF_SIZE / INT4_TO_4HALF2;
-            int sm_b_v4 = tile_n_per_cta * tile_k_per_cta * BUF_SIZE / INT4_TO_4HALF2;
-            int sm_c_v4 = tile_m_per_cta * tile_n_per_cta / INT4_TO_4HALF2;
-            
-            if (kernel_type == ppl::common::DATATYPE_INT8) {
-                min_m_warp_size = 8;
-                min_s_size = 16;
-                max_s_size = 64;
-
-                int INT4_TO_16INT8  = 16;
-                int INT4_TO_4INT    = 4;
-                sm_a_v4 = tile_m_per_cta * tile_k_per_cta * BUF_SIZE / INT4_TO_16INT8;
-                sm_b_v4 = tile_n_per_cta * tile_k_per_cta * BUF_SIZE / INT4_TO_16INT8;
-                sm_c_v4 = tile_m_per_cta * tile_n_per_cta / INT4_TO_4INT;                
-            }
-
-            return tile_m_per_warp >= min_m_warp_size && tile_m_per_warp <= 128 && // tiles limit
-                   tile_n_per_warp >= 8 && tile_n_per_warp <= 64 &&
-                   tile_k_per_set >= min_s_size && tile_k_per_set <= max_s_size &&
-                   tile_m_per_cta >= tile_m_per_warp && tile_m_per_cta / tile_m_per_warp <= 4 &&
-                   tile_n_per_cta >= tile_n_per_warp && tile_n_per_cta / tile_n_per_warp <= 4 &&
-                   tile_k_per_cta >= tile_k_per_set && tile_k_per_cta / tile_k_per_set <= 2 &&
-                   sm_a_v4 + sm_b_v4 <= MAX_SMEM_V4_PER_CTA && // share memeory limit
-                   sm_c_v4 * tile_k_per_cta / tile_k_per_set <= MAX_SMEM_V4_PER_CTA &&
-                   (tile_m_per_cta / tile_m_per_warp != 4 || tile_n_per_cta / tile_n_per_warp != 4) &&
-                   (tile_m_per_warp != 128 || tile_n_per_warp != 64);
-        } else if ( ktype == CONV_SWZL_F1 || ktype == CONV_SWZL_F3 || ktype == CONV_SWZL_FN ) {
-            int MAX_SMEM_V4_PER_CTA = device_prop.sharedMemPerBlock / 16;
-            int INT4_TO_8HALF = 8;
-            int BUF_SIZE      = 1;
-            int MMA_X         = 16;
-
-            int sm_a_v4 = tile_m_per_cta * tile_k_per_cta * BUF_SIZE / INT4_TO_8HALF;
-            int sm_b_v4 = tile_n_per_cta * tile_k_per_cta * BUF_SIZE / INT4_TO_8HALF;
-            int sm_r_v4 = tile_m_per_cta * MMA_X  / INT4_TO_8HALF;
-
-            return tile_m_per_warp >= 8 && tile_m_per_warp <= 64 && // tiles limit
-                   tile_n_per_warp >= 16 && tile_n_per_warp <= 128 &&
-                   tile_k_per_cta >= 8 && tile_k_per_cta <= 64 &&
-                   tile_m_per_cta >= tile_m_per_warp && tile_m_per_cta / tile_m_per_warp <= 4 &&
-                   tile_n_per_cta >= tile_n_per_warp && tile_n_per_cta / tile_n_per_warp <= 4 &&
-                   sm_a_v4 + sm_b_v4 <= MAX_SMEM_V4_PER_CTA && // share memeory limit
-                   sm_r_v4 <= MAX_SMEM_V4_PER_CTA &&
-                   (tile_m_per_cta / tile_m_per_warp != 1 || tile_n_per_cta / tile_n_per_warp != 1 || tile_k_per_cta != 64) &&
-                   (tile_m_per_cta / tile_m_per_warp != 4 || tile_n_per_cta / tile_n_per_warp != 4) &&
-                   (tile_m_per_warp != 8 || tile_n_per_warp != 16) &&
-                   (tile_m_per_warp != 128 || tile_n_per_warp != 64);
-        }
-        return false;
-    }
-
     bool CheckSMemSizeFeasible(cudaDeviceProp& device_prop)
     {
         if (device_prop.major == 7 && device_prop.minor == 5)
@@ -415,41 +386,10 @@ struct kernel_info_t {
         return device_prop.major > karch_major || (device_prop.major == karch_major && device_prop.minor >= karch_minor);
     }
 
-    void AdaptLutKernelSMemSize()
-    {
-        if(smem_size <= MAX_STATIC_SMEM_SIZE_PER_CTA)
-            return;
-
-        cudaFuncSetAttribute(lut_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
-        return;
-    }
-
-    void AdaptSpkKernelSMemSize()
-    {
-        if(smem_size <= MAX_STATIC_SMEM_SIZE_PER_CTA)
-            return;
-
-        cudaFuncSetAttribute(spk_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
-        return;
-    }
-
-    void AdaptInt8LutKernelSMemSize()
-    {
-        if(smem_size <= MAX_STATIC_SMEM_SIZE_PER_CTA)
-            return;
-
-        cudaFuncSetAttribute(int8_lut_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
-        return;
-    }
-
-    void AdaptInt8SpkKernelSMemSize()
-    {
-        if(smem_size <= MAX_STATIC_SMEM_SIZE_PER_CTA)
-            return;
-
-        cudaFuncSetAttribute(int8_spk_kptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
-        return;
-    }
+    void AdaptLutKernelSMemSize();
+    void AdaptSpkKernelSMemSize();
+    void AdaptInt8LutKernelSMemSize();
+    void AdaptInt8SpkKernelSMemSize();
 
     bool CheckKernelTypeFeasible(int flt_height, int flt_width, int num_chl_per_grp, int splitk)
     {

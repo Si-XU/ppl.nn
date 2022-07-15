@@ -774,7 +774,6 @@ double PPLCUDAConvTransposeSelectKernel(
             gemm_conv_param.out_width = 1;
             gemm_conv_param.has_bias = false;
 
-            PPLCUDAConvolutionPredictKernel(input_shape->GetDataType(), algo_param, gemm_conv_param);
             min_time = PPLCUDAGemmJITSelectKernel(
                                 device_id, stream,
                                 input_shape->GetDataType(), &a_shape, (void*)cvt_input, &b_shape,
@@ -786,6 +785,7 @@ double PPLCUDAConvTransposeSelectKernel(
             gemm_param.transB    = 1;
             gemm_param.alpha     = 1.f;
             gemm_param.beta      = 1.f;
+
             min_time = PPLCUDAGemmSelectKernel(device_id, stream,
                                 &a_shape, cvt_input, &b_shape, rev_flt,
                                 gemm_bias, &c_shape, gemm_output,
@@ -823,7 +823,6 @@ double PPLCUDAConvTransposeSelectKernel(
 
             void *d_temp_buf = temp_buffer;
 #ifdef PPLNN_ENABLE_CUDA_JIT
-            PPLCUDAConvolutionPredictKernel(input_shape->GetDataType(), algo_param, conv_param);
             min_time = PPLCUDAConvolutionJitSelectKernel(
                             device_id, stream, input_shape->GetDataType(),
                             (int4*)cvt_input, (int4*)rev_flt, (int4*)output, (int4*)bias,

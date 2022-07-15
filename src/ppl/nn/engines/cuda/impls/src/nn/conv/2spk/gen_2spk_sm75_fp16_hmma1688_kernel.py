@@ -167,6 +167,10 @@ class KernelInfo:
     def GenKernel(self):
         f = open(os.path.join(self.path, self.fname), "w")
 
+        f.write("#define TILE_N_PER_MMA       %d\n" % self.MMA_X)
+        f.write("#define TILE_K_PER_MMA       %d\n" % self.MMA_K)
+        f.write("#define TILE_M_PER_MMA       %d\n\n" % self.MMA_Y)
+
         f.write("#define TILE_N_PER_CTA       %d\n" % self.cta_x)
         f.write("#define TILE_M_PER_CTA       %d\n\n" % self.cta_y)
 
@@ -253,19 +257,19 @@ class KernelInfo:
                 f.write("#define FLT_SIZEN\n\n")
         elif self.buf_size > 2:
             if self.flt_size == "f1" or self.flt_size == "fs":
-                f.write("#define LOAD_dAv4(sAv4, _sAv4_off, _dA, _dAv4_off, _in_c_v8_id, _in_hw_valid)     LOAD_dAv4_SIZE%s(sAv4, _sAv4_off, _dA, _dAv4_off, _in_c_v8_id, _in_hw_valid)\n" % self.GetSizeString(self.dAv4_size))
-                f.write("#define LOAD_dBv4(sBv4, _sBv4_off, _dB, _dBv4_off, _flt_c_v8_id, _flt_n_valid)    LOAD_dBv4_SIZE%s(sBv4, _sBv4_off, _dB, _dBv4_off, _flt_c_v8_id, _flt_n_valid)\n\n" % self.GetSizeString(self.dBv4_size))
+                f.write("#define LOAD_dAv4(_sAv4, _sAv4_off, _dA, _dAv4_off, _in_c_v8_id, _in_hw_valid)     LOAD_dAv4_SIZE%s(_sAv4, _sAv4_off, _dA, _dAv4_off, _in_c_v8_id, _in_hw_valid)\n" % self.GetSizeString(self.dAv4_size))
+                f.write("#define LOAD_dBv4(_sBv4, _sBv4_off, _dB, _dBv4_off, _flt_c_v8_id, _flt_n_valid)    LOAD_dBv4_SIZE%s(_sBv4, _sBv4_off, _dB, _dBv4_off, _flt_c_v8_id, _flt_n_valid)\n\n" % self.GetSizeString(self.dBv4_size))
 
                 f.write("#define FLT_SIZE1\n\n")
 
             elif self.flt_size == "f3":
-                f.write("#define LOAD_dAv4(sAv4, _sAv4_off, _dA, _dAv4_off, _in_c_v8_id, _flt_hw_bid)      LOAD_dAv4_SIZE%s(sAv4, _sAv4_off, _dA, _dAv4_off, _in_c_v8_id, _flt_hw_bid)\n" % self.GetSizeString(self.dAv4_size))
-                f.write("#define LOAD_dBv4(sBv4, _sBv4_off, _dB, _dBv4_off, _flt_c_v8_id, _flt_n_valid)    LOAD_dBv4_SIZE%s(sBv4, _sBv4_off, _dB, _dBv4_off, _flt_c_v8_id, _flt_n_valid)\n\n" % self.GetSizeString(self.dBv4_size))
+                f.write("#define LOAD_dAv4(_sAv4, _sAv4_off, _dA, _dAv4_off, _in_c_v8_id, _flt_hw_bid)      LOAD_dAv4_SIZE%s(_sAv4, _sAv4_off, _dA, _dAv4_off, _in_c_v8_id, _flt_hw_bid)\n" % self.GetSizeString(self.dAv4_size))
+                f.write("#define LOAD_dBv4(_sBv4, _sBv4_off, _dB, _dBv4_off, _flt_c_v8_id, _flt_n_valid)    LOAD_dBv4_SIZE%s(_sBv4, _sBv4_off, _dB, _dBv4_off, _flt_c_v8_id, _flt_n_valid)\n\n" % self.GetSizeString(self.dBv4_size))
 
                 f.write("#define FLT_SIZE3\n\n")
             elif self.flt_size == "fn":
-                f.write("#define LOAD_dAv4(sAv4, _sAv4_off, _dA, _dAv4_off, _in_n_id, _in_h_id, _in_w_id)  LOAD_dAv4_SIZE%s(sAv4, _sAv4_off, _dA, _dAv4_off, _in_n_id, _in_h_id, _in_w_id)\n" % self.GetSizeString(self.dAv4_size))
-                f.write("#define LOAD_dBv4(sBv4, _sBv4_off, _dB, _dBv4_off, _flt_c_v8_id, _flt_n_valid)    LOAD_dBv4_SIZE%s(sBv4, _sBv4_off, _dB, _dBv4_off, _flt_c_v8_id, _flt_n_valid)\n\n" % self.GetSizeString(self.dBv4_size))
+                f.write("#define LOAD_dAv4(_sAv4, _sAv4_off, _dA, _dAv4_off, _in_n_id, _in_h_id, _in_w_id)  LOAD_dAv4_SIZE%s(_sAv4, _sAv4_off, _dA, _dAv4_off, _in_n_id, _in_h_id, _in_w_id)\n" % self.GetSizeString(self.dAv4_size))
+                f.write("#define LOAD_dBv4(_sBv4, _sBv4_off, _dB, _dBv4_off, _flt_c_v8_id, _flt_n_valid)    LOAD_dBv4_SIZE%s(_sBv4, _sBv4_off, _dB, _dBv4_off, _flt_c_v8_id, _flt_n_valid)\n\n" % self.GetSizeString(self.dBv4_size))
 
                 f.write("#define FWD_FLT(_flt_h_id, _flt_w_id, _flt_c_v8_id, _flt_c_v8_valid)    FWD_FLT_SIZE%s(_flt_h_id, _flt_w_id, _flt_c_v8_id, _flt_c_v8_valid)\n" % (self.GetSizeString(self.dAv4_size) if self.dAv4_size >= 1 else "1"))
 
