@@ -523,9 +523,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     uint concat_v4_off[OUTPUT_BLKS_PER_STEP];
 
 #pragma unroll
-    for (int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) {
-        concat_v4_off[i] = dCv4_idx[i] * num_flt_per_grp_pad_v4 * num_grp;
-    }
+    for (int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) { concat_v4_off[i] = 0; }
 
     float4 de_scale_v4;
     float* de_scale = (float *) &de_scale_v4;

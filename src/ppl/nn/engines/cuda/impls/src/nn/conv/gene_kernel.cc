@@ -738,9 +738,8 @@ ppl::common::RetCode Fp16CodeGeneFactor::ReplaceFusionForSwzl(std::string& file_
         fuse_index++;
     }
 
-    if (fuse_info.channel_offset >= 0) {
-        file_str << "JIT_SET_CONCAT_OFF_V4(concat_v4_off)\n";
-    }
+    // NOTE: swizzle kernel requires concat macro all the time
+    file_str << "JIT_SET_CONCAT_OFF_V4(has_concat, concat_v4_off)\n";
     file_str << "}\n";
 
     file_res.replace(begin, end - begin, file_str.str());
@@ -1486,9 +1485,8 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionForSwzl(std::string& file_
         fuse_index++;
     }
 
-    if (fuse_info.channel_offset >= 0) {
-        file_str << "JIT_SET_CONCAT_OFF_V4(concat_v4_off)\n";
-    }
+    // NOTE: swizzle kernel requires concat macro all the time
+    file_str << "JIT_SET_CONCAT_OFF_V4(has_concat, concat_v4_off)\n";
 
     file_str << "}\n";
 

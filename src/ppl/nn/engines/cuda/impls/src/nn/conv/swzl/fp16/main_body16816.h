@@ -490,9 +490,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     uint concat_v4_off[OUTPUT_BLKS_PER_STEP];
 
 #pragma unroll
-    for (int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) {
-        concat_v4_off[i] = dCv4_idx[i] * num_flt_per_grp_pad_v8 * num_grp;
-    }
+    for (int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) { concat_v4_off[i] = 0; }
 #endif
 
 #if TILE_M_PER_WARP == 8
