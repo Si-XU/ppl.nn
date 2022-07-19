@@ -50,7 +50,7 @@ ppl::common::RetCode GemmKernel::DoExecute(KernelExecContext* ctx) {
 
     const TensorShape& shape_in0 = *input->GetShape();
     const TensorShape& shape_in1 = *weight->GetShape();
-    const TensorShape& shape_out = *output->GetShape();
+    // const TensorShape& shape_out = *output->GetShape();
 
     temp_conv_param.in_num  = param_->param.transA ? shape_in0.GetDim(1) : shape_in0.GetDim(0);
     temp_conv_param.num_chl = param_->param.transB ? shape_in1.GetDim(1) : shape_in1.GetDim(0);

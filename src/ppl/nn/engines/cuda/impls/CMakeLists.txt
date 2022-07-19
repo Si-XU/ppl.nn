@@ -75,9 +75,7 @@ else()
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/2spk/sm75/*/*/init*.cu
                                        ${CMAKE_CURRENT_BINARY_DIR}/conv/swzl/sm75/*/*/init*.cu
                                        )
-    set_source_files_properties(${SM75_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_75,code=sm_75 -fno-var-tracking-assignments")
-    set_source_files_properties(${SM75_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_80,code=sm_80 -fno-var-tracking-assignments")
-    set_source_files_properties(${SM80_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_80,code=sm_80 -fno-var-tracking-assignments")
+
 endif()
 
 hpcc_populate_dep(pplcommon)
@@ -91,6 +89,7 @@ else()
     add_library(sm80_cuda_kernels OBJECT ${SM80_SRC})
 
     set_target_properties(sm75_cuda_kernels PROPERTIES COMPILE_FLAGS "-gencode arch=compute_75,code=sm_75 -fno-var-tracking-assignments")
+    set_target_properties(sm75_cuda_kernels PROPERTIES COMPILE_FLAGS "-gencode arch=compute_80,code=sm_80 -fno-var-tracking-assignments")
     set_target_properties(sm80_cuda_kernels PROPERTIES COMPILE_FLAGS "-gencode arch=compute_80,code=sm_80 -fno-var-tracking-assignments")
 
     target_include_directories(sm75_cuda_kernels PUBLIC
@@ -111,43 +110,56 @@ else()
     target_link_libraries(sm80_cuda_kernels PUBLIC pplcommon_static)
 endif()
 
-file(GLOB_RECURSE CUDA_CC_SRC src/nn/conv/conv_jit.cc
-			      src/nn/conv/common/init_lut.cc)
-
 file(GLOB_RECURSE CUDA_SRC ${CUDA_SRC} src/arithmetic/*.cu
                                        src/memory/*.cu
                                        src/reduce/*.cu
                                        src/reformat/*.cu
                                        src/nn/conv/conv_*.cu
+                                       src/nn/conv/conv_jit.cc
                                        src/nn/conv/common/*.cu
-				       src/unary/*.cu)
+                                       src/nn/conv/common/init_lut.cc
+				                       src/unary/*.cu)
 file(GLOB CUDA_SRC ${CUDA_SRC} src/nn/*.cu)
 file(GLOB CUDA_SRC ${CUDA_SRC} src/nn/depthwise/*.cu)
-set_source_files_properties(${CUDA_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_75,code=sm_75")
-set_source_files_properties(${CUDA_SRC} PROPERTIES COMPILE_FLAGS "-gencode arch=compute_80,code=sm_80")
+FOREACH (_SOURCE_FILE_ ${CUDA_SRC})
+    if(${_SOURCE_FILE_} MATCHES  .*[.]cu)
+        set_source_files_properties(${_SOURCE_FILE_} PROPERTIES COMPILE_FLAGS " -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 ")
+    endif()
+ENDFOREACH()
 
-add_library(pplkernelcuda_static STATIC ${CUDA_SRC} ${CUDA_CC_SRC} ${SM75_SRC} ${SM80_SRC})
+
+add_library(pplkernelcuda_static STATIC ${CUDA_SRC})
 target_compile_features(pplkernelcuda_static PRIVATE cxx_std_11)
-
-set(__PPLNN_SOURCE_DIR__ ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../..)
-set(PPLNN_FRAMEWORK_INCLUDE_DIRECTORIES ${__PPLNN_SOURCE_DIR__}/include ${__PPLNN_SOURCE_DIR__}/src)
-unset(__PPLNN_SOURCE_DIR__)
 
 target_include_directories(pplkernelcuda_static PUBLIC
     include
-    ${CUDA_INCLUDE_DIRS}
+    ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
     ${CMAKE_CURRENT_BINARY_DIR}/conv
     ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv
     ${PPLNN_FRAMEWORK_INCLUDE_DIRECTORIES})
 target_link_directories(pplkernelcuda_static PUBLIC ${CMAKE_CUDA_HOST_IMPLICIT_LINK_DIRECTORIES})
 target_link_libraries(pplkernelcuda_static PUBLIC cuda ${CUDA_LIBRARIES} ${CMAKE_CUDA_HOST_IMPLICIT_LINK_LIBRARIES})
+target_link_libraries(pplkernelcuda_static INTERFACE "cuda;cudart_static;cudadevrt")
 
 if(PPLNN_ENABLE_CUDA_JIT)
-    target_link_libraries(pplkernelcuda_static PUBLIC nvrtc)
+    target_link_libraries(pplkernelcuda_static INTERFACE "nvrtc")
+else()
+    target_link_libraries(pplkernelcuda_static PUBLIC sm75_cuda_kernels sm80_cuda_kernels)
 endif()
 
 target_link_libraries(pplkernelcuda_static PUBLIC pplcommon_static)
 target_compile_definitions(pplkernelcuda_static PUBLIC ${PPLCUDA_COMPILE_DEFINITIONS})
+
+set(_EXPECTED_CUDA_HOST_LINK_DIRECTORIES )
+foreach(dir ${CMAKE_CUDA_HOST_IMPLICIT_LINK_DIRECTORIES})
+    file(RELATIVE_PATH EXPECTED_RELATIVE_PATH ${CUDA_TOOLKIT_ROOT_DIR} ${dir})
+    list(APPEND _EXPECTED_CUDA_HOST_LINK_DIRECTORIES ${EXPECTED_RELATIVE_PATH})
+endforeach()
+set(_EXPECTED_CUDA_HOST_INCLUDE_DIRECTORIES )
+foreach(dir ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+    file(RELATIVE_PATH EXPECTED_RELATIVE_PATH ${CUDA_TOOLKIT_ROOT_DIR} ${dir})
+    list(APPEND _EXPECTED_CUDA_HOST_INCLUDE_DIRECTORIES ${EXPECTED_RELATIVE_PATH})
+endforeach()
 
 if(PPLNN_INSTALL)
     install(TARGETS pplkernelcuda_static DESTINATION lib)
