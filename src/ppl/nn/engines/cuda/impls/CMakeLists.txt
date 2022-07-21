@@ -88,9 +88,10 @@ else()
     add_library(sm75_cuda_kernels OBJECT ${SM75_SRC})
     add_library(sm80_cuda_kernels OBJECT ${SM80_SRC})
 
-    set_target_properties(sm75_cuda_kernels PROPERTIES COMPILE_FLAGS "-gencode arch=compute_75,code=sm_75 -fno-var-tracking-assignments")
-    set_target_properties(sm75_cuda_kernels PROPERTIES COMPILE_FLAGS "-gencode arch=compute_80,code=sm_80 -fno-var-tracking-assignments")
-    set_target_properties(sm80_cuda_kernels PROPERTIES COMPILE_FLAGS "-gencode arch=compute_80,code=sm_80 -fno-var-tracking-assignments")
+    set_target_properties(sm75_cuda_kernels PROPERTIES COMPILE_FLAGS
+        "-gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -fno-var-tracking-assignments")
+    set_target_properties(sm80_cuda_kernels PROPERTIES COMPILE_FLAGS
+        "-gencode arch=compute_80,code=sm_80 -fno-var-tracking-assignments")
 
     target_include_directories(sm75_cuda_kernels PUBLIC
         include
@@ -123,7 +124,8 @@ file(GLOB CUDA_SRC ${CUDA_SRC} src/nn/*.cu)
 file(GLOB CUDA_SRC ${CUDA_SRC} src/nn/depthwise/*.cu)
 FOREACH (_SOURCE_FILE_ ${CUDA_SRC})
     if(${_SOURCE_FILE_} MATCHES  .*[.]cu)
-        set_source_files_properties(${_SOURCE_FILE_} PROPERTIES COMPILE_FLAGS " -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 ")
+        set_source_files_properties(${_SOURCE_FILE_} PROPERTIES COMPILE_FLAGS
+            " -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 ")
     endif()
 ENDFOREACH()
 

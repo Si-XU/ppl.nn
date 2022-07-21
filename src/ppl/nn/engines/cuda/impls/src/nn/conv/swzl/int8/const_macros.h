@@ -57,7 +57,7 @@
         int in_height,          int in_width,              \
         int in_num,             int num_grp,               \
         int num_chl_per_grp,      int num_chl_per_grp_pad,      \
-        int fltHeight,         int fltWidth,             \
+        int flt_height,         int flt_width,             \
         int num_flt_per_grp,      int num_flt_per_grp_pad,      \
         int out_height,         int out_width,             \
         int stride_height,      int stride_width,          \
@@ -78,7 +78,7 @@
         int in_height,          int in_width,              \
         int in_num,             int num_grp,               \
         int num_chl_per_grp,      int num_chl_per_grp_pad,      \
-        int fltHeight,         int fltWidth,             \
+        int flt_height,         int flt_width,             \
         int num_flt_per_grp,      int num_flt_per_grp_pad,      \
         int out_height,         int out_width,             \
         int stride_height,      int stride_width,          \

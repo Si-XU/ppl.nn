@@ -353,6 +353,7 @@
 #undef FWD_FLT_SIZE4
 #undef FWD_FLT_SIZE8
 #undef FWD_FLT_SIZE16
+#undef FWD_FLT_SIZE32
 
 #undef SET_BOUND_FLT1
 #undef SET_BOUND_FLT3

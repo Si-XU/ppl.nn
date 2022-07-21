@@ -364,6 +364,7 @@
 #undef FWD_FLT_SIZE4
 #undef FWD_FLT_SIZE8
 #undef FWD_FLT_SIZE16
+#undef FWD_FLT_SIZE32
 
 ////////////////////////////////////////
 // fuse size macros

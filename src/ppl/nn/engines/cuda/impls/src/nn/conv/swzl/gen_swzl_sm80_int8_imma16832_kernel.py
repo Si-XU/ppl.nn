@@ -232,7 +232,7 @@ class KernelInfo:
                 f.write("#define LOAD_dBv4(_regB, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id)  LOAD_dBv4_SIZE%s(_regB, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id)\n" % self.GetSizeString(self.dBv4_size))
                 f.write("#define WRITE_sBv4(_sm_base_v4, _sm_off, _reg)                          WRITE_sUv4_SIZE%s(_sm_base_v4, _sm_off, _reg)\n\n" % self.GetSizeString(self.dBv4_size))
 
-                f.write("#define FWD_FLT(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid)  FWD_FLT_SIZE%s(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid)\n" % (self.GetSizeString(self.dAv4_size) if self.dAv4_size >= 1 else "1"))
+                f.write("#define FWD_FLT(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid)  FWD_FLT_SIZE%s(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid)\n" % (self.GetSizeString(self.dBv4_size) if self.dBv4_size >= 1 else "1"))
 
                 f.write("#define FLT_SIZEN\n\n")
         elif self.buf_size > 2:
@@ -251,7 +251,7 @@ class KernelInfo:
                 f.write("#define LOAD_dAv4(_sAv4, _sAv4_off, _dA, _dAv4_off, _flt_c_v16_id, _flt_n_valid)    LOAD_dAv4_SIZE%s(_sAv4, _sAv4_off, _dA, _dAv4_off, _flt_c_v16_id, _flt_n_valid)\n" % self.GetSizeString(self.dAv4_size))
                 f.write("#define LOAD_dBv4(_sBv4, _sBv4_off, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id)   LOAD_dBv4_SIZE%s(_sBv4, _sBv4_off, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id)\n\n" % self.GetSizeString(self.dBv4_size))
 
-                f.write("#define FWD_FLT(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid)    FWD_FLT_SIZE%s(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid)\n" % (self.GetSizeString(self.dAv4_size) if self.dAv4_size >= 1 else "1"))
+                f.write("#define FWD_FLT(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid)    FWD_FLT_SIZE%s(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid)\n" % (self.GetSizeString(self.dBv4_size) if self.dBv4_size >= 1 else "1"))
 
                 f.write("#define FLT_SIZEN\n\n")
 
