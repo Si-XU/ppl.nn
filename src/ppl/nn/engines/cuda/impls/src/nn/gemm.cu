@@ -333,6 +333,10 @@ double PPLCUDAGemmJITSelectKernel(
     elapsed = AlgoForwardTime(device_id, stream, knames, sources, index, compile_params, device_id, true, type, (int4 *)input, (int4 *)weight, (int4 *)output, (int4 *)bias, (int4 *)temp_buffer, params, conv_param, fuse_param, workspace);
 
     algo_param = params[index];
+
+    // TODO: currently fix splitk=1, for gemm op has not prepared temp buffer routines
+    algo_param.splitk = 1;
+    algo_param.splitf = 1;
 #endif
     return elapsed;
 }
@@ -365,8 +369,9 @@ double PPLCUDAGemmSelectKernel(
 
     // FIXME use non-paded N in conv1x1 for input
     int N     = transB ? weight_shape->GetDim(0) : weight_shape->GetDim(1);
-    int N_pad = transB ? weight_shape->GetDim(0) : weight_shape->GetDim(1);
-    int K_pad = transB ? weight_shape->GetDim(1) : weight_shape->GetDim(0);
+    int K     = transB ? weight_shape->GetDim(1) : weight_shape->GetDim(0);
+    int N_pad = Align(N, pad_size);
+    int K_pad = Align(K, pad_size);
     int M     = transA ? input_shape->GetDim(1) : input_shape->GetDim(0);
 
     int concat_offset_v8 = fuse_param.concat_offset / pad_size;

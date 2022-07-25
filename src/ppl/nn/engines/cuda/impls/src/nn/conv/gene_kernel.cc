@@ -499,7 +499,7 @@ ppl::common::RetCode Fp16CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
                 file_str << "#define LOAD_dBv4(_regB, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id)  LOAD_dBv4_SIZE" << GetSizeString(dBv4_size) << "(_regB, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id)\n";
                 file_str << "#define WRITE_sBv4(_sm_base_v4, _sm_off, _reg)                          WRITE_sUv4_SIZE" << GetSizeString(dBv4_size) << "(_sm_base_v4, _sm_off, _reg)\n\n";
 
-                file_str << "#define FWD_FLT(_flt_h_id, _flt_w_id, _flt_c_v8_id, _flt_c_v8_valid)    FWD_FLT_SIZE" << (dAv4_size >= 1? GetSizeString(dAv4_size) : "1") << "(_flt_h_id, _flt_w_id, _flt_c_v8_id, _flt_c_v8_valid)\n";
+                file_str << "#define FWD_FLT(_flt_h_id, _flt_w_id, _flt_c_v8_id, _flt_c_v8_valid)    FWD_FLT_SIZE" << (dBv4_size >= 1? GetSizeString(dBv4_size) : "1") << "(_flt_h_id, _flt_w_id, _flt_c_v8_id, _flt_c_v8_valid)\n";
 
                 file_str << "#define FLT_SIZEN\n\n";
         }  else {
@@ -522,7 +522,7 @@ ppl::common::RetCode Fp16CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
                 file_str << "#define LOAD_dAv4(_sAv4, _sAv4_off, _dA, _dAv4_off, _flt_c_v8_id, _flt_n_valid)    LOAD_dAv4_SIZE" << GetSizeString(dAv4_size) << "(_sAv4, _sAv4_off, _dA, _dAv4_off, _flt_c_v8_id, _flt_n_valid)\n";
                 file_str << "#define LOAD_dBv4(_sBv4, _sBv4_off, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id)  LOAD_dBv4_SIZE" << GetSizeString(dBv4_size) << "(_sBv4, _sBv4_off, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id)\n";
 
-                file_str << "#define FWD_FLT(_flt_h_id, _flt_w_id, _flt_c_v8_id, _flt_c_v8_valid)    FWD_FLT_SIZE" << (dAv4_size >= 1? GetSizeString(dAv4_size) : "1") << "(_flt_h_id, _flt_w_id, _flt_c_v8_id, _flt_c_v8_valid)\n";
+                file_str << "#define FWD_FLT(_flt_h_id, _flt_w_id, _flt_c_v8_id, _flt_c_v8_valid)    FWD_FLT_SIZE" << (dBv4_size >= 1? GetSizeString(dBv4_size) : "1") << "(_flt_h_id, _flt_w_id, _flt_c_v8_id, _flt_c_v8_valid)\n";
 
                 file_str << "#define FLT_SIZEN\n\n";
         }  else {
@@ -1234,7 +1234,7 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
                 file_str << "#define LOAD_dBv4(_regB, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id)  LOAD_dBv4_SIZE" << GetSizeString(dBv4_size) << "(_regB, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id)\n";
                 file_str << "#define WRITE_sBv4(_sm_base_v4, _sm_off, _reg)                          WRITE_sUv4_SIZE" << GetSizeString(dBv4_size) << "(_sm_base_v4, _sm_off, _reg)\n\n";
 
-                file_str << "#define FWD_FLT(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid)  FWD_FLT_SIZE" << (dAv4_size >= 1? GetSizeString(dAv4_size) : "1") << "(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid)\n";
+                file_str << "#define FWD_FLT(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid)  FWD_FLT_SIZE" << (dBv4_size >= 1? GetSizeString(dBv4_size) : "1") << "(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid)\n";
 
                 file_str << "#define FLT_SIZEN\n\n";
         }  else {
@@ -1257,7 +1257,7 @@ ppl::common::RetCode Int8CodeGeneFactor::GeneSwzlKernel(std::string& file_res, s
                 file_str << "#define LOAD_dAv4(_sAv4, _sAv4_off, _dA, _dAv4_off, _flt_c_v16_id, _flt_n_valid)    LOAD_dAv4_SIZE" << GetSizeString(dAv4_size) << "(_sAv4, _sAv4_off, _dA, _dAv4_off, _flt_c_v16_id, _flt_n_valid)\n";
                 file_str << "#define LOAD_dBv4(_sBv4, _sBv4_off, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id)   LOAD_dBv4_SIZE" << GetSizeString(dBv4_size) << "(_sBv4, _sBv4_off, _dB, _dBv4_off, _in_n_id, _in_h_id, _in_w_id)\n";
 
-                file_str << "#define FWD_FLT(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid)    FWD_FLT_SIZE" << (dAv4_size >= 1? GetSizeString(dAv4_size) : "1") << "(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid)\n";
+                file_str << "#define FWD_FLT(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid)    FWD_FLT_SIZE" << (dBv4_size >= 1? GetSizeString(dBv4_size) : "1") << "(_flt_h_id, _flt_w_id, _flt_c_v16_id, _flt_c_v16_valid)\n";
 
                 file_str << "#define FLT_SIZEN\n\n";
         }  else {
