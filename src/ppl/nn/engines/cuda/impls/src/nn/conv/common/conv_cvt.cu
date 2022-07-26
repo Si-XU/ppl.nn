@@ -127,6 +127,7 @@ void PPLCUDAConvolutionCvtFlt(
     int num_chl_per_grp     = num_chl / num_grp;
     int num_chl_per_grp_pad = Align(num_chl_per_grp, align_size);
     int num_flt_per_grp     = flt_num / num_grp;
+    // int num_flt_per_grp_pad = Align(num_flt_per_grp, align_size);
 
     const int cta_size = 512;
     dim3 grid;
