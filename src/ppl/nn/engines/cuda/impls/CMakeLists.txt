@@ -16,6 +16,13 @@ if(PPLNN_ENABLE_CUDA_JIT)
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv/gene_header.py ${CMAKE_CURRENT_SOURCE_DIR}/src/nn/conv ${CMAKE_CURRENT_BINARY_DIR}
         OUTPUT_STRIP_TRAILING_WHITESPACE)
 
+    set(__gene_kernel_src__ ${CMAKE_CURRENT_BINARY_DIR}/gene_header.cc src/nn/conv/gene_kernel.cc)
+    if(CMAKE_COMPILER_IS_GNUCC)
+        set_source_files_properties(${__gene_kernel_src__} PROPERTIES COMPILE_FLAGS -Werror=non-virtual-dtor)
+    endif()
+    list(APPEND __CUDA_CONV_SRC__ ${__gene_kernel_src__})
+    unset(__gene_kernel_src__)
+
 else()
     if(CUDA_VERSION VERSION_GREATER_EQUAL "10.0")
         execute_process(
@@ -108,15 +115,6 @@ endif()
 list(APPEND __CUDA_SRC__ ${__CUDA_CONV_SRC__})
 unset(__CUDA_CONV_SRC__)
 
-if(PPLNN_ENABLE_CUDA_JIT)
-    set(__gene_kernel_src__ ${CMAKE_CURRENT_BINARY_DIR}/gene_header.cc src/nn/conv/gene_kernel.cc)
-    if(CMAKE_COMPILER_IS_GNUCC)
-        set_source_files_properties(${__gene_kernel_src__} PROPERTIES COMPILE_FLAGS -Werror=non-virtual-dtor)
-    endif()
-    list(APPEND __CUDA_CONV_SRC__ ${__gene_kernel_src__})
-    unset(__gene_kernel_src__)
-endif()
-
 # --------------------------------------------------------------------------- #
 
 # cuda tools
@@ -187,16 +185,18 @@ target_link_directories(pplkernelcuda_static PUBLIC ${CMAKE_CUDA_HOST_IMPLICIT_L
 
 # `PPLNN_CUDA_TOOLKIT_LINK_LIBRARIES` is needed for generating pplkernecuda-config.cmake
 set(PPLNN_CUDA_TOOLKIT_LINK_LIBRARIES cuda cudart)
-#if(PPLNN_ENABLE_CUDA_JIT)
+if(PPLNN_ENABLE_CUDA_JIT)
     list(APPEND PPLNN_CUDA_TOOLKIT_LINK_LIBRARIES nvrtc)
-    #endif()
+endif()
 
 target_link_libraries(pplkernelcuda_static PUBLIC ${PPLNN_CUDA_TOOLKIT_LINK_LIBRARIES} ${PPLNN_CUDA_EXTERNAL_LINK_LIBRARIES})
 
 hpcc_populate_dep(pplcommon)
 target_link_libraries(pplkernelcuda_static PUBLIC pplcommon_static)
 
-#target_compile_definitions(pplkernelcuda_static PUBLIC PPLNN_ENABLE_CUDA_JIT)
+if(PPLNN_ENABLE_CUDA_JIT)
+    target_compile_definitions(pplkernelcuda_static PUBLIC PPLNN_ENABLE_CUDA_JIT)
+endif()
 
 if(PPLNN_INSTALL)
     install(TARGETS pplkernelcuda_static DESTINATION lib)
