@@ -1114,7 +1114,7 @@ ppl::common::RetCode GetFp16ConvKernelNominees(
 
         if(nominees.size() == 0) { // insert default kernel
             // nvIdxnConv_b128x128_w64x64
-            nominee.SetIdxnKernelParam(128, 128, 16, 64, 64, k_per_step, flt_pad_size, 128, 4096, 1, 1, mma_shape);
+            nominee.SetIdxnKernelParam(128, 128, k_per_step, 64, 64, k_per_step, flt_pad_size, 128, 4096, 1, 1, mma_shape);
             nominees.push_back(std::make_pair(nominee, 0.f));
         }
 
@@ -1385,6 +1385,8 @@ double PPLCUDAConvolutionJitSelectKernel(
     fuse_param_t &fuse_param,
     uint64_t workspace)
 {
+    double elapsed = 0.0f;
+#ifdef PPLNN_ENABLE_CUDA_JIT
     std::vector<std::string> knames;
     std::vector<algo_param_t> params;
     std::string sources = "";
@@ -1393,9 +1395,10 @@ double PPLCUDAConvolutionJitSelectKernel(
 
     int index = 0;
     std::vector<const char *> compile_params;
-    double elapsed = AlgoForwardTime(device_id, stream, knames, sources, index, compile_params, device_id, true, type, d_input, d_flt, d_output, bias, d_temp_buf, params, conv_param, fuse_param, workspace);
+    elapsed = AlgoForwardTime(device_id, stream, knames, sources, index, compile_params, device_id, true, type, d_input, d_flt, d_output, bias, d_temp_buf, params, conv_param, fuse_param, workspace);
 
     algo_param = params[index];
+#endif
     return elapsed;
 }
 
