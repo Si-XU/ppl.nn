@@ -840,6 +840,7 @@ ppl::common::RetCode algo_param_t::BuildAlgoName()
 
 ppl::common::RetCode algo_param_t::ParseAlgoName()
 {
+#ifdef PPLNN_ENABLE_CUDA_JIT
     std::stringstream algo_name_str(this->algo_name);
     std::vector<std::string> algo_name_substrs;
     std::string substr;
@@ -950,6 +951,7 @@ ppl::common::RetCode algo_param_t::ParseAlgoName()
     } else {
         return ppl::common::RC_NOT_FOUND;
     }
+#endif
     return ppl::common::RC_SUCCESS;
 }
 
@@ -961,6 +963,7 @@ ppl::common::RetCode GetFp16ConvKernelNominees(
     std::vector<algo_param_t> & params,
     std::string & sources)
 {
+#ifdef PPLNN_ENABLE_CUDA_JIT
     int pad_size            = GetPadSize(type);
     int num_grp             = conv_param.num_grp;
     int num_chl_per_grp     = conv_param.num_chl / num_grp;
@@ -1111,7 +1114,7 @@ ppl::common::RetCode GetFp16ConvKernelNominees(
 
         if(nominees.size() == 0) { // insert default kernel
             // nvIdxnConv_b128x128_w64x64
-            nominee.SetIdxnKernelParam(128, 128, 16, 64, 64, k_per_step, flt_pad_size, 128, 4096, 1, 1, mma_shape);
+            nominee.SetIdxnKernelParam(128, 128, k_per_step, 64, 64, k_per_step, flt_pad_size, 128, 4096, 1, 1, mma_shape);
             nominees.push_back(std::make_pair(nominee, 0.f));
         }
 
@@ -1363,6 +1366,7 @@ ppl::common::RetCode GetFp16ConvKernelNominees(
         params.push_back(nominee);
 
     }
+#endif
 
     return ppl::common::RC_SUCCESS;
 }
@@ -1381,6 +1385,8 @@ double PPLCUDAConvolutionJitSelectKernel(
     fuse_param_t &fuse_param,
     uint64_t workspace)
 {
+    double elapsed = 0.0f;
+#ifdef PPLNN_ENABLE_CUDA_JIT
     std::vector<std::string> knames;
     std::vector<algo_param_t> params;
     std::string sources = "";
@@ -1389,9 +1395,10 @@ double PPLCUDAConvolutionJitSelectKernel(
 
     int index = 0;
     std::vector<const char *> compile_params;
-    double elapsed = AlgoForwardTime(device_id, stream, knames, sources, index, compile_params, device_id, true, type, d_input, d_flt, d_output, bias, d_temp_buf, params, conv_param, fuse_param, workspace);
+    elapsed = AlgoForwardTime(device_id, stream, knames, sources, index, compile_params, device_id, true, type, d_input, d_flt, d_output, bias, d_temp_buf, params, conv_param, fuse_param, workspace);
 
     algo_param = params[index];
+#endif
     return elapsed;
 }
 

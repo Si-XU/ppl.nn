@@ -748,6 +748,7 @@ ppl::common::RetCode GetInt8ConvKernelNominees(
     std::vector<algo_param_t> & params,
     std::string & sources)
 {
+#ifdef PPLNN_ENABLE_CUDA_JIT
     int pad_size            = GetPadSize(type);
     int num_grp             = conv_param.num_grp;
     int num_chl_per_grp     = conv_param.num_chl / num_grp;
@@ -875,13 +876,13 @@ ppl::common::RetCode GetInt8ConvKernelNominees(
 
                             // filter out cases with too much padding
                             float eff_score = GetEfficiencyScore(m_cta, n_cta, k_cta, kloop_total, m_conv, n_conv, k_conv);
-                            if(eff_score <= 0.5) continue;
+                            if(eff_score < 0.5) continue;
 
                             // filter out cases with too low occupancy
                             float cta_launch_times = 0.f;
                             float occ_score = GetOccupancyScore(cta_size_in_thd, cta_size_in_warp, sm_num, cta_num, regs_per_cta, smem_per_cta, \
                                     max_ctas_per_sm, max_thds_per_sm, max_regs_per_sm, max_smem_per_sm, cta_launch_times);
-                            if(occ_score <= 0.5) continue;
+                            if(occ_score < 0.5) continue;
 
                             // get kernel pipeline score
                             float pip_score = GetIdxnPipelineScore(type_size, cta_launch_times, out_w, cta_size_in_thd, cta_size_in_warp, m_cta, n_cta, k_cta, m_warp, n_warp, \
@@ -895,6 +896,13 @@ ppl::common::RetCode GetInt8ConvKernelNominees(
                             nominees.push_back(std::make_pair(nominee, score));
                             // printf("insert nominee %s : eff %.2f occ %.2f pip %.2f launch %.2f\n", nominee.algo_name.c_str(), eff_score, occ_score, pip_score, cta_launch_times);
                         }
+
+        if(nominees.size() == 0) { // insert default kernel
+            // nvIdxnConv_b128x128_w64x64
+            nominee.SetIdxnKernelParam(128, 128, k_per_step, 64, 64, k_per_step, flt_pad_size, 128, 4096, 1, 1, mma_shape);
+            nominees.push_back(std::make_pair(nominee, 0.f));
+        }
+
     } else {
         int flt_size = 0;
         int k_conv = flt_hw * num_chl_per_grp_pad;
@@ -976,14 +984,14 @@ ppl::common::RetCode GetInt8ConvKernelNominees(
 
                                                 // filter out cases with too much padding
                                                 float eff_score = GetEfficiencyScore(m_cta, n_cta, k_cta, kloop_total, m_conv, n_conv, k_conv);
-                                                if(eff_score <= 0.5) continue;
+                                                if(eff_score < 0.5) continue;
 
                                                 // filter out cases with too low occupancy
                                                 float cta_launch_times = 0.f;
                                                 float occ_score = GetOccupancyScore(cta_size_in_thd, cta_size_in_warp, \
                                                         sm_num, cta_num, regs_per_cta, smem_per_cta,  max_ctas_per_sm, \
                                                         max_thds_per_sm, max_regs_per_sm, max_smem_per_sm, cta_launch_times);
-                                                if(occ_score <= 0.5) continue;
+                                                if(occ_score < 0.5) continue;
 
                                                 // filter out too much split and too small splits
                                                 if( cta_launch_times > 1 ) continue;
@@ -1005,6 +1013,19 @@ ppl::common::RetCode GetInt8ConvKernelNominees(
                                                 // printf("insert 2spk nominee %s : eff %.2f occ %.2f pip %.2f launch %.2f cta_num %d warp_num %d\n",
                                                 //         nominee.algo_name.c_str(), eff_score, occ_score, pip_score, cta_launch_times, cta_num, cta_size_in_warp);
                                             }
+
+            if(nominees.size() == 0) { // insert default kernel
+                if(conv_param.flt_height == 1 && conv_param.flt_width == 1)
+                    flt_size = 1;
+                else if(conv_param.flt_height == 3 && conv_param.flt_width == 3)
+                    flt_size = 3;
+                else
+                    flt_size = 0;
+
+                // nv2spkConv_b64x64_w32x32_k64_s64_buf1
+                nominee.Set2spkKernelParam(64, 64, 64, 32, 32, 64, flt_size, 1, 128, 8192, 1, 1, mma_shape);
+                nominees.push_back(std::make_pair(nominee, 0.f));
+            }
 
         } else { // choose swzl kernels
             GetSwzlMmaInfo(device_arch, type, mma_shape, m_mma, n_mma, k_mma, m_mma_max, n_mma_max, k_mma_max, k_blk_mma, buf_num_max);
@@ -1059,14 +1080,14 @@ ppl::common::RetCode GetInt8ConvKernelNominees(
 
                                     // filter out cases with too much padding
                                     float eff_score = GetEfficiencyScore(m_cta, n_cta, k_cta, kloop_total, m_conv, n_conv, k_conv);
-                                    if(eff_score <= 0.5) continue;
+                                    if(eff_score < 0.5) continue;
 
                                     // filter out cases with too low occupancy
                                     float cta_launch_times = 0.f;
                                     float occ_score = GetOccupancyScore(cta_size_in_thd, cta_size_in_warp, \
                                             sm_num, cta_num, regs_per_cta, smem_per_cta,  max_ctas_per_sm, \
                                             max_thds_per_sm, max_regs_per_sm, max_smem_per_sm, cta_launch_times);
-                                    if(occ_score <= 0.5) continue;
+                                    if(occ_score < 0.5) continue;
 
                                     // get kernel pipeline score
                                     float pip_score = GetSwzlPipelineScore(type_size, cta_launch_times, m_conv, n_conv, k_conv, \
@@ -1085,17 +1106,16 @@ ppl::common::RetCode GetInt8ConvKernelNominees(
                                     // printf("insert swzl nominee %s : eff %.2f occ %.2f pip %.2f launch %.2f cta_num %d warp_num %d\n",
                                     //         nominee.algo_name.c_str(), eff_score, occ_score, pip_score, cta_launch_times, cta_num, cta_size_in_warp);
                                 }
+
+            if(nominees.size() == 0) { // insert default kernel
+                // nvswzlConv_b128x128_w64x64_k64_buf1
+                nominee.SetSwzlKernelParam(128, 128, 64, 64, 64, flt_size, 1, 128, 32768, 1, 1, mma_shape);
+                nominees.push_back(std::make_pair(nominee, 0.f));
+            }
         }
     }
 
-    if(nominees.size() == 0) { // insert default kernel
-        // nv2spkConv_imma8816_b64x64_w32x32_k64_s64_buf1
-        nominee.Set2spkKernelParam(64, 64, 64, 32, 32, 64, 1, 1, 128, 16384, 1, 1, "imma8816");
-        nominees.push_back(std::make_pair(nominee, 0.f));
-    } else {
-        std::sort(nominees.begin(), nominees.end(), SortByDescendScore);
-    }
-
+    std::sort(nominees.begin(), nominees.end(), SortByDescendScore);
 
     int declare_times        = 0;
 
@@ -1131,6 +1151,7 @@ ppl::common::RetCode GetInt8ConvKernelNominees(
         params.push_back(nominee);
 
     }
+#endif
 
     return ppl::common::RC_SUCCESS;
 }
