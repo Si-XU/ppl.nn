@@ -23,6 +23,7 @@ using namespace ppl::common;
 
 #include "rapidjson/document.h"
 #include "rapidjson/error/error.h"
+#include "rapidjson/error/en.h"
 
 namespace ppl { namespace nn {
 
@@ -63,13 +64,12 @@ static RetCode ParseParam(const rapidjson::Value& v, QuantParam* param) {
     return RC_SUCCESS;
 }
 
-RetCode QuantParamParser::ParseBuffer(const char* buf, QuantParamInfo* info) {
+RetCode QuantParamParser::ParseBuffer(const char* buf, uint64_t size, QuantParamInfo* info) {
     rapidjson::Document d;
-
-    d.Parse(buf);
-    if (d.HasParseError()) {
-        LOG(ERROR) << "parse quant file failed: position[" << d.GetErrorOffset() << "], code[" << d.GetParseError()
-                   << "]";
+    rapidjson::ParseResult ok = d.Parse(buf, size);
+    if (!ok) {
+        LOG(ERROR) << "parse quant buffer failed: [" << rapidjson::GetParseError_En(ok.Code()) << "], offset["
+                   << ok.Offset() << "]";
         return RC_INVALID_VALUE;
     }
 
@@ -111,13 +111,13 @@ RetCode QuantParamParser::ParseBuffer(const char* buf, QuantParamInfo* info) {
 }
 
 RetCode QuantParamParser::ParseFile(const char* fname, QuantParamInfo* info) {
-    string buf;
+    utils::Buffer buf;
     auto status = utils::ReadFileContent(fname, &buf);
     if (status != RC_SUCCESS) {
         return status;
     }
 
-    status = ParseBuffer(buf.c_str(), info);
+    status = ParseBuffer((const char*)(buf.GetData()), buf.GetSize(), info);
     if (status != RC_SUCCESS) {
         LOG(ERROR) << "parse quant file[" << fname << "] failed: " << GetRetCodeStr(status);
     }

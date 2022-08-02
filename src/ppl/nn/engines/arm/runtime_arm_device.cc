@@ -19,7 +19,7 @@
 #include "ppl/nn/engines/arm/options.h"
 #include "ppl/nn/utils/stack_buffer_manager.h"
 #include "ppl/nn/utils/compact_buffer_manager.h"
-#include "ppl/nn/utils/cpu_block_allocator.h"
+#include "ppl/nn/utils/buffered_cpu_allocator.h"
 #include "ppl/nn/common/logger.h"
 #include <stdarg.h>
 using namespace std;
@@ -30,15 +30,22 @@ namespace ppl { namespace nn { namespace arm {
 static void DummyDeleter(ppl::common::Allocator*) {}
 
 RetCode RuntimeArmDevice::Init(uint32_t mm_policy) {
-    can_defragement_ = false;
+    mm_policy_ = mm_policy;
     if (mm_policy == MM_MRU) {
         auto allocator_ptr = ArmDevice::GetAllocator();
         allocator_ = std::shared_ptr<Allocator>(allocator_ptr, DummyDeleter);
         buffer_manager_.reset(new utils::StackBufferManager(allocator_ptr));
     } else if (mm_policy == MM_COMPACT) {
-        can_defragement_ = true;
-        allocator_.reset(new utils::CpuBlockAllocator());
-        buffer_manager_.reset(new utils::CompactBufferManager(allocator_.get(), alignment_));
+        auto allocator = new utils::BufferedCpuAllocator();
+        auto rc = allocator->Init();
+        if (rc != RC_SUCCESS) {
+            LOG(ERROR) << "init allocator failed: " << GetRetCodeStr(rc);
+            delete allocator;
+            return rc;
+        }
+
+        allocator_.reset(allocator);
+        buffer_manager_.reset(new utils::CompactBufferManager(allocator, alignment_));
     } else {
         LOG(ERROR) << "unknown mm policy: " << mm_policy;
         return RC_INVALID_VALUE;
@@ -57,7 +64,7 @@ RuntimeArmDevice::~RuntimeArmDevice() {
 }
 
 RetCode RuntimeArmDevice::AllocTmpBuffer(uint64_t bytes, BufferDesc* buffer) {
-    if (can_defragement_) {
+    if (mm_policy_ == MM_COMPACT) {
         auto ret = buffer_manager_->Realloc(bytes, &shared_tmp_buffer_);
         if (RC_SUCCESS != ret) {
             return ret;
@@ -76,28 +83,12 @@ RetCode RuntimeArmDevice::AllocTmpBuffer(uint64_t bytes, BufferDesc* buffer) {
 }
 
 void RuntimeArmDevice::FreeTmpBuffer(BufferDesc* buffer) {
-    if (can_defragement_) {
+    if (mm_policy_ == MM_COMPACT) {
         buffer_manager_->Free(&shared_tmp_buffer_);
     }
 }
 
-RetCode RuntimeArmDevice::DoMemDefrag(RuntimeArmDevice* dev, va_list) {
-    if (!dev->can_defragement_) {
-        return RC_UNSUPPORTED;
-    }
-
-    auto mgr = dynamic_cast<utils::CompactBufferManager*>(dev->buffer_manager_.get());
-    if (dev->tmp_buffer_size_ > 0) {
-        mgr->Free(&dev->shared_tmp_buffer_);
-        dev->shared_tmp_buffer_.addr = nullptr;
-        dev->tmp_buffer_size_ = 0;
-    }
-    return mgr->Defragment();
-}
-
-RuntimeArmDevice::ConfHandlerFunc RuntimeArmDevice::conf_handlers_[] = {
-    DoMemDefrag, // DEV_CONF_MEM_DEFRAG
-};
+/* -------------------------------------------------------------------------- */
 
 RetCode RuntimeArmDevice::Configure(uint32_t option, ...) {
     if (option >= DEV_CONF_MAX) {

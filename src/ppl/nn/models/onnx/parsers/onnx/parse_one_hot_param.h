@@ -15,29 +15,20 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef _ST_HPC_PPL_NN_UTILS_CPU_BLOCK_ALLOCATOR_H_
-#define _ST_HPC_PPL_NN_UTILS_CPU_BLOCK_ALLOCATOR_H_
+#ifndef _ST_HPC_PPL_NN_MODELS_ONNX_PARSERS_PARSE_ONE_HOT_PARAM_H_
+#define _ST_HPC_PPL_NN_MODELS_ONNX_PARSERS_PARSE_ONE_HOT_PARAM_H_
 
-#include "ppl/common/allocator.h"
-#include <map>
+#include "ppl/common/retcode.h"
+#include "ppl/nn/params/onnx/one_hot_param.h"
+#include "ppl/nn/models/onnx/param_parser_extra_args.h"
+#include "ppl/nn/models/onnx/generated/onnx.pb.h"
 
-namespace ppl { namespace nn { namespace utils {
+namespace ppl { namespace nn { namespace onnx {
 
-class CpuBlockAllocator final : public ppl::common::Allocator {
-public:
-    CpuBlockAllocator() {}
-    ~CpuBlockAllocator();
-    void* Alloc(uint64_t multi_page_size) override;
-    void Free(void*) override;
+ppl::common::RetCode ParseOneHotParam(const ::onnx::NodeProto&, const ParamParserExtraArgs&, ir::Node*, ir::Attr*);
 
-private:
-    std::map<void*, uint64_t> addr2size_;
+ppl::common::RetCode PackOneHotParam(const ir::Node*, const ir::Attr*, ::onnx::NodeProto*);
 
-private:
-    CpuBlockAllocator(const CpuBlockAllocator&) = delete;
-    void operator=(const CpuBlockAllocator&) = delete;
-};
-
-}}} // namespace ppl::nn::utils
+}}} // namespace ppl::nn::onnx
 
 #endif
