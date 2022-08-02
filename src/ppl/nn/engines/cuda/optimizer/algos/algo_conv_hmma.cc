@@ -96,7 +96,7 @@ double TuringHMMAImpgemm::ExcuteTimer(const ir::Node* node, OptKernelOptions& op
         return 0.0f;
     } else { // Give the default kernel
         attr_param_.extra_param.algo_info.algo_name = "nvSwzlSm75Fp16Conv_hmma1688_nhwc_fn_b256x32_w64x32_k64_buf2";
-        attr_param_.extra_param.algo_info.kid = 0; // TODO
+        attr_param_.extra_param.algo_info.kid = 5727;
         attr_param_.extra_param.algo_info.splitk = 1;
         attr_param_.extra_param.algo_info.splitf = 1;
         attr_param_.extra_param.algo_info.ParseAlgoName();
