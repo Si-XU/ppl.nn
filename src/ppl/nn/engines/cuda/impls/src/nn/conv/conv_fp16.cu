@@ -43,11 +43,64 @@
 
 #define TIMES 4
 
+#define ASSIGN_TO_HCONV_VEC() \
+        int4_addr_vec_t dA_vec;            \
+        int4_addr_vec_t dB_vec;            \
+        int4_addr_vec_t dC_vec;            \
+        int_vec_t num_flt_per_grp_vec;     \
+        int_vec_t num_flt_per_grp_pad_vec; \
+        int_vec_t has_bias_vec;            \
+        int4_addr_vec_t bias_vec;          \
+        int_vec_t has_relu_vec;            \
+        bool_vec_t has_clip_vec;           \
+        half2_vec_t clip_min_vec;          \
+        half2_vec_t clip_max_vec;          \
+        int_vec_t has_prelu_vec;           \
+        void_addr_vec_t prelu_vec;         \
+        bool_vec_t has_elt_vec;            \
+        int4_addr_vec_t pre_data_vec;      \
+        int_vec_t has_elt_relu_vec;        \
+        bool_vec_t has_elt_clip_vec;       \
+        half2_vec_t elt_clip_min_vec;      \
+        half2_vec_t elt_clip_max_vec;      \
+        int_vec_t has_elt_prelu_vec;       \
+        void_addr_vec_t elt_prelu_vec;     \
+        half_vec_t leaky_vec;              \
+        half_vec_t elt_leaky_vec;          \
+        bool_vec_t has_concat_vec;         \
+        int_vec_t concat_offset_v8_vec;    \
+        int_vec_t concat_stride_v8_vec;    \
+        \
+        dA_vec.idx[0] = pad_input;                               \
+        dB_vec.idx[0] = d_flt;                                   \
+        dC_vec.idx[0] = conv_out;                                \
+        num_flt_per_grp_vec.idx[0] = num_flt_per_grp;            \
+        num_flt_per_grp_pad_vec.idx[0] = num_flt_per_grp_pad;    \
+        has_bias_vec.idx[0] = conv_param.has_bias;               \
+        bias_vec.idx[0] = bias;                                  \
+        has_relu_vec.idx[0] = fuse_param.has_activation;         \
+        has_clip_vec.idx[0] = fuse_param.has_clip;               \
+        clip_min_vec.idx[0] = clip_min;                          \
+        clip_max_vec.idx[0] = clip_max;                          \
+        has_prelu_vec.idx[0] = fuse_param.has_prelu;             \
+        prelu_vec.idx[0] = (void *) fuse_param.prelu;            \
+        has_elt_vec.idx[0] = fuse_param.has_elt;                 \
+        pre_data_vec.idx[0] = (int4 *)fuse_param.pre_data;       \
+        has_elt_relu_vec.idx[0] = fuse_param.has_elt_activation; \
+        has_elt_clip_vec.idx[0] = fuse_param.has_elt_clip;       \
+        elt_clip_min_vec.idx[0] = elt_clip_min;                  \
+        elt_clip_max_vec.idx[0] = elt_clip_max;                  \
+        has_elt_prelu_vec.idx[0] = fuse_param.has_elt_prelu;     \
+        elt_prelu_vec.idx[0] = (void *)fuse_param.elt_prelu;     \
+        leaky_vec.idx[0] = leaky;                                \
+        elt_leaky_vec.idx[0] = elt_leaky;                        \
+        has_concat_vec.idx[0] = fuse_param.has_concat;           \
+        concat_offset_v8_vec.idx[0] = concat_offset_v8;          \
+        concat_stride_v8_vec.idx[0] = concat_stride_v8;          \
+
 #define SPK_KPARAM_LIST                                    \
-    pad_input,                                             \
-        d_flt,                                             \
-        conv_out,                                          \
-        kloop_num,                                         \
+        dA_vec, dB_vec, dC_vec,                            \
+        1, kloop_num,                                      \
         in_lut, in_lut_size,                               \
         flt_lut, flt_lut_size,                             \
         num_chl_per_spk_head, num_chl_per_spk_tail,        \
@@ -57,48 +110,45 @@
         conv_param.in_num, conv_param.num_grp,             \
         num_chl_per_grp, num_chl_per_grp_pad,              \
         conv_param.flt_height, conv_param.flt_width,       \
-        num_flt_per_grp, num_flt_per_grp_pad,              \
+        num_flt_per_grp_vec, num_flt_per_grp_pad_vec,      \
         conv_param.out_height, conv_param.out_width,       \
         conv_param.stride_height, conv_param.stride_width, \
         conv_param.pad_height, conv_param.pad_width,       \
         conv_param.hole_height, conv_param.hole_width,     \
         conv_param.has_bias, (int *)bias
 
-#define LUT_KPARAM_LIST                                               \
-    pad_input,                                                        \
-        d_flt,                                                        \
-        conv_out,                                                     \
-        kloop_num,                                                    \
-        in_lut, in_lut_size,                                          \
-        flt_lut, flt_lut_size,                                        \
-        in_hw, out_hw,                                                \
-        flt_hw, splitk,                                               \
-        conv_param.in_height, conv_param.in_width,                    \
-        conv_param.in_num, conv_param.num_grp,                        \
-        num_chl_per_grp, num_chl_per_grp_pad,                         \
-        conv_param.flt_height, conv_param.flt_width,                  \
-        num_flt_per_grp, num_flt_per_grp_pad,                         \
-        conv_param.out_height, conv_param.out_width,                  \
-        conv_param.stride_height, conv_param.stride_width,            \
-        conv_param.pad_height, conv_param.pad_width,                  \
-        conv_param.hole_height, conv_param.hole_width,                \
-        conv_param.has_bias, bias,                                    \
-        fuse_param.has_activation, clip_min,                          \
-        fuse_param.has_clip, clip_max,                                \
-        fuse_param.has_prelu, (const void *)fuse_param.prelu,         \
-        fuse_param.has_elt, (const int4 *)fuse_param.pre_data,        \
-        fuse_param.has_elt_activation, elt_clip_min,                  \
-        fuse_param.has_elt_clip, elt_clip_max,                        \
-        fuse_param.has_elt_prelu, (const void *)fuse_param.elt_prelu, \
-        leaky, elt_leaky,                                             \
-        fuse_param.has_concat, concat_offset_v8,                      \
-        concat_stride_v8
+#define LUT_KPARAM_LIST                                    \
+        dA_vec, dB_vec, dC_vec,                            \
+        1, kloop_num,                                      \
+        kloop_num,                                         \
+        in_lut, in_lut_size,                               \
+        flt_lut, flt_lut_size,                             \
+        in_hw, out_hw,                                     \
+        flt_hw, splitk,                                    \
+        conv_param.in_height, conv_param.in_width,         \
+        conv_param.in_num, conv_param.num_grp,             \
+        num_chl_per_grp, num_chl_per_grp_pad,              \
+        conv_param.flt_height, conv_param.flt_width,       \
+        num_flt_per_grp_vec, num_flt_per_grp_pad_vec,      \
+        conv_param.out_height, conv_param.out_width,       \
+        conv_param.stride_height, conv_param.stride_width, \
+        conv_param.pad_height, conv_param.pad_width,       \
+        conv_param.hole_height, conv_param.hole_width,     \
+        has_bias_vec, bias_vec,                            \
+        has_relu_vec, has_clip_vec,                        \
+        clip_min_vec, clip_max_vec,                        \
+        has_prelu_vec, prelu_vec,                          \
+        has_elt_vec, pre_data_vec,                         \
+        has_elt_relu_vec, has_elt_clip_vec,                \
+        elt_clip_min_vec, elt_clip_max_vec,                \
+        has_elt_prelu_vec, elt_prelu_vec,                  \
+        leaky_vec,        elt_leaky_vec,                   \
+        has_concat_vec, concat_offset_v8_vec,              \
+        concat_stride_v8_vec
 
 #define SWZL_SPK_KPARAM_LIST                               \
-        d_flt,                                             \
-        pad_input,                                         \
-        conv_out,                                          \
-        kloop_num,                                         \
+        dB_vec, dA_vec, dC_vec,                            \
+        1, kloop_num,                                      \
         in_lut, in_lut_size,                               \
         flt_lut, flt_lut_size,                             \
         num_chl_per_spk_head, num_chl_per_spk_tail,        \
@@ -108,74 +158,70 @@
         conv_param.in_num, conv_param.num_grp,             \
         num_chl_per_grp, num_chl_per_grp_pad,              \
         conv_param.flt_height, conv_param.flt_width,       \
-        num_flt_per_grp, num_flt_per_grp_pad,              \
+        num_flt_per_grp_vec, num_flt_per_grp_pad_vec,      \
         conv_param.out_height, conv_param.out_width,       \
         conv_param.stride_height, conv_param.stride_width, \
         conv_param.pad_height, conv_param.pad_width,       \
         conv_param.hole_height, conv_param.hole_width,     \
         conv_param.has_bias, (int *)bias
 
-#define SWZL_LUT_KPARAM_LIST                                          \
-        d_flt,                                                        \
-        pad_input,                                                    \
-        conv_out,                                                     \
-        kloop_num,                                                    \
-        in_lut, in_lut_size,                                          \
-        flt_lut, flt_lut_size,                                        \
-        in_hw, out_hw,                                                \
-        flt_hw, splitk,                                               \
-        conv_param.in_height, conv_param.in_width,                    \
-        conv_param.in_num, conv_param.num_grp,                        \
-        num_chl_per_grp, num_chl_per_grp_pad,                         \
-        conv_param.flt_height, conv_param.flt_width,                  \
-        num_flt_per_grp, num_flt_per_grp_pad,                         \
-        conv_param.out_height, conv_param.out_width,                  \
-        conv_param.stride_height, conv_param.stride_width,            \
-        conv_param.pad_height, conv_param.pad_width,                  \
-        conv_param.hole_height, conv_param.hole_width,                \
-        conv_param.has_bias, bias,                                    \
-        fuse_param.has_activation, clip_min,                          \
-        fuse_param.has_clip, clip_max,                                \
-        fuse_param.has_prelu, (const void *)fuse_param.prelu,         \
-        fuse_param.has_elt, (const int4 *)fuse_param.pre_data,        \
-        fuse_param.has_elt_activation, elt_clip_min,                  \
-        fuse_param.has_elt_clip, elt_clip_max,                        \
-        fuse_param.has_elt_prelu, (const void *)fuse_param.elt_prelu, \
-        leaky, elt_leaky,                                             \
-        fuse_param.has_concat, concat_offset_v8,                      \
-        concat_stride_v8
+#define SWZL_LUT_KPARAM_LIST                               \
+        dB_vec, dA_vec, dC_vec,                            \
+        1, kloop_num,                                      \
+        in_lut, in_lut_size,                               \
+        flt_lut, flt_lut_size,                             \
+        in_hw, out_hw,                                     \
+        flt_hw, splitk,                                    \
+        conv_param.in_height, conv_param.in_width,         \
+        conv_param.in_num, conv_param.num_grp,             \
+        num_chl_per_grp, num_chl_per_grp_pad,              \
+        conv_param.flt_height, conv_param.flt_width,       \
+        num_flt_per_grp_vec, num_flt_per_grp_pad_vec,      \
+        conv_param.out_height, conv_param.out_width,       \
+        conv_param.stride_height, conv_param.stride_width, \
+        conv_param.pad_height, conv_param.pad_width,       \
+        conv_param.hole_height, conv_param.hole_width,     \
+        has_bias_vec, bias_vec,                            \
+        has_relu_vec, has_clip_vec,                        \
+        clip_min_vec, clip_max_vec,                        \
+        has_prelu_vec, prelu_vec,                          \
+        has_elt_vec, pre_data_vec,                         \
+        has_elt_relu_vec, has_elt_clip_vec,                \
+        elt_clip_min_vec, elt_clip_max_vec,                \
+        has_elt_prelu_vec, elt_prelu_vec,                  \
+        leaky_vec,        elt_leaky_vec,                   \
+        has_concat_vec, concat_offset_v8_vec,              \
+        concat_stride_v8_vec
 
-#define IDX_KPARAM_LIST                                               \
-    pad_input,                                                        \
-        d_flt,                                                        \
-        conv_out,                                                     \
-        kloop_num, koff_num_pad,                                      \
-        in_hw, out_hw,                                                \
-        flt_hw, out_nhw,                                              \
-        conv_param.in_height, conv_param.in_width,                    \
-        conv_param.in_num, conv_param.num_grp,                        \
-        conv_param.num_chl, num_chl_per_grp,                          \
-        in_chl_per_grp_pad, flt_chl_per_grp_pad,                      \
-        conv_param.flt_height, conv_param.flt_width,                  \
-        num_flt_per_grp, num_flt_per_grp_pad,                         \
-        conv_param.out_height, conv_param.out_width,                  \
-        conv_param.stride_height, conv_param.stride_width,            \
-        conv_param.pad_height, conv_param.pad_width,                  \
-        conv_param.hole_height, conv_param.hole_width,                \
-        conv_param.has_bias, bias,                                    \
-        fuse_param.has_activation, clip_min,                          \
-        fuse_param.has_clip, clip_max,                                \
-        fuse_param.has_prelu, (const void *)fuse_param.prelu,         \
-        fuse_param.has_elt, (const int4 *)fuse_param.pre_data,        \
-        fuse_param.has_elt_activation, elt_clip_min,                  \
-        fuse_param.has_elt_clip, elt_clip_max,                        \
-        fuse_param.has_elt_prelu, (const void *)fuse_param.elt_prelu, \
-        leaky, elt_leaky,                                             \
-        fuse_param.has_concat, concat_offset_v8,                      \
-        concat_stride_v8
+#define IDX_KPARAM_LIST                                    \
+        dA_vec, dB_vec, dC_vec,                            \
+        1, kloop_num, koff_num_pad,                        \
+        in_hw, out_hw,                                     \
+        flt_hw, out_nhw,                                   \
+        conv_param.in_height, conv_param.in_width,         \
+        conv_param.in_num, conv_param.num_grp,             \
+        conv_param.num_chl, num_chl_per_grp,               \
+        in_chl_per_grp_pad, flt_chl_per_grp_pad,           \
+        conv_param.flt_height, conv_param.flt_width,       \
+        num_flt_per_grp_vec, num_flt_per_grp_pad_vec,      \
+        conv_param.out_height, conv_param.out_width,       \
+        conv_param.stride_height, conv_param.stride_width, \
+        conv_param.pad_height, conv_param.pad_width,       \
+        conv_param.hole_height, conv_param.hole_width,     \
+        has_bias_vec, bias_vec,                            \
+        has_relu_vec, has_clip_vec,                        \
+        clip_min_vec, clip_max_vec,                        \
+        has_prelu_vec, prelu_vec,                          \
+        has_elt_vec, pre_data_vec,                         \
+        has_elt_relu_vec, has_elt_clip_vec,                \
+        elt_clip_min_vec, elt_clip_max_vec,                \
+        has_elt_prelu_vec, elt_prelu_vec,                  \
+        leaky_vec,        elt_leaky_vec,                   \
+        has_concat_vec, concat_offset_v8_vec,              \
+        concat_stride_v8_vec
 
 #define MERGE_KPARAM_LIST                                             \
-    conv_out, final_out,                                              \
+        conv_out, final_out,                                          \
         spk_height_v1, spk_width_v8,                                  \
         out_hw, splitk *splitf,                                       \
         conv_param.has_bias, bias,                                    \
@@ -422,6 +468,10 @@ double PPLCUDAConvolutionSelectKernel(
     __half leaky         = __float2half(fuse_param.leaky);
     __half elt_leaky     = __float2half(fuse_param.elt_leaky);
 
+    int4 *conv_out = final_out;
+
+    ASSIGN_TO_HCONV_VEC();
+
     float minTime = FLT_MAX;
 
     float elapsed;
@@ -452,7 +502,7 @@ double PPLCUDAConvolutionSelectKernel(
             if (!g_fp16_kvec[kid].CheckSplitfFeasible(splitf, splitk))
                 continue;
 
-            int4 *conv_out = (splitk > 1 || splitf > 1) ? splitk_buf : final_out;
+            dC_vec.idx[0] = (splitk > 1 || splitf > 1) ? splitk_buf : final_out;
 
             dim3 block_size, grid_size;
 
@@ -635,6 +685,8 @@ void PPLCUDAConvolutionForwardImp(
     __half2 elt_clip_max = __float2half2_rn(fuse_param.elt_clip_max);
     __half leaky         = __float2half(fuse_param.leaky);
     __half elt_leaky     = __float2half(fuse_param.elt_leaky);
+
+    ASSIGN_TO_HCONV_VEC();
 
     dim3 block_size, grid_size;
 
