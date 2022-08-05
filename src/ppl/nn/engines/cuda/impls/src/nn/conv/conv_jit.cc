@@ -563,11 +563,6 @@ float GetWarpOccupySMScore(
         return 0.8 - 0.15 * (cta_num_per_sm - 1);
     else // if(warp_num_per_sm >= 16)
         return 0.6 - 0.15 * (cta_num_per_sm - 1);
-
-    // if(warp_num_per_sm >= 10)
-    //     return (1 - (1.f * (warp_num_per_sm - 10) / 100));
-    // else
-    //     return (1 - (1.f * (10 - warp_num_per_sm) / 100));
 }
 
 float GetEfficiencyScore(
@@ -632,7 +627,6 @@ float GetOccupancyScore(
     int sm_num_of_max_occupy;
     int sm_num_of_min_occupy;
     if(tail_cta_num % sm_num != 0) {
-        // max_cta_num_on_sm * sm_num_of_max_occupy + min_cta_num_on_sm * (sm_num - sm_num_of_max_occupy) = tail_cta_num
         sm_num_of_max_occupy = (tail_cta_num - min_cta_num_on_sm * sm_num) / (max_cta_num_on_sm - min_cta_num_on_sm);
         sm_num_of_min_occupy = sm_num - sm_num_of_max_occupy;
     } else {
@@ -770,10 +764,6 @@ float Get2spkPipelineScore(
         int latency_dram
         )
 {
-    // kernel pipeline is divided into 2 stages, overlap pipeline and waiting pipeline
-    // stage-0, overlap pipeline: stalling cycles are hided by multi-buffers
-    // stage-1, waiting pipeline: mma pipe catches up exausting all buffers, thus still need to wait for mem pipe
-
     // mma part
     int warp_num_per_pb = DivUp(cta_size_in_warp, PB_NUM_PER_SM);
 
@@ -790,8 +780,6 @@ float Get2spkPipelineScore(
 
     int mem_issue_cycles_per_buf = cpi_ldg128_l1d * (mr_flt_l1d + mr_input_l1d) + cpi_ldg128_l2 * (mr_flt_l2 + mr_input_l2);
 
-    // int cycles_ideal = (kloop_num / k_mma) * cpi_mma;
-    // int cycles_ideal = kloop_num * mma_issue_cycles_per_buf;
     int cycles_ideal = DivUp(m_conv, m_mma) * \
                        DivUp(n_conv, n_mma) * \
                        DivUp(k_conv, k_mma) * \
@@ -834,15 +822,6 @@ float Get2spkPipelineScore(
                         waiting_stage_num * cycles_per_waiting_stage + \
                         cycles_reduce;
 
-    // int split = splitk * splitf;
-
-    // int cycles_split = (split == 1) ? 0 : (split * cpi_ldg128_l2 + latency_dram);
-    // int cycles_split = (split == 1) ? 0 : (split * latency_dram);
-
-    // float ratio = (200.f * kloop_total / (k_mma_max * 4)) / (cycles_kernel + cycles_split);
-    // float ratio = 200.0f / (cycles_kernel + cycles_split);
-    // float ratio = 200.0f * buf_num / (cycles_kernel);
-    // float ratio = 1.f * cycles_mma / cycles_mem;
     float ratio = 1.f * cycles_ideal / cycles_kernel;
 
     return  ratio;
@@ -879,10 +858,6 @@ float GetSwzlPipelineScore(
         int latency_dram
         )
 {
-    // kernel pipeline is divided into 2 stages, overlap pipeline and waiting pipeline
-    // stage-0, overlap pipeline: stalling cycles are hided by multi-buffers
-    // stage-1, waiting pipeline: mma pipe catches up exausting all buffers, thus still need to wait for mem pipe
-
     // mma part
     int warp_num_per_pb = DivUp(cta_size_in_warp, PB_NUM_PER_SM);
 
@@ -899,8 +874,6 @@ float GetSwzlPipelineScore(
 
     int mem_issue_cycles_per_buf = cpi_ldg128_l1d * (mr_flt_l1d + mr_input_l1d) + cpi_ldg128_l2 * (mr_flt_l2 + mr_input_l2);
 
-    // int cycles_ideal = 256 * cpi_mma;
-    // int cycles_ideal = kloop_num * mma_issue_cycles_per_buf;
     int cycles_ideal = DivUp(m_conv, m_mma) * \
                        DivUp(n_conv, n_mma) * \
                        DivUp(k_conv, k_mma) * \
@@ -940,8 +913,6 @@ float GetSwzlPipelineScore(
     int cycles_kernel = overlap_stage_num * cycles_per_overlap_stage + \
                         waiting_stage_num * cycles_per_waiting_stage;
 
-    // float ratio = 200.0f * buf_num / (cycles_kernel);
-    // float ratio = 1.f * cycles_mma / cycles_mem;
     float ratio = 1.f * cycles_ideal / (cycles_kernel * cta_launch_times);
 
     return  ratio;

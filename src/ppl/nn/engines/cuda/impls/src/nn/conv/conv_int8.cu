@@ -997,7 +997,7 @@ ppl::common::RetCode GetInt8ConvKernelNominees(
                     flt_size = 0;
 
                 // nv2spkConv_b64x64_w32x32_k64_s64_buf1
-                nominee.Set2spkKernelParam(64, 64, 64, 32, 32, 64, flt_size, 1, 128, 8192, 1, 1, mma_shape);
+                nominee.Set2spkKernelParam(64, 64, 64, 32, 32, 64, flt_size, 1, 128, 16384, 1, 1, mma_shape);
                 nominees.push_back(std::make_pair(nominee, 0.f));
             }
 
@@ -1069,7 +1069,7 @@ ppl::common::RetCode GetInt8ConvKernelNominees(
 
             if(nominees.size() == 0) {
                 // nvswzlConv_b128x128_w64x64_k64_buf1
-                nominee.SetSwzlKernelParam(128, 128, 64, 64, 64, flt_size, 1, 128, 32768, 1, 1, mma_shape);
+                nominee.SetSwzlKernelParam(128, 128, 64, 64, 64, flt_size, 1, 128, 16384, 1, 1, mma_shape);
                 nominees.push_back(std::make_pair(nominee, 0.f));
             }
         }
