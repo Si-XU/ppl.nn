@@ -52,6 +52,8 @@ AlgoFilterManager::AlgoFilterManager() {
     REGISTER_ALGO_FILTER_INFO("MMCVModulatedDeformConv2d", deform_conv_imp_);
     REGISTER_ALGO_FILTER_INFO("MatMul", matmul_imp_);
     REGISTER_ALGO_FILTER_INFO("Normal", normal_imp_);
+    REGISTER_ALGO_FILTER_INFO("HorizConv", horiz_turing_hmma_imp_);
+    REGISTER_ALGO_FILTER_INFO("HorizConv", horiz_turing_imma_imp_);
 }
 
 }}} // namespace ppl::nn::cuda

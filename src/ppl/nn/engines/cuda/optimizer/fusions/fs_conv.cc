@@ -20,6 +20,15 @@
 #include "ppl/nn/common/logger.h"
 #include "ppl/nn/engines/cuda/optimizer/opt_kernel.h"
 #include "ppl/nn/engines/cuda/params/conv_extra_param.h"
+#include "ppl/nn/engines/cuda/optimizer/opt_kernel_creator_manager.h"
+
+#define ADDPARAM(horiz_param, conv_param) {                                                                          \
+    horiz_param->extra_param.size++;                                                                                 \
+    horiz_param->extra_param.fuse_info_list.push_back(conv_param->extra_param.fuse_info);                            \
+    horiz_param->extra_param.bias_term_list.push_back(conv_param->extra_param.bias_term);                            \
+    horiz_param->extra_param.weight_index_list.push_back(node->GetInputCount());                                     \
+    horiz_param->extra_param.is_initializer_weight_list.push_back(conv_param->extra_param.is_initializer_weight);    \
+ }
 
 using namespace ppl::common;
 
@@ -56,7 +65,35 @@ const RetCode ConvFusion::FuseConvWithNextNode(ir::Node* node, ir::Node* nextnod
     return RC_SUCCESS;
 }
 
-const bool ConvFusion::FuseTest(ir::Node* node, const OptKernelOptions& options,
+const RetCode ConvFusion::FuseConvWithBrotherNode(ir::Node* node, ir::Node* brothernode, const OptKernelOptions& options) {
+    auto topo = options.graph->topo.get();
+    auto connect_edge_id = node->GetInput(0);
+    auto connect_edge = topo->GetEdge(connect_edge_id);
+
+    for (uint32_t i = 0; i < brothernode->GetOutputCount(); ++i) {
+        auto edge_id = brothernode->GetOutput(i);
+        auto temp_edge = topo->GetEdge(edge_id);
+        temp_edge->SetProducer(node->GetId());
+        node->AddOutput(edge_id);
+    }
+
+    for (uint32_t i = 0; i < brothernode->GetInputCount(); ++i) {
+        auto edge_id = brothernode->GetInput(i);
+        if (edge_id == connect_edge_id || edge_id == INVALID_EDGEID) {
+            continue;
+        }
+        ir::Edge* edge = topo->GetEdge(edge_id);
+        edge->DelConsumer(brothernode->GetId());
+        edge->AddConsumer(node->GetId());
+        node->AddInput(edge_id);
+    }
+
+    connect_edge->DelConsumer(brothernode->GetId());
+    topo->DelNode(brothernode->GetId());
+    return RC_SUCCESS;
+}
+
+const bool ConvFusion::FuseVerti(ir::Node* node, const OptKernelOptions& options,
                                 std::function<ppl::common::RetCode(ir::Node*, const OptKernelOptions&)> canfuse) {
     auto topo = options.graph->topo.get();
     auto data = options.graph->data.get();
@@ -110,13 +147,90 @@ const bool ConvFusion::FuseTest(ir::Node* node, const OptKernelOptions& options,
     return false;
 }
 
-const RetCode ConvFusion::FuseNode(ir::Node* node, bool reliable, const OptKernelOptions& options) {
-    FuseTest(node, options, CanFuseRelu);
-    if (reliable) {
-        if (FuseTest(node, options, CanFuseElementwise)) {
-            FuseTest(node, options, CanFuseRelu);
+const bool ConvFusion::FuseHoriz(ir::Node* node, bool reliable, const OptKernelOptions& options,
+                                std::function<ppl::common::RetCode(ir::Node*, ir::Node*, const OptKernelOptions&)> canfuse) {
+    auto topo = options.graph->topo.get();
+    auto node_id = node->GetId();
+    auto self_opt_kernel = (CudaOptKernel*)(options.info->kernels[node_id].get());
+    CudaConvParam* self_param = (CudaConvParam*)self_opt_kernel->GetParam();
+
+    auto edge_id = node->GetInput(0);
+    auto edge = topo->GetEdge(edge_id);
+    if (topo->GetOutput(edge->GetName()) != INVALID_EDGEID) { // Can not fuse an output edge
+        return false;
+    }
+    if (topo->GetEdge(edge_id)->CalcConsumerCount() == 1) { // Can not fuse single comsumer edge
+        return false;
+    }
+    
+    std::vector<ir::Node*> node_list;
+    for (auto iter = topo->GetEdge(edge_id)->CreateConsumerIter(); iter.IsValid(); iter.Forward()) {
+        auto brothernode_id = iter.Get();
+        auto brothernode = topo->GetNode(brothernode_id);
+        if (node_id != brothernode_id && canfuse(node, brothernode, options)) {
+            node_list.push_back(brothernode);
         }
     }
+
+    if (node_list.size() > 0) {
+        node->SetType(ir::Node::Type("pmx", "HorizConv", 1));
+        auto creator = OptKernelCreatorManager::GetInstance()->Find("pmx", "HorizConv", 1);
+        if (!creator) {
+            LOG(ERROR) << "Cannot find creator for horiz conv kernel";
+            return false;
+        }
+
+        auto opt_kernel = unique_ptr<CudaOptKernel>((*creator)(node));
+        if (!opt_kernel) {
+            LOG(ERROR) << "create Kernel failed: oom";
+            return false;
+        }
+        auto param = (CudaHorizConvParam*)(opt_kernel->GetParam());
+        if (param == nullptr) {
+            LOG(ERROR) << "Can not find param.";
+            return false;
+        }
+
+        ADDPARAM(param, self_param);
+        param->param = self_param->param;
+        param->extra_param.algo_info = self_param->extra_param.algo_info;
+        param->extra_param.weight_index_list[0] = 1;
+
+        for (uint32_t i = 0; i < node_list.size(); ++i) {
+            auto brothernode = node_list[i];
+            LOG(DEBUG) << "Fuse node[" << node->GetName() << "] and brothernode[" << brothernode->GetName() << "]";
+
+            // Fuse vertical nodes first
+            FuseVerti(brothernode, options, CanFuseRelu);
+            if (reliable) {
+                if (FuseVerti(brothernode, options, CanFuseElementwise)) {
+                    FuseVerti(brothernode, options, CanFuseRelu);
+                }
+            }
+
+            auto brothernode_id = brothernode->GetId();
+            auto brother_opt_kernel = (CudaOptKernel*)(options.info->kernels[brothernode_id].get());
+            CudaConvParam* brother_param = (CudaConvParam*)brother_opt_kernel->GetParam();
+            ADDPARAM(param, brother_param);
+            options.info->kernels.erase(brothernode_id);
+            FuseConvWithBrotherNode(node, brothernode, options);
+        }
+
+        opt_kernel->Init(options);
+        options.info->kernels.erase(node_id);
+        options.info->kernels.emplace(node_id, std::move(opt_kernel));
+    }
+    return false;
+}
+
+const RetCode ConvFusion::FuseNode(ir::Node* node, bool reliable, const OptKernelOptions& options) {
+    FuseVerti(node, options, CanFuseRelu);
+    if (reliable) {
+        if (FuseVerti(node, options, CanFuseElementwise)) {
+            FuseVerti(node, options, CanFuseRelu);
+        }
+    }
+    FuseHoriz(node, reliable, options, CanFuseConv);
     return RC_SUCCESS;
 }
 

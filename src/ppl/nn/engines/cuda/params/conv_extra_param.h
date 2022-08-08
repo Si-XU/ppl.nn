@@ -46,9 +46,24 @@ struct ConvExtraParam {
     bool bias_term = false;
 };
 
+struct HorizConvExtraParam {
+    static const int64_t HORIZ_SIZE = 6;
+    ConvAlgoInfo algo_info;
+    std::vector<ConvFusionInfo> fuse_info_list;
+    std::vector<bool> is_initializer_weight_list;
+    std::vector<bool> bias_term_list;
+    std::vector<int32_t> weight_index_list;
+    uint32_t size = 0;
+};
+
 struct CudaConvParam final {
     ppl::nn::onnx::ConvParam param;
     ConvExtraParam extra_param;
+};
+
+struct CudaHorizConvParam final {
+    ppl::nn::onnx::ConvParam param;
+    HorizConvExtraParam extra_param;
 };
 
 ppl::common::RetCode ConvertToForwardConvParam(const TensorShape& shape_in0, const TensorShape& shape_in1,

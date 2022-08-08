@@ -27,9 +27,13 @@ public:
     const ppl::common::RetCode FuseNode(ir::Node* node, bool reliable, const OptKernelOptions& options) override;
 
 private:
-    const bool FuseTest(ir::Node* node, const OptKernelOptions& options,
+    const bool FuseVerti(ir::Node* node, const OptKernelOptions& options,
                         std::function<ppl::common::RetCode(ir::Node*, const OptKernelOptions&)>);
+    const bool FuseHoriz(ir::Node* node, bool reliable, const OptKernelOptions& options,
+                        std::function<ppl::common::RetCode(ir::Node*, ir::Node*, const OptKernelOptions&)>);
     const ppl::common::RetCode FuseConvWithNextNode(ir::Node* node, ir::Node* nextnode,
+                                                    const OptKernelOptions& options);
+    const ppl::common::RetCode FuseConvWithBrotherNode(ir::Node* node, ir::Node* brothernode,
                                                     const OptKernelOptions& options);
 
     static bool CanFuseRelu(ir::Node* nextnode, const OptKernelOptions& options) {
@@ -67,6 +71,37 @@ private:
             return true;
         }
         return false;
+    }
+
+    static bool CanFuseConv(ir::Node* node, ir::Node* brothernode, const OptKernelOptions& options) {
+        if (brothernode->GetType().name != "Conv") {
+            return false;
+        }
+
+        // two conv must have same attr params and fileter size, but they can have different c_out
+        const TensorShape& shape1 = *options.tensors->find(node->GetInput(1))->second->GetShape();
+        const TensorShape& shape2 = *options.tensors->find(brothernode->GetInput(1))->second->GetShape();
+        if (shape1.GetDimCount() != 4 || shape2.GetDimCount() != 4) {
+            return false;
+        }
+        for (uint32_t i = 1; i < shape1.GetDimCount(); ++i) { // skip c_out (dim0).
+            if (shape1.GetDim(i) != shape2.GetDim(i)) {
+                return false;
+            }
+        }
+
+        auto data = options.graph->data;
+        auto param_it_0 = data->attrs.find(node->GetId());
+        auto param_it_1 = data->attrs.find(brothernode->GetId());
+        if (param_it_0 == data->attrs.end() || param_it_1 == data->attrs.end()) {
+            return false;
+        }
+
+        if (!param_it_0->second->Equals(param_it_1->second.get())) {
+            return false;
+        }
+
+        return true;
     }
 };
 

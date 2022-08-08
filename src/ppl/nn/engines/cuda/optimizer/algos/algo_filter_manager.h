@@ -24,6 +24,7 @@
 #include "ppl/nn/engines/cuda/optimizer/algos/algo_conv.h"
 #include "ppl/nn/engines/cuda/optimizer/algos/algo_convtranspose.h"
 #include "ppl/nn/engines/cuda/optimizer/algos/algo_gemm.h"
+#include "ppl/nn/engines/cuda/optimizer/algos/algo_horizconv.h"
 #include "ppl/nn/engines/cuda/optimizer/algos/algo_matmul.h"
 #include "ppl/nn/engines/cuda/optimizer/algos/algo_lstm.h"
 #include "ppl/nn/engines/cuda/optimizer/algos/algo_deform_conv.h"
@@ -75,6 +76,9 @@ private:
     NormalAlgorithm normal_imp_;
     TuringIMMAImpgemm turing_imma_imp_;
     TuringHMMAImpgemm turing_hmma_imp_;
+    HorizTuringIMMAImpgemm horiz_turing_imma_imp_;
+    HorizTuringHMMAImpgemm horiz_turing_hmma_imp_;
+
 };
 
 }}} // namespace ppl::nn::cuda
