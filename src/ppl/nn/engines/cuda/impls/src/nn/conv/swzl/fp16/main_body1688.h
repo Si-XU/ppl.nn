@@ -60,21 +60,31 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
     /////////////////////////
     //  cta layout
-    uint cta_idx   = 0;
-    uint cta_idy   = 0;
+    uint flt_nid  = 0;
+    while(blockIdx.y >= flt_vec.idx[flt_nid]) flt_nid++;
+
+    int4 * dA = dA_vec[flt_nid];
+    int4 * dB = dB_vec[flt_nid];
+    int4 * dC = dC_vec[flt_nid];
+
+    int num_flt_per_grp = num_flt_per_grp_vec.idx[flt_nid];
+    int num_flt_per_grp_pad = num_flt_per_grp_pad_vec.idx[flt_nid];
+
+    uint cta_idy  = flt_nid == 0 ? blockIdx.y : blockIdx.y - flt_vec.idx[flt_nid - 1];
+    uint cta_idx  = blockIdx.x;
 
     uint lsb_y_mask = 0x7;
     uint lsb_y_bits = 3;
 
     while(1)
     {
-        uint msb_cta_y  =  blockIdx.y & (~lsb_y_mask);
-        uint lsb_cta_y  =  blockIdx.y &   lsb_y_mask;
+        uint msb_cta_y  =  cta_idy & (~lsb_y_mask);
+        uint lsb_cta_y  =  cta_idy &   lsb_y_mask;
 
-        uint flip_cta_y =  blockIdx.y &  (lsb_y_mask + 0x1);
-        uint tail_cta_y =  blockIdx.y |   lsb_y_mask;
+        uint flip_cta_y =  cta_idy &  (lsb_y_mask + 0x1);
+        uint tail_cta_y =  cta_idy |   lsb_y_mask;
 
-        uint local_cta_id = lsb_cta_y * gridDim.x + blockIdx.x;
+        uint local_cta_id = lsb_cta_y * gridDim.x + cta_idx;
 
         if(tail_cta_y < gridDim.y)
         {
@@ -525,13 +535,6 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #endif
     __syncthreads();
 
-#if defined(ENABLE_FUSE)
-    uint concat_v4_off[OUTPUT_BLKS_PER_STEP];
-
-#pragma unroll
-    for (int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) { concat_v4_off[i] = 0; }
-#endif
-
 #if TILE_M_PER_WARP == 8
 #pragma unroll
     for(int s = 0; s < OUTPUT_STEPS / _2MMA_; s++)
@@ -551,21 +554,23 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
         __syncthreads();
 
 #if defined(ENABLE_FUSE)
-        ADD_BIAS_V4(has_bias, bias);
-#endif
+        ADD_BIAS_V4(has_bias_vec.idx[flt_nid], bias_vec.idx[flt_nid]);
 
-#if defined(ENABLE_FUSE)
+        uint concat_v4_off[OUTPUT_BLKS_PER_STEP];
+#pragma unroll
+        for (int i = 0; i < OUTPUT_BLKS_PER_STEP; i++)
+            concat_v4_off[i] = dCv4_idx[i] * num_flt_per_grp_pad_v8 * num_grp;
 
-        FUSE_RELU_V4(has_relu);
-        FUSE_CLIP_V4(has_clip, clip_max, clip_min);
-        // FUSE_PRELU_V4(has_prelu, prelu, leaky);
+        FUSE_RELU_V4(has_relu_vec.idx[flt_nid]);
+        FUSE_CLIP_V4(has_clip_vec.idx[flt_nid], clip_max_vec.idx[flt_nid], clip_min_vec.idx[flt_nid]);
+        // FUSE_PRELU_V4(has_prelu_vec.idx[flt_nid], prelu_vec.idx[flt_nid], leaky_vec.idx[flt_nid]);
 
-        FUSE_ELT_V4(has_elt, pre_data);
-        FUSE_RELU_V4(has_elt_relu);
-        FUSE_CLIP_V4(has_elt_clip, elt_clip_max, elt_clip_min);
-        // FUSE_PRELU_V4(has_elt_prelu, elt_prelu, elt_leaky);
+        FUSE_ELT_V4(has_elt_vec.idx[flt_nid], pre_data_vec.idx[flt_nid]);
+        FUSE_RELU_V4(has_elt_relu_vec.idx[flt_nid]);
+        FUSE_CLIP_V4(has_elt_clip_vec.idx[flt_nid], elt_clip_max_vec.idx[flt_nid], elt_clip_min_vec.idx[flt_nid]);
+        // FUSE_PRELU_V4(has_elt_prelu_vec.idx[flt_nid], elt_prelu_vec.idx[flt_nid], elt_leaky_vec.idx[flt_nid]);
 
-        SET_CONCAT_OFF_V4(has_concat, concat_v4_off);
+        SET_CONCAT_OFF_V4(has_concat_vec.idx[flt_nid], concat_offset_v8_vec.idx[flt_nid], concat_stride_v8_vec.idx[flt_nid]);
 #endif
 
         OUTPUT_BY_INT4(Rv4);

@@ -15,24 +15,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#if defined(ENABLE_FUSE)
-
-#define OUTPUT_PRC_HALF(_Rv4)                      \
-    {                                              \
-        if (dCv4_x_valid && dCv4_y_valid) {        \
-            dC[concat_v4_off + dCv4_off] = _Rv4[0]; \
-        }                                          \
-    }
-
-#else
-
 #define OUTPUT_PRC_HALF(_Rv4)               \
     {                                       \
         if (dCv4_x_valid && dCv4_y_valid) { \
             dC[dCv4_off] = _Rv4[0];         \
         }                                   \
     }
-#endif
 
 #define ADD_BIAS_V4(_has_bias, _bias)                                                       \
     {                                                                                       \
@@ -144,11 +132,11 @@
         }                                                                \
     }
 
-#define SET_CONCAT_OFF_V4(_has_concat, _concat_v4_off)                                         \
-    {                                                                                         \
-        if (_has_concat && dCv4_x_valid && dCv4_y_valid) {                                    \
-            dCv4_off = concat_offset_v8 + dCv4_idy * concat_stride_v8 + dCv4_base + dCv4_idx; \
-        }                                                                                     \
+#define SET_CONCAT_OFF_V4(_has_concat, _concat_offset_v8, _concat_stride_v8)                    \
+    {                                                                                           \
+        if (_has_concat && dCv4_x_valid && dCv4_y_valid) {                                      \
+            dCv4_off = _concat_offset_v8 + dCv4_idy * _concat_stride_v8 + dCv4_base + dCv4_idx; \
+        }                                                                                       \
     }
 
 #define JIT_FUSE_RELU_V4()                                           \
@@ -226,7 +214,7 @@
         }                                                            \
     }
 
-#define JIT_SET_CONCAT_OFF_V4(concat_v4_off)                                               \
-    {                                                                                     \
-        dCv4_off = concat_offset_v8 + dCv4_idy * concat_stride_v8 + dCv4_base + dCv4_idx; \
+#define JIT_SET_CONCAT_OFF_V4(_concat_offset_v8, _concat_stride_v8)                         \
+    {                                                                                       \
+        dCv4_off = _concat_offset_v8 + dCv4_idy * _concat_stride_v8 + dCv4_base + dCv4_idx; \
     }

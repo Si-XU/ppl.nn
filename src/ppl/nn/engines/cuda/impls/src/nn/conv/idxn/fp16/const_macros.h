@@ -48,8 +48,8 @@
         int4_addr_vec_t dA_vec,                          \
         int4_addr_vec_t dB_vec,                          \
         int4_addr_vec_t dC_vec,                          \
-        int hconv_num,                                   \
-        int_vec_t hconv_vec,                             \
+        int flt_vec_size,                                \
+        int_vec_t flt_vec,                               \
         int kloop_num, int koff_num_pad,                 \
         int in_hw,     int out_hw,                       \
         int flt_hw,    int out_nhw,                      \

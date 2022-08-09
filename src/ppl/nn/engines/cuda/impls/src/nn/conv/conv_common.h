@@ -155,7 +155,7 @@ struct kernel_info_t {
         smem_size = -1;
     }
 
-    kernel_info_t(int kid_, conv_ktype_t ktype_, const char kname_[], int8_lut_kernel_t * lut_kptr_, int8_spk_kernel_t * spk_kptr_, int8_idx_kernel_t * idx_kptr_)
+    kernel_info_t(int kid_, conv_ktype_t ktype_, const char *kname_, int8_lut_kernel_t * lut_kptr_, int8_spk_kernel_t * spk_kptr_, int8_idx_kernel_t * idx_kptr_)
     {
         kid      = kid_;
         ktype    = ktype_;
@@ -167,7 +167,7 @@ struct kernel_info_t {
         parse_kname();
     }
 
-    kernel_info_t(int kid_, conv_ktype_t ktype_, const char kname_[], lut_kernel_t * lut_kptr_, spk_kernel_t * spk_kptr_, idx_kernel_t idx_kptr_)
+    kernel_info_t(int kid_, conv_ktype_t ktype_, const char *kname_, lut_kernel_t * lut_kptr_, spk_kernel_t * spk_kptr_, idx_kernel_t * idx_kptr_)
     {
         kid      = kid_;
         ktype    = ktype_;
@@ -179,7 +179,7 @@ struct kernel_info_t {
         parse_kname();
     }
 
-    kernel_info_t(int kid_, conv_ktype_t ktype_, const char kname_[])
+    kernel_info_t(int kid_, conv_ktype_t ktype_, const char *kname_)
     {
         kid   = kid_;
         ktype = ktype_;

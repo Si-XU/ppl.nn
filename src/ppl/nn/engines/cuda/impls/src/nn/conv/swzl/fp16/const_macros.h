@@ -48,8 +48,8 @@
         int4_addr_vec_t dA_vec,                        \
         int4_addr_vec_t dB_vec,                        \
         int4_addr_vec_t dC_vec,                        \
-        int hconv_num,                                 \
-        int_vec_t hconv_vec,                           \
+        int flt_vec_size,                              \
+        int_vec_t flt_vec,                             \
         int kloop_num,                                 \
         struct lut_t in_lut,  int in_lut_size,         \
         struct lut_t flt_lut, int flt_lut_size,        \
@@ -74,8 +74,8 @@
         int4_addr_vec_t dA_vec,                        \
         int4_addr_vec_t dB_vec,                        \
         int4_addr_vec_t dC_vec,                        \
-        int hconv_num,                                 \
-        int_vec_t hconv_vec,                           \
+        int flt_vec_size,                              \
+        int_vec_t flt_vec,                             \
         int kloop_num,                                 \
         struct lut_t in_lut,  int in_lut_size,         \
         struct lut_t flt_lut, int flt_lut_size,        \

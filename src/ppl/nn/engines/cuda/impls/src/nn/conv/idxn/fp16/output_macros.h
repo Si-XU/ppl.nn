@@ -19,8 +19,6 @@
 // half output interface
 //////////////////////////////////////////////////////
 
-#if defined(ENABLE_FUSE)
-
 #define OUTPUT_BY_INT1() \
         { \
             _Pragma("unroll") \
@@ -36,26 +34,6 @@
             dCv1_y_valid[0] = (dCv1_idy[0] < out_nhw); \
             dCv1_y_valid[1] = (dCv1_idy[1] < out_nhw); \
         }
-
-#else
-
-#define OUTPUT_BY_INT1() \
-        { \
-            _Pragma("unroll") \
-            for(int i = 0; i < NUM_N_STEPS; i++) \
-            { \
-                if( dCv1_y_valid[0] && dCv1_x_valid[i] ) dCv1[dCv1_idy[0] * num_flt_v2 + dCv1_idx[i]] = C[Cv1_off + i]; \
-                \
-                if( dCv1_y_valid[1] && dCv1_x_valid[i] ) dCv1[dCv1_idy[1] * num_flt_v2 + dCv1_idx[i]] = C[Cv1_off + i + NUM_N_STEPS]; \
-            } \
-            \
-            dCv1_idy[0]  += TILE_M_PER_STEP; \
-            dCv1_idy[1]  += TILE_M_PER_STEP; \
-            dCv1_y_valid[0] = (dCv1_idy[0] < out_nhw); \
-            dCv1_y_valid[1] = (dCv1_idy[1] < out_nhw); \
-        }
-
-#endif
 
 //////////////////////////////////////////////////////
 // bias macros
@@ -239,16 +217,14 @@
 // concat macros
 //////////////////////////////////////////////////////
 
-#define SET_CONCAT_OFF_V1(_has_concat, _concat_v1_off0, _concat_v1_off1)                                                   \
-    {                                                                                                                      \
-        _concat_v1_off0 = dCv1_idy[0] * num_flt_v2;                                                                        \
-        _concat_v1_off1 = dCv1_idy[1] * num_flt_v2;                                                                        \
-        if (_has_concat) {                                                                                                 \
-            if (dCv1_y_valid[0])                                                                                           \
-                _concat_v1_off0 = concat_offset_v8 * _INT4_TO_4HALF2_ + dCv1_idy[0] * concat_stride_v8 * _INT4_TO_4HALF2_; \
-            if (dCv1_y_valid[1])                                                                                           \
-                _concat_v1_off1 = concat_offset_v8 * _INT4_TO_4HALF2_ + dCv1_idy[1] * concat_stride_v8 * _INT4_TO_4HALF2_; \
-        }                                                                                                                  \
+#define SET_CONCAT_OFF_V1(_has_concat, _concat_offset_v8, _concat_stride_v8)                                                \
+    {                                                                                                                       \
+        if (_has_concat) {                                                                                                  \
+            if (dCv1_y_valid[0])                                                                                            \
+                concat_v1_off0 = _concat_offset_v8 * _INT4_TO_4HALF2_ + dCv1_idy[0] * _concat_stride_v8 * _INT4_TO_4HALF2_; \
+            if (dCv1_y_valid[1])                                                                                            \
+                concat_v1_off1 = _concat_offset_v8 * _INT4_TO_4HALF2_ + dCv1_idy[1] * _concat_stride_v8 * _INT4_TO_4HALF2_; \
+        }                                                                                                                   \
     }
 
 //////////////////////////////////////////////////////
@@ -401,10 +377,10 @@
 // concat macros
 //////////////////////////////////////////////////////
 
-#define JIT_SET_CONCAT_OFF_V1(_concat_v1_off0, _concat_v1_off1)                                                        \
-    {                                                                                                                  \
-        if (dCv1_y_valid[0])                                                                                           \
-            _concat_v1_off0 = concat_offset_v8 * _INT4_TO_4HALF2_ + dCv1_idy[0] * concat_stride_v8 * _INT4_TO_4HALF2_; \
-        if (dCv1_y_valid[1])                                                                                           \
-            _concat_v1_off1 = concat_offset_v8 * _INT4_TO_4HALF2_ + dCv1_idy[1] * concat_stride_v8 * _INT4_TO_4HALF2_; \
+#define JIT_SET_CONCAT_OFF_V1(_concat_offset_v8, _concat_stride_v8)                                                     \
+    {                                                                                                                   \
+        if (dCv1_y_valid[0])                                                                                            \
+            concat_v1_off0 = _concat_offset_v8 * _INT4_TO_4HALF2_ + dCv1_idy[0] * _concat_stride_v8 * _INT4_TO_4HALF2_; \
+        if (dCv1_y_valid[1])                                                                                            \
+            concat_v1_off1 = _concat_offset_v8 * _INT4_TO_4HALF2_ + dCv1_idy[1] * _concat_stride_v8 * _INT4_TO_4HALF2_; \
     }

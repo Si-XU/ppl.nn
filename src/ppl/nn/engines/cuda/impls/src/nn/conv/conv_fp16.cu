@@ -43,10 +43,12 @@
 
 #define TIMES 4
 
-#define ASSIGN_TO_HCONV_VEC() \
+#define ASSIGN_TO_FLT_VEC() \
         int4_addr_vec_t dA_vec;            \
         int4_addr_vec_t dB_vec;            \
         int4_addr_vec_t dC_vec;            \
+        int flt_vec_size;                  \
+        int_vec_t flt_vec;                 \
         int_vec_t num_flt_per_grp_vec;     \
         int_vec_t num_flt_per_grp_pad_vec; \
         int_vec_t has_bias_vec;            \
@@ -74,6 +76,7 @@
         dA_vec.idx[0] = pad_input;                               \
         dB_vec.idx[0] = d_flt;                                   \
         dC_vec.idx[0] = conv_out;                                \
+        flt_vec_size = 1;                                        \
         num_flt_per_grp_vec.idx[0] = num_flt_per_grp;            \
         num_flt_per_grp_pad_vec.idx[0] = num_flt_per_grp_pad;    \
         has_bias_vec.idx[0] = conv_param.has_bias;               \
@@ -100,7 +103,8 @@
 
 #define SPK_KPARAM_LIST                                    \
         dA_vec, dB_vec, dC_vec,                            \
-        1, kloop_num,                                      \
+        flt_vec_size, flt_vec,                             \
+        kloop_num,                                         \
         in_lut, in_lut_size,                               \
         flt_lut, flt_lut_size,                             \
         num_chl_per_spk_head, num_chl_per_spk_tail,        \
@@ -119,7 +123,7 @@
 
 #define LUT_KPARAM_LIST                                    \
         dA_vec, dB_vec, dC_vec,                            \
-        1, kloop_num,                                      \
+        flt_vec_size, flt_vec,                             \
         kloop_num,                                         \
         in_lut, in_lut_size,                               \
         flt_lut, flt_lut_size,                             \
@@ -148,7 +152,8 @@
 
 #define SWZL_SPK_KPARAM_LIST                               \
         dB_vec, dA_vec, dC_vec,                            \
-        1, kloop_num,                                      \
+        flt_vec_size, flt_vec,                             \
+        kloop_num,                                         \
         in_lut, in_lut_size,                               \
         flt_lut, flt_lut_size,                             \
         num_chl_per_spk_head, num_chl_per_spk_tail,        \
@@ -167,7 +172,8 @@
 
 #define SWZL_LUT_KPARAM_LIST                               \
         dB_vec, dA_vec, dC_vec,                            \
-        1, kloop_num,                                      \
+        flt_vec_size, flt_vec,                             \
+        kloop_num,                                         \
         in_lut, in_lut_size,                               \
         flt_lut, flt_lut_size,                             \
         in_hw, out_hw,                                     \
@@ -195,7 +201,8 @@
 
 #define IDX_KPARAM_LIST                                    \
         dA_vec, dB_vec, dC_vec,                            \
-        1, kloop_num, koff_num_pad,                        \
+        flt_vec_size, flt_vec,                             \
+        kloop_num, koff_num_pad,                           \
         in_hw, out_hw,                                     \
         flt_hw, out_nhw,                                   \
         conv_param.in_height, conv_param.in_width,         \
@@ -470,7 +477,7 @@ double PPLCUDAConvolutionSelectKernel(
 
     int4 *conv_out = final_out;
 
-    ASSIGN_TO_HCONV_VEC();
+    ASSIGN_TO_FLT_VEC();
 
     float minTime = FLT_MAX;
 
@@ -522,6 +529,8 @@ double PPLCUDAConvolutionSelectKernel(
             }
 
             grid_size.z = conv_param.num_grp * splitk * splitf;
+
+            flt_vec.idx[0] = grid_size.y;
 
             cudaEventRecord(begin, stream);
 
@@ -686,7 +695,7 @@ void PPLCUDAConvolutionForwardImp(
     __half leaky         = __float2half(fuse_param.leaky);
     __half elt_leaky     = __float2half(fuse_param.elt_leaky);
 
-    ASSIGN_TO_HCONV_VEC();
+    ASSIGN_TO_FLT_VEC();
 
     dim3 block_size, grid_size;
 
@@ -706,6 +715,8 @@ void PPLCUDAConvolutionForwardImp(
     }
 
     grid_size.z = conv_param.num_grp * splitk * splitf;
+
+    flt_vec.idx[0] = grid_size.y;
 
     if (g_fp16_kvec[kid].ktype == CONV_IDXN_C2 || g_fp16_kvec[kid].ktype == CONV_IDXN_C4 ||
         g_fp16_kvec[kid].ktype == CONV_IDXN_C32) {
@@ -1552,6 +1563,8 @@ void PPLCUDAConvolutionForwardJitImp(
         grid_size.y = DivUp(num_flt_per_grp_pad, tile_n);
     }
     grid_size.z = conv_param.num_grp * splitk * splitf * algo_param.gemm_batch;
+
+    flt_vec.idx[0] = grid_size.y;
 
     const int4 *pre_data  = (const int4 *)fuse_param.pre_data;
     const void *prelu     = (const void *)fuse_param.prelu;

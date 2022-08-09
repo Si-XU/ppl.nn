@@ -15,8 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#if defined(ENABLE_FUSE)
-
 #define OUTPUT_BY_INT4(_Rv4) \
         { \
             _Pragma("unroll") for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
@@ -28,22 +26,6 @@
                 dCv4_x_valid[i]  = (dCv4_idx[i] / out_hw) < in_num; \
             } \
         }
-
-#else
-
-#define OUTPUT_BY_INT4(_Rv4) \
-        { \
-            _Pragma("unroll") for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
-            { \
-                if( dCv4_y_valid && dCv4_x_valid[i] ) \
-                    dC[dCv4_base + dCv4_idx[i] * num_flt_per_grp_pad_v8 * num_grp] = _Rv4[i]; \
-                \
-                dCv4_idx[i]   +=  OUTPUT_SIZE_X_IN_THD * OUTPUT_BLKS_PER_STEP; \
-                dCv4_x_valid[i]  = (dCv4_idx[i] / out_hw) < in_num; \
-            } \
-        }
-
-#endif
 
 //////////////////////////////////////////////////////
 // bias macros
@@ -209,13 +191,14 @@
 // concat macros
 //////////////////////////////////////////////////////
 
-#define SET_CONCAT_OFF_V4(_has_concat, _concat_v4_off) \
+#define SET_CONCAT_OFF_V4(_has_concat, _concat_offset_v8, _concat_stride_v8) \
         { \
-            _Pragma("unroll") \
-            for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
+            if(_has_concat) \
             { \
-	            _concat_v4_off[i] = (_has_concat) ? dCv4_idx[i] * concat_stride_v8 + concat_offset_v8 : dCv4_idx[i] * num_flt_per_grp_pad_v8 * num_grp; \
-	        } \
+                _Pragma("unroll") \
+                for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
+	                concat_v4_off[i] = dCv4_idx[i] * _concat_stride_v8 + _concat_offset_v8; \
+            }
         }
         
 //////////////////////////////////////////////////////
@@ -340,11 +323,9 @@
 // concat macros
 //////////////////////////////////////////////////////
 
-#define JIT_SET_CONCAT_OFF_V4(_has_concat, _concat_v4_off) \
+#define JIT_SET_CONCAT_OFF_V4(_concat_offset_v8, _concat_stride_v8) \
         { \
             _Pragma("unroll") \
             for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
-            { \
-	            _concat_v4_off[i] = (_has_concat) ? dCv4_idx[i] * concat_stride_v8 + concat_offset_v8 : dCv4_idx[i] * num_flt_per_grp_pad_v8 * num_grp; \
-	        } \
+	            concat_v4_off[i] = dCv4_idx[i] * _concat_stride_v8 + _concat_offset_v8; \
         }
