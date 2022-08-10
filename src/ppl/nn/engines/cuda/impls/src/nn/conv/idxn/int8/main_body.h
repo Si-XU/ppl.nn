@@ -53,7 +53,7 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 
     uint grp_id    = blockIdx.z;
 
-    uint img_chl_per_grp_pad_v16 = img_chl_per_grp_pad >> 4;
+    uint in_chl_per_grp_pad_v16 = in_chl_per_grp_pad >> 4;
 #if TILE_K_PER_STEP == 16
     uint flt_chl_per_grp_pad_v4  = flt_chl_per_grp_pad >> 2;
 #elif TILE_K_PER_STEP == 32

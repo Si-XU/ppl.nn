@@ -20,7 +20,7 @@
             _flt_w_id++; \
             in_w_id[0] += hole_width; \
             \
-            if(_flt_w_id == fltWidth) \
+            if(_flt_w_id == flt_width) \
             {\
                 _flt_w_id = 0; \
                 in_w_id[0] = in_w_start[0]; \
@@ -28,7 +28,7 @@
                 in_h_id[0] += hole_height; \
             } \
             \
-            if(_flt_h_id == fltHeight) \
+            if(_flt_h_id == flt_height) \
             { \
                 _flt_h_id = 0;   \
                 in_h_id[0] = in_h_start[0]; \
@@ -44,7 +44,7 @@
             _flt_w_id++; \
             in_w_id[0] += hole_width;        in_w_id[1] += hole_width; \
             \
-            if(_flt_w_id == fltWidth) \
+            if(_flt_w_id == flt_width) \
             {\
                 _flt_w_id = 0; \
                 in_w_id[0] = in_w_start[0];  in_w_id[1] = in_w_start[1]; \
@@ -52,7 +52,7 @@
                 in_h_id[0] += hole_height;   in_h_id[1] += hole_height; \
             } \
             \
-            if(_flt_h_id == fltHeight) \
+            if(_flt_h_id == flt_height) \
             { \
                 _flt_h_id = 0;   \
                 in_h_id[0] = in_h_start[0];  in_h_id[1] = in_h_start[1]; \
@@ -68,7 +68,7 @@
             _flt_w_id++; \
             in_w_id[0] += hole_width;        in_w_id[1] += hole_width;   in_w_id[2] += hole_width;  in_w_id[3] += hole_width; \
             \
-            if(_flt_w_id == fltWidth) \
+            if(_flt_w_id == flt_width) \
             { \
                 _flt_w_id = 0; \
                 in_w_id[0] = in_w_start[0];  in_w_id[1] = in_w_start[1]; in_w_id[2] = in_w_start[2];  in_w_id[3] = in_w_start[3]; \
@@ -76,7 +76,7 @@
                 in_h_id[0] += hole_height;   in_h_id[1] += hole_height;  in_h_id[2] += hole_height;   in_h_id[3] += hole_height; \
             } \
             \
-            if(_flt_h_id == fltHeight) \
+            if(_flt_h_id == flt_height) \
             { \
                 _flt_h_id = 0;   \
                 in_h_id[0] = in_h_start[0];  in_h_id[1] = in_h_start[1]; in_h_id[2] = in_h_start[2];  in_h_id[3] = in_h_start[3]; \
@@ -93,7 +93,7 @@
             in_w_id[0] += hole_width;        in_w_id[1] += hole_width;   in_w_id[2] += hole_width;  in_w_id[3] += hole_width; \
             in_w_id[4] += hole_width;        in_w_id[5] += hole_width;   in_w_id[6] += hole_width;  in_w_id[7] += hole_width; \
             \
-            if(_flt_w_id == fltWidth) \
+            if(_flt_w_id == flt_width) \
             { \
                 _flt_w_id = 0; \
                 in_w_id[0] = in_w_start[0];  in_w_id[1] = in_w_start[1]; in_w_id[2] = in_w_start[2];  in_w_id[3] = in_w_start[3]; \
@@ -103,7 +103,7 @@
                 in_h_id[4] += hole_height;   in_h_id[5] += hole_height;  in_h_id[6] += hole_height;   in_h_id[7] += hole_height; \
             } \
             \
-            if(_flt_h_id == fltHeight) \
+            if(_flt_h_id == flt_height) \
             { \
                 _flt_h_id = 0;   \
                 in_h_id[0] = in_h_start[0];  in_h_id[1] = in_h_start[1]; in_h_id[2] = in_h_start[2];  in_h_id[3] = in_h_start[3]; \
@@ -123,7 +123,7 @@
             in_w_id[8]  += hole_width;        in_w_id[9]  += hole_width;   in_w_id[10] += hole_width;  in_w_id[11] += hole_width; \
             in_w_id[12] += hole_width;        in_w_id[13] += hole_width;   in_w_id[14] += hole_width;  in_w_id[15] += hole_width; \
             \
-            if(_flt_w_id == fltWidth) \
+            if(_flt_w_id == flt_width) \
             { \
                 _flt_w_id = 0; \
                 in_w_id[0]  = in_w_start[0];   in_w_id[1]  = in_w_start[1];  in_w_id[2]  = in_w_start[2];   in_w_id[3]  = in_w_start[3]; \
@@ -137,7 +137,7 @@
                 in_h_id[12] += hole_height;        in_h_id[13] += hole_height;   in_h_id[14] += hole_height;  in_h_id[15] += hole_height; \
             } \
             \
-            if(_flt_h_id == fltHeight) \
+            if(_flt_h_id == flt_height) \
             { \
                 _flt_h_id = 0;   \
                 in_h_id[0]  = in_h_start[0];   in_h_id[1]  = in_h_start[1];  in_h_id[2]  = in_h_start[2];   in_h_id[3]  = in_h_start[3]; \

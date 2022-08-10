@@ -173,8 +173,8 @@
             int _in_h_id  =     _out_h_id * stride_height; \
             int _in_w_id  =     _out_w_id * stride_width; \
             \
-	        int _flt_h_id = spf_id / fltWidth; \
-	        int _flt_w_id = spf_id % fltWidth; \
+	        int _flt_h_id = spf_id / flt_width; \
+	        int _flt_w_id = spf_id % flt_width; \
             \
             _in_h_id =  _in_h_id + _flt_h_id * hole_height - pad_height; \
             _in_w_id =  _in_w_id + _flt_w_id * hole_width - pad_width;  \

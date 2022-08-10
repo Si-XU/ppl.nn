@@ -421,12 +421,12 @@ double PPLCUDAConvolutionSelectKernel(
 
     std::unordered_map<size_t, algo_param_t>::const_iterator conv_shape_hash_iterator = g_conv_shape_hash.find(conv_shape_hash);
 
-    if (conv_shape_hash_iterator != g_conv_shape_hash.end()) {
+    if(conv_shape_hash_iterator != g_conv_shape_hash.end()) {
         algo_param.kid    = conv_shape_hash_iterator->second.kid;
         algo_param.splitk = conv_shape_hash_iterator->second.splitk;
         algo_param.splitf = conv_shape_hash_iterator->second.splitf;
 
-        return ppl::common::RC_SUCCESS;
+        return 0.0f;
     }
 
     int pad_size = GetPadSize(type);
@@ -561,9 +561,12 @@ double PPLCUDAConvolutionSelectKernel(
                     lut_t in_lut, flt_lut;
                     int in_lut_size, flt_lut_size;
 
-                    InitializeInputLut(in_lut_size, in_lut.idx, conv_param.flt_height, conv_param.flt_width, conv_param.in_height, conv_param.in_width, conv_param.pad_height, conv_param.pad_width, conv_param.hole_height, conv_param.hole_width, num_chl_per_grp_pad, conv_param.num_grp, g_fp16_kvec[kid].tile_k_per_cta, pad_size);
+                    InitializeInputLut(in_lut_size, in_lut.idx, conv_param.flt_height, conv_param.flt_width, conv_param.in_height,
+                            conv_param.in_width, conv_param.pad_height, conv_param.pad_width, conv_param.hole_height, conv_param.hole_width,
+                            num_chl_per_grp_pad, conv_param.num_grp, g_fp16_kvec[kid].tile_k_per_cta, pad_size);
 
-                    InitializeFilterLut(flt_lut_size, flt_lut.idx, conv_param.flt_height, conv_param.flt_width, num_chl_per_grp_pad, g_fp16_kvec[kid].tile_k_per_cta, pad_size);
+                    InitializeFilterLut(flt_lut_size, flt_lut.idx, conv_param.flt_height, conv_param.flt_width, num_chl_per_grp_pad,
+                            g_fp16_kvec[kid].tile_k_per_cta, pad_size);
 
                     if (splitk == 1) {
                         g_fp16_kvec[kid].AdaptLutKernelSMemSize();
@@ -744,9 +747,12 @@ void PPLCUDAConvolutionForwardImp(
         lut_t in_lut, flt_lut;
         int in_lut_size, flt_lut_size;
 
-        InitializeInputLut(in_lut_size, in_lut.idx, conv_param.flt_height, conv_param.flt_width, conv_param.in_height, conv_param.in_width, conv_param.pad_height, conv_param.pad_width, conv_param.hole_height, conv_param.hole_width, num_chl_per_grp_pad, conv_param.num_grp, g_fp16_kvec[kid].tile_k_per_cta, pad_size);
+        InitializeInputLut(in_lut_size, in_lut.idx, conv_param.flt_height, conv_param.flt_width, conv_param.in_height,
+                conv_param.in_width, conv_param.pad_height, conv_param.pad_width, conv_param.hole_height, conv_param.hole_width,
+                num_chl_per_grp_pad, conv_param.num_grp, g_fp16_kvec[kid].tile_k_per_cta, pad_size);
 
-        InitializeFilterLut(flt_lut_size, flt_lut.idx, conv_param.flt_height, conv_param.flt_width, num_chl_per_grp_pad, g_fp16_kvec[kid].tile_k_per_cta, pad_size);
+        InitializeFilterLut(flt_lut_size, flt_lut.idx, conv_param.flt_height, conv_param.flt_width, num_chl_per_grp_pad,
+                g_fp16_kvec[kid].tile_k_per_cta, pad_size);
 
         if (splitk == 1) {
             g_fp16_kvec[kid].AdaptLutKernelSMemSize();
@@ -756,7 +762,6 @@ void PPLCUDAConvolutionForwardImp(
             else {
                 (g_fp16_kvec[kid].lut_kptr)<<<grid_size, block_size, smem_size, stream>>>(LUT_KPARAM_LIST);
             }
-
         } else {
             int num_chl_per_spk_head, num_chl_per_spk_tail;
 
@@ -1478,7 +1483,6 @@ float AlgoForwardTime(
     return elapsed;
 }
 
-
 void PPLCUDAConvolutionForwardJitImp(
     int device_id,
     cudaStream_t &stream,
@@ -1543,6 +1547,8 @@ void PPLCUDAConvolutionForwardJitImp(
     __half2 elt_clip_max = __float2half2_rn(fuse_param.elt_clip_max);
     __half leaky         = __float2half(fuse_param.leaky);
     __half elt_leaky     = __float2half(fuse_param.elt_leaky);
+
+    ASSIGN_TO_FLT_VEC();
 
     int tile_n = algo_param.tiles.n_cta;
     int tile_m = algo_param.tiles.m_cta;

@@ -112,8 +112,8 @@
             _in_id.z = _out_h_id   * stride_height   - pad_height; \
             _in_id.w = _out_nhw_id / out_hw; \
             \
-            _in_id.x = (_in_id.w * in_hw + _in_id.z * in_width + _in_id.y) * img_chl_per_grp_pad_v16 * num_grp + \
-                         grp_id  * img_chl_per_grp_pad_v16; \
+            _in_id.x = (_in_id.w * in_hw + _in_id.z * in_width + _in_id.y) * in_chl_per_grp_pad_v16 * num_grp + \
+                         grp_id  * in_chl_per_grp_pad_v16; \
             \
             _sm_base_v4[_tid] = _in_id; \
         }
@@ -124,12 +124,12 @@
             \
             int4 _in_off; \
             \
-            _in_off.y = ((_inNHWC_id /  img_chl_per_grp_pad_v16) % fltWidth              ) * hole_width; \
-            _in_off.z = ((_inNHWC_id / (img_chl_per_grp_pad_v16  * fltWidth)) % fltHeight) * hole_height; \
-            _in_off.w =   _inNHWC_id / (img_chl_per_grp_pad_v16  * fltWidth   * fltHeight); \
+            _in_off.y = ((_inNHWC_id /  in_chl_per_grp_pad_v16) % flt_width              ) * hole_width; \
+            _in_off.z = ((_inNHWC_id / (in_chl_per_grp_pad_v16  * flt_width)) % flt_height) * hole_height; \
+            _in_off.w =   _inNHWC_id / (in_chl_per_grp_pad_v16  * flt_width   * flt_height); \
             \
-            _in_off.x = (_in_off.w  * in_hw + _in_off.z * in_width + _in_off.y) * img_chl_per_grp_pad_v16 * num_grp + \
-                        (_inNHWC_id %  img_chl_per_grp_pad_v16); \
+            _in_off.x = (_in_off.w  * in_hw + _in_off.z * in_width + _in_off.y) * in_chl_per_grp_pad_v16 * num_grp + \
+                        (_inNHWC_id %  in_chl_per_grp_pad_v16); \
             \
             _sm_base_v4[SM_IN_ID_SIZE + _tid] = _in_off; \
          }

@@ -44,148 +44,205 @@
 #define TIMES 4
 #define __INT4__ 4
 
+#define INT8_ASSIGN_TO_FLT_VEC() \
+        int4_addr_vec_t dA_vec;            \
+        int4_addr_vec_t dB_vec;            \
+        int4_addr_vec_t dC_vec;            \
+        int flt_vec_size;                  \
+        int_vec_t flt_vec;                 \
+        int_vec_t num_flt_per_grp_vec;     \
+        int_vec_t num_flt_per_grp_pad_vec; \
+        int_vec_t has_bias_vec;            \
+        int4_addr_vec_t bias_vec;          \
+        float_vec_t in_scale_vec;          \
+        void_addr_vec_t d_flt_scale_vec;   \
+        float_vec_t out_scale_vec;         \
+        float_vec_t pre_scale_vec;         \
+        int_vec_t has_relu_vec;            \
+        bool_vec_t has_clip_vec;           \
+        half2_vec_t clip_min_vec;          \
+        half2_vec_t clip_max_vec;          \
+        int_vec_t has_prelu_vec;           \
+        void_addr_vec_t prelu_vec;         \
+        bool_vec_t has_elt_vec;            \
+        int4_addr_vec_t pre_data_vec;      \
+        int_vec_t has_elt_relu_vec;        \
+        bool_vec_t has_elt_clip_vec;       \
+        half2_vec_t elt_clip_min_vec;      \
+        half2_vec_t elt_clip_max_vec;      \
+        int_vec_t has_elt_prelu_vec;       \
+        void_addr_vec_t elt_prelu_vec;     \
+        half_vec_t leaky_vec;              \
+        half_vec_t elt_leaky_vec;          \
+        bool_vec_t has_concat_vec;         \
+        int_vec_t concat_offset_v8_vec;    \
+        int_vec_t concat_stride_v8_vec;    \
+        \
+        dA_vec.idx[0] = pad_input;                               \
+        dB_vec.idx[0] = d_flt;                                   \
+        dC_vec.idx[0] = conv_out;                                \
+        flt_vec_size = 1;                                        \
+        num_flt_per_grp_vec.idx[0] = num_flt_per_grp;            \
+        num_flt_per_grp_pad_vec.idx[0] = num_flt_per_grp_pad;    \
+        has_bias_vec.idx[0] = conv_param.has_bias;               \
+        bias_vec.idx[0] = bias;                                  \
+        in_scale_vec.idx[0] = quant_param.in_scale;              \
+        d_flt_scale_vec.idx[0] = quant_param.d_flt_scale;        \
+        out_scale_vec.idx[0] = quant_param.out_scale;            \
+        pre_scale_vec.idx[0] = quant_param.pre_scale;            \
+        has_relu_vec.idx[0] = fuse_param.has_activation;         \
+        has_clip_vec.idx[0] = fuse_param.has_clip;               \
+        clip_min_vec.idx[0] = clip_min;                          \
+        clip_max_vec.idx[0] = clip_max;                          \
+        has_prelu_vec.idx[0] = fuse_param.has_prelu;             \
+        prelu_vec.idx[0] = (void *) fuse_param.prelu;            \
+        has_elt_vec.idx[0] = fuse_param.has_elt;                 \
+        pre_data_vec.idx[0] = (int4 *)fuse_param.pre_data;       \
+        has_elt_relu_vec.idx[0] = fuse_param.has_elt_activation; \
+        has_elt_clip_vec.idx[0] = fuse_param.has_elt_clip;       \
+        elt_clip_min_vec.idx[0] = elt_clip_min;                  \
+        elt_clip_max_vec.idx[0] = elt_clip_max;                  \
+        has_elt_prelu_vec.idx[0] = fuse_param.has_elt_prelu;     \
+        elt_prelu_vec.idx[0] = (void *)fuse_param.elt_prelu;     \
+        leaky_vec.idx[0] = leaky;                                \
+        elt_leaky_vec.idx[0] = elt_leaky;                        \
+        has_concat_vec.idx[0] = fuse_param.has_concat;           \
+        concat_offset_v8_vec.idx[0] = concat_offset_v8;          \
+        concat_stride_v8_vec.idx[0] = concat_stride_v8;          \
+
 #define INT8_SPK_KPARAM_LIST                               \
-        pad_input,                                         \
-        d_flt,                                             \
-        conv_out,                                          \
+        dA_vec, dB_vec, dC_vec,                            \
+        flt_vec_size, flt_vec,                             \
         kloop_num,                                         \
-        in_lut,                   in_lut_size,             \
-        flt_lut,                  flt_lut_size,            \
-        num_chl_per_spk_head,                              \
-        num_chl_per_spk_tail,                              \
+        in_lut, in_lut_size,                               \
+        flt_lut, flt_lut_size,                             \
+        num_chl_per_spk_head, num_chl_per_spk_tail,        \
         in_hw, out_hw,                                     \
         flt_hw, splitk,                                    \
-        conv_param.in_height,     conv_param.in_width,     \
-        conv_param.in_num,        conv_param.num_grp,      \
-        num_chl_per_grp,          num_chl_per_grp_pad,     \
-        conv_param.flt_height,    conv_param.flt_width,    \
-        num_flt_per_grp,          num_flt_per_grp_pad,     \
-        conv_param.out_height,    conv_param.out_width,    \
+        conv_param.in_height, conv_param.in_width,         \
+        conv_param.in_num, conv_param.num_grp,             \
+        num_chl_per_grp, num_chl_per_grp_pad,              \
+        conv_param.flt_height, conv_param.flt_width,       \
+        num_flt_per_grp_vec, num_flt_per_grp_pad_vec,      \
+        conv_param.out_height, conv_param.out_width,       \
         conv_param.stride_height, conv_param.stride_width, \
-        conv_param.pad_height,    conv_param.pad_width,    \
-        conv_param.hole_height,   conv_param.hole_width,   \
-        conv_param.has_bias,      (int *)bias,             \
-        quant_param.in_scale,     quant_param.d_flt_scale
+        conv_param.pad_height, conv_param.pad_width,       \
+        conv_param.hole_height, conv_param.hole_width,     \
+        conv_param.has_bias, (int *)bias,                  \
+        in_scale_vec, d_flt_scale_vec
 
-#define INT8_LUT_KPARAM_LIST \
-            pad_input,                                                                  \
-            d_flt,                                                                      \
-            conv_out,                                                                   \
-            kloop_num,                                                                  \
-            in_lut,                        in_lut_size,                                 \
-    	    flt_lut,                       flt_lut_size,                                \
-            in_hw,                         out_hw,                                      \
-            flt_hw,                        splitk,                                      \
-            conv_param.in_height,          conv_param.in_width,                         \
-            conv_param.in_num,             conv_param.num_grp,                          \
-            num_chl_per_grp,               num_chl_per_grp_pad,                         \
-            conv_param.flt_height,         conv_param.flt_width,                        \
-            num_flt_per_grp,               num_flt_per_grp_pad,                         \
-            conv_param.out_height,         conv_param.out_width,                        \
-            conv_param.stride_height,      conv_param.stride_width,                     \
-            conv_param.pad_height,         conv_param.pad_width,                        \
-            conv_param.hole_height,        conv_param.hole_width,                       \
-            conv_param.has_bias,           bias,                                        \
-            quant_param.in_scale,          quant_param.d_flt_scale,                     \
-            quant_param.out_scale,         quant_param.pre_scale,                       \
-            fuse_param.has_activation,     clip_min,                                    \
-            fuse_param.has_clip,           clip_max,                                    \
-            fuse_param.has_prelu,          (const void *) fuse_param.prelu,             \
-            fuse_param.has_elt,            (const int4 *) fuse_param.pre_data,          \
-            fuse_param.has_elt_activation, elt_clip_min,                                \
-            fuse_param.has_elt_clip,       elt_clip_max,                                \
-            fuse_param.has_elt_prelu,      (const void *) fuse_param.elt_prelu,         \
-            leaky,                         elt_leaky,                                   \
-            fuse_param.has_concat,         concat_offset_v8,                            \
-            concat_stride_v8
+#define INT8_LUT_KPARAM_LIST                               \
+        dA_vec, dB_vec, dC_vec,                            \
+        flt_vec_size, flt_vec,                             \
+        kloop_num,                                         \
+        in_lut, in_lut_size,                               \
+        flt_lut, flt_lut_size,                             \
+        in_hw, out_hw,                                     \
+        flt_hw, splitk,                                    \
+        conv_param.in_height, conv_param.in_width,         \
+        conv_param.in_num, conv_param.num_grp,             \
+        num_chl_per_grp, num_chl_per_grp_pad,              \
+        conv_param.flt_height, conv_param.flt_width,       \
+        num_flt_per_grp_vec, num_flt_per_grp_pad_vec,      \
+        conv_param.out_height, conv_param.out_width,       \
+        conv_param.stride_height, conv_param.stride_width, \
+        conv_param.pad_height, conv_param.pad_width,       \
+        conv_param.hole_height, conv_param.hole_width,     \
+        has_bias_vec, bias_vec,                            \
+        in_scale_vec, d_flt_scale_vec,                     \
+        out_scale_vec, pre_scale_vec,                      \
+        has_relu_vec, has_clip_vec,                        \
+        clip_min_vec, clip_max_vec,                        \
+        has_prelu_vec, prelu_vec,                          \
+        has_elt_vec, pre_data_vec,                         \
+        has_elt_relu_vec, has_elt_clip_vec,                \
+        elt_clip_min_vec, elt_clip_max_vec,                \
+        has_elt_prelu_vec, elt_prelu_vec,                  \
+        leaky_vec,        elt_leaky_vec,                   \
+        has_concat_vec, concat_offset_v8_vec,              \
+        concat_stride_v8_vec
 
 #define INT8_SWZL_SPK_KPARAM_LIST                          \
-        d_flt,                                             \
-        pad_input,                                         \
-        conv_out,                                          \
+        dB_vec, dA_vec, dC_vec,                            \
+        flt_vec_size, flt_vec,                             \
         kloop_num,                                         \
-        in_lut,                   in_lut_size,             \
-        flt_lut,                  flt_lut_size,            \
-        num_chl_per_spk_head,                              \
-        num_chl_per_spk_tail,                              \
+        in_lut, in_lut_size,                               \
+        flt_lut, flt_lut_size,                             \
+        num_chl_per_spk_head, num_chl_per_spk_tail,        \
         in_hw, out_hw,                                     \
         flt_hw, splitk,                                    \
-        conv_param.in_height,     conv_param.in_width,     \
-        conv_param.in_num,        conv_param.num_grp,      \
-        num_chl_per_grp,          num_chl_per_grp_pad,     \
-        conv_param.flt_height,    conv_param.flt_width,    \
-        num_flt_per_grp,          num_flt_per_grp_pad,     \
-        conv_param.out_height,    conv_param.out_width,    \
+        conv_param.in_height, conv_param.in_width,         \
+        conv_param.in_num, conv_param.num_grp,             \
+        num_chl_per_grp, num_chl_per_grp_pad,              \
+        conv_param.flt_height, conv_param.flt_width,       \
+        num_flt_per_grp_vec, num_flt_per_grp_pad_vec,      \
+        conv_param.out_height, conv_param.out_width,       \
         conv_param.stride_height, conv_param.stride_width, \
-        conv_param.pad_height,    conv_param.pad_width,    \
-        conv_param.hole_height,   conv_param.hole_width,   \
-        conv_param.has_bias,      (int *)bias,             \
-        quant_param.in_scale,     quant_param.d_flt_scale
-
+        conv_param.pad_height, conv_param.pad_width,       \
+        conv_param.hole_height, conv_param.hole_width,     \
+        conv_param.has_bias, (int *)bias,                  \
+        in_scale_vec, d_flt_scale_vec
 
 #define INT8_SWZL_LUT_KPARAM_LIST \
-            d_flt,                                                                      \
-            pad_input,                                                                  \
-            conv_out,                                                                   \
-            kloop_num,                                                                  \
-            in_lut,                        in_lut_size,                                 \
-    	    flt_lut,                       flt_lut_size,                                \
-            in_hw,                         out_hw,                                      \
-            flt_hw,                        splitk,                                      \
-            conv_param.in_height,          conv_param.in_width,                         \
-            conv_param.in_num,             conv_param.num_grp,                          \
-            num_chl_per_grp,               num_chl_per_grp_pad,                         \
-            conv_param.flt_height,         conv_param.flt_width,                        \
-            num_flt_per_grp,               num_flt_per_grp_pad,                         \
-            conv_param.out_height,         conv_param.out_width,                        \
-            conv_param.stride_height,      conv_param.stride_width,                     \
-            conv_param.pad_height,         conv_param.pad_width,                        \
-            conv_param.hole_height,        conv_param.hole_width,                       \
-            conv_param.has_bias,           bias,                                        \
-            quant_param.in_scale,          quant_param.d_flt_scale,                     \
-            quant_param.out_scale,         quant_param.pre_scale,                       \
-            fuse_param.has_activation,     clip_min,                                    \
-            fuse_param.has_clip,           clip_max,                                    \
-            fuse_param.has_prelu,          (const void *) fuse_param.prelu,             \
-            fuse_param.has_elt,            (const int4 *) fuse_param.pre_data,          \
-            fuse_param.has_elt_activation, elt_clip_min,                                \
-            fuse_param.has_elt_clip,       elt_clip_max,                                \
-            fuse_param.has_elt_prelu,      (const void *) fuse_param.elt_prelu,         \
-            leaky,                         elt_leaky,                                   \
-            fuse_param.has_concat,         concat_offset_v8,                            \
-            concat_stride_v8
-
+        dB_vec, dA_vec, dC_vec,                            \
+        flt_vec_size, flt_vec,                             \
+        kloop_num,                                         \
+        in_lut, in_lut_size,                               \
+        flt_lut, flt_lut_size,                             \
+        in_hw, out_hw,                                     \
+        flt_hw, splitk,                                    \
+        conv_param.in_height, conv_param.in_width,         \
+        conv_param.in_num, conv_param.num_grp,             \
+        num_chl_per_grp, num_chl_per_grp_pad,              \
+        conv_param.flt_height, conv_param.flt_width,       \
+        num_flt_per_grp_vec, num_flt_per_grp_pad_vec,      \
+        conv_param.out_height, conv_param.out_width,       \
+        conv_param.stride_height, conv_param.stride_width, \
+        conv_param.pad_height, conv_param.pad_width,       \
+        conv_param.hole_height, conv_param.hole_width,     \
+        has_bias_vec, bias_vec,                            \
+        in_scale_vec, d_flt_scale_vec,                     \
+        out_scale_vec, pre_scale_vec,                      \
+        has_relu_vec, has_clip_vec,                        \
+        clip_min_vec, clip_max_vec,                        \
+        has_prelu_vec, prelu_vec,                          \
+        has_elt_vec, pre_data_vec,                         \
+        has_elt_relu_vec, has_elt_clip_vec,                \
+        elt_clip_min_vec, elt_clip_max_vec,                \
+        has_elt_prelu_vec, elt_prelu_vec,                  \
+        leaky_vec,        elt_leaky_vec,                   \
+        has_concat_vec, concat_offset_v8_vec,              \
+        concat_stride_v8_vec
 
 #define INT8_IDX_KPARAM_LIST \
-            pad_input,                                                                  \
-            d_flt,                                                                      \
-            conv_out,                                                                   \
-            kloop_num,                      koff_num_pad,                               \
-            in_hw,                         out_hw,                                      \
-            flt_hw,                        out_nhw,                                     \
-            conv_param.in_height,          conv_param.in_width,                         \
-            conv_param.in_num,             conv_param.num_grp,                          \
-            conv_param.num_chl,            num_chl_per_grp,                             \
-            in_chl_per_grp_pad,            flt_chl_per_grp_pad,                         \
-            conv_param.flt_height,         conv_param.flt_width,                        \
-            num_flt_per_grp,               num_flt_per_grp_pad,                         \
-            conv_param.out_height,         conv_param.out_width,                        \
-            conv_param.stride_height,      conv_param.stride_width,                     \
-            conv_param.pad_height,         conv_param.pad_width,                        \
-            conv_param.hole_height,        conv_param.hole_width,                       \
-            conv_param.has_bias,           bias,                                        \
-            quant_param.in_scale,          quant_param.d_flt_scale,                     \
-            quant_param.out_scale,         quant_param.pre_scale,                       \
-            fuse_param.has_activation,     clip_min,                                    \
-            fuse_param.has_clip,           clip_max,                                    \
-            fuse_param.has_prelu,          (const void *) fuse_param.prelu,             \
-            fuse_param.has_elt,            (const int4 *) fuse_param.pre_data,          \
-            fuse_param.has_elt_activation, elt_clip_min,                                \
-            fuse_param.has_elt_clip,       elt_clip_max,                                \
-            fuse_param.has_elt_prelu,      (const void *) fuse_param.elt_prelu,         \
-            leaky,                         elt_leaky,                                   \
-            fuse_param.has_concat,         concat_offset_v8,                            \
-            concat_stride_v8
+        dA_vec, dB_vec, dC_vec,                            \
+        flt_vec_size, flt_vec,                             \
+        kloop_num, koff_num_pad,                           \
+        in_hw, out_hw,                                     \
+        flt_hw, out_nhw,                                   \
+        conv_param.in_height, conv_param.in_width,         \
+        conv_param.in_num, conv_param.num_grp,             \
+        conv_param.num_chl, num_chl_per_grp,               \
+        in_chl_per_grp_pad, flt_chl_per_grp_pad,           \
+        conv_param.flt_height, conv_param.flt_width,       \
+        num_flt_per_grp_vec, num_flt_per_grp_pad_vec,      \
+        conv_param.out_height, conv_param.out_width,       \
+        conv_param.stride_height, conv_param.stride_width, \
+        conv_param.pad_height, conv_param.pad_width,       \
+        conv_param.hole_height, conv_param.hole_width,     \
+        has_bias_vec, bias_vec,                            \
+        in_scale_vec, d_flt_scale_vec,                     \
+        out_scale_vec, pre_scale_vec,                      \
+        has_relu_vec, has_clip_vec,                        \
+        clip_min_vec, clip_max_vec,                        \
+        has_prelu_vec, prelu_vec,                          \
+        has_elt_vec, pre_data_vec,                         \
+        has_elt_relu_vec, has_elt_clip_vec,                \
+        elt_clip_min_vec, elt_clip_max_vec,                \
+        has_elt_prelu_vec, elt_prelu_vec,                  \
+        leaky_vec,        elt_leaky_vec,                   \
+        has_concat_vec, concat_offset_v8_vec,              \
+        concat_stride_v8_vec
 
 #define INT8_MERGE_KPARAM_LIST \
         	conv_out,                      (int*)final_out,                             \
@@ -285,19 +342,19 @@ __inline__ size_t GetConvShapeHashKey(conv_param_t &conv_param)
 /* -----------------  INT8 KERNEL ------------------ */
 
 double PPLCUDAConvolutionSelectKernelInt8(
-        int device_id,
-        cudaStream_t &stream, 
-        ppl::common::datatype_t type,
-        int4* d_input,
-        int4* d_flt,
-        int4* d_output,
-        int4* bias,
-        int4* d_temp_buf, 
-        algo_param_t & algo_param,
-        conv_param_t &conv_param, 
-        quant_param_t &quant_param,
-        fuse_param_t &fuse_param,
-	    uint64_t workspace)
+    int device_id,
+    cudaStream_t &stream,
+    ppl::common::datatype_t type,
+    int4 *d_input,
+    int4 *d_flt,
+    int4 *d_output,
+    int4 *bias,
+    int4 *d_temp_buf,
+    algo_param_t &algo_param,
+    conv_param_t &conv_param,
+    quant_param_t &quant_param,
+    fuse_param_t &fuse_param,
+    uint64_t workspace)
 {
     cudaDeviceProp device_prop;
     cudaGetDeviceProperties(&device_prop, device_id);
@@ -325,34 +382,34 @@ double PPLCUDAConvolutionSelectKernelInt8(
     int num_chl_per_grp_pad = Align(num_chl_per_grp, pad_size);
     int num_flt_per_grp_pad = Align(num_flt_per_grp, pad_size);
 
-    int in_hw = conv_param.in_height * conv_param.in_width;
+    int in_hw  = conv_param.in_height * conv_param.in_width;
     int flt_hw = conv_param.flt_height * conv_param.flt_width;
     int out_hw = conv_param.out_height * conv_param.out_width;
 
     int concat_offset_v8 = fuse_param.concat_offset / pad_size;
     int concat_stride_v8 = fuse_param.concat_stride / pad_size;
 
-    bool  is_in_grp_pad = num_chl_per_grp_pad != num_chl_per_grp && conv_param.num_grp != 1;
+    bool is_in_grp_pad  = num_chl_per_grp_pad != num_chl_per_grp && conv_param.num_grp != 1;
     bool is_out_grp_pad = num_flt_per_grp_pad != num_flt_per_grp && conv_param.num_grp != 1;
 
     uint64_t buf_off_v4 = 0;
 
-    int4 *pad_input = d_input;
+    int4 *pad_input  = d_input;
     int4 *pad_output = d_output;
 
-    if(is_in_grp_pad) {
-	    pad_input = d_temp_buf; 
-	    buf_off_v4 += GetCvtInputSize(type, conv_param, num_chl_per_grp_pad) / (_4INT_TO_INT4_ * _INT_TO_4BYTE_);
+    if (is_in_grp_pad) {
+        pad_input = d_temp_buf;
+        buf_off_v4 += GetCvtInputSize(type, conv_param, num_chl_per_grp_pad) / (_4INT_TO_INT4_ * _INT_TO_4BYTE_);
 
         PPLCUDAConvolutionCvtInput(stream, pad_input, d_input, type, conv_param);
     }
 
-    if(is_out_grp_pad) {
-	    pad_output = d_temp_buf + buf_off_v4;
-	    buf_off_v4 += getCvtOutputSize(type, conv_param, num_flt_per_grp_pad) / (_4INT_TO_INT4_ * _INT_TO_4BYTE_);
-    } 
+    if (is_out_grp_pad) {
+        pad_output = d_temp_buf + buf_off_v4;
+        buf_off_v4 += getCvtOutputSize(type, conv_param, num_flt_per_grp_pad) / (_4INT_TO_INT4_ * _INT_TO_4BYTE_);
+    }
 
-    int4 * final_out = fuse_param.has_concat ? (int4 *) fuse_param.post_concat : pad_output;
+    int4 *final_out = fuse_param.has_concat ? (int4 *)fuse_param.post_concat : pad_output;
 
     int4 *splitk_buf = d_temp_buf + buf_off_v4;
 
@@ -363,6 +420,10 @@ double PPLCUDAConvolutionSelectKernelInt8(
     float leaky        = fuse_param.leaky;
     float elt_leaky    = fuse_param.elt_leaky;
 
+    int4 *conv_out = final_out;
+
+    INT8_ASSIGN_TO_FLT_VEC();
+
     float minTime = FLT_MAX;
 
     float elapsed;
@@ -372,13 +433,14 @@ double PPLCUDAConvolutionSelectKernelInt8(
 
     const int SPLITK_OPTIONS[] = {1, 2, 4, 8};
 
-    for(unsigned int spk = 0; spk < 4; spk++) {
+    for (unsigned int spk = 0; spk < 4; spk++) {
         unsigned int splitk = SPLITK_OPTIONS[spk];
 
-        for(unsigned int kid = 0; kid < g_int8_kvec.size(); kid++) {
+        for (unsigned int kid = 0; kid < g_int8_kvec.size(); kid++) {
             unsigned int splitf = (g_int8_kvec[kid].ktype == CONV_2SPK_FS) ? flt_hw : 1;
 
-            if(!g_int8_kvec[kid].CheckKernelTypeFeasibleInt8(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk)) continue;
+            if (!g_int8_kvec[kid].CheckKernelTypeFeasibleInt8(conv_param.flt_height, conv_param.flt_width, num_chl_per_grp, splitk))
+                continue;
 
             if (!g_int8_kvec[kid].CheckSMemSizeFeasible(device_prop))
                 continue;
@@ -386,13 +448,13 @@ double PPLCUDAConvolutionSelectKernelInt8(
             if (!g_int8_kvec[kid].CheckGpuArchFeasible(device_prop))
                 continue;
 
-            if(!g_int8_kvec[kid].CheckSplitkFeasible(num_chl_per_grp, splitk))
+            if (!g_int8_kvec[kid].CheckSplitkFeasible(num_chl_per_grp, splitk))
                 continue;
 
-            if(!g_int8_kvec[kid].CheckSplitfFeasible(splitf, splitk))
+            if (!g_int8_kvec[kid].CheckSplitfFeasible(splitf, splitk))
                 continue;
 
-            int4 *conv_out = (splitk > 1 || splitf > 1) ? splitk_buf : final_out;
+            dC_vec.idx[0] = (splitk > 1 || splitf > 1) ? splitk_buf : final_out;
 
             dim3 block_size, grid_size;
 
@@ -413,36 +475,37 @@ double PPLCUDAConvolutionSelectKernelInt8(
 
             grid_size.z = conv_param.num_grp * splitk * splitf;
 
-	        cudaEventRecord(begin, stream);
+            flt_vec.idx[0] = grid_size.y;
 
-	        for(int i = 0; i < TIMES; i++) {
+            cudaEventRecord(begin, stream);
+
+            for (int i = 0; i < TIMES; i++) {
                 if(g_int8_kvec[kid].ktype == CONV_IDXN_C4 || g_int8_kvec[kid].ktype == CONV_IDXN_C8 || \
                         g_int8_kvec[kid].ktype == CONV_IDXN_C64) {
                     int tile_k_per_step = g_int8_kvec[kid].tile_k_per_step;
 
-                    int img_pad_size    = pad_size;
-                    int flt_pad_size    = g_int8_kvec[kid].flt_pad_size;
-                    int out_nhw         = out_hw * conv_param.in_num;
+                    int img_pad_size = pad_size;
+                    int flt_pad_size = g_int8_kvec[kid].flt_pad_size;
+                    int out_nhw      = out_hw * conv_param.in_num;
 
-                    int in_chl_per_grp_pad = Align(num_chl_per_grp, img_pad_size);
+                    int in_chl_per_grp_pad  = Align(num_chl_per_grp, img_pad_size);
                     int flt_chl_per_grp_pad = Align(num_chl_per_grp, flt_pad_size);
                     int num_flt_per_grp_pad = Align(num_flt_per_grp, img_pad_size);
 
-	                int kloop_num        = DivUp(flt_hw * flt_chl_per_grp_pad, g_int8_kvec[kid].tile_k_per_cta);
-                    int koff_num_pad      = Align(kloop_num * (g_int8_kvec[kid].tile_k_per_cta / flt_pad_size), WARP_SIZE);
+                    int kloop_num    = DivUp(flt_hw * flt_chl_per_grp_pad, g_int8_kvec[kid].tile_k_per_cta);
+                    int koff_num_pad = Align(kloop_num * (g_int8_kvec[kid].tile_k_per_cta / flt_pad_size), WARP_SIZE);
 
                     (g_int8_kvec[kid].int8_idx_kptr)<<<grid_size, block_size, 0, stream>>>(INT8_IDX_KPARAM_LIST);
-                }
-                else if(g_int8_kvec[kid].ktype == CONV_2SPK_F1 || g_int8_kvec[kid].ktype == CONV_2SPK_F3 || \
+                } else if(g_int8_kvec[kid].ktype == CONV_2SPK_F1 || g_int8_kvec[kid].ktype == CONV_2SPK_F3 || \
                         g_int8_kvec[kid].ktype == CONV_2SPK_FN || g_int8_kvec[kid].ktype == CONV_2SPK_FS || \
                         g_int8_kvec[kid].ktype == CONV_SWZL_F1 || g_int8_kvec[kid].ktype == CONV_SWZL_F3 || \
                         g_int8_kvec[kid].ktype == CONV_SWZL_FN) {
 
-	                int kloop_num = (flt_hw / splitf) * DivUp(num_chl_per_grp_pad, g_int8_kvec[kid].tile_k_per_cta);
+                    int kloop_num = (flt_hw / splitf) * DivUp(num_chl_per_grp_pad, g_int8_kvec[kid].tile_k_per_cta);
 
                     lut_t in_lut, flt_lut;
                     int in_lut_size, flt_lut_size;
-                
+
                     InitializeInputLut(in_lut_size, in_lut.idx, conv_param.flt_height, conv_param.flt_width, conv_param.in_height,
                             conv_param.in_width, conv_param.pad_height, conv_param.pad_width, conv_param.hole_height, conv_param.hole_width,
                             num_chl_per_grp_pad, conv_param.num_grp, g_int8_kvec[kid].tile_k_per_cta, pad_size);
@@ -450,8 +513,7 @@ double PPLCUDAConvolutionSelectKernelInt8(
                     InitializeFilterLut(flt_lut_size, flt_lut.idx, conv_param.flt_height, conv_param.flt_width, num_chl_per_grp_pad,
                             g_int8_kvec[kid].tile_k_per_cta, pad_size);
 
-
-                    if(splitk == 1) {
+                    if (splitk == 1) {
                         g_int8_kvec[kid].AdaptInt8LutKernelSMemSize();
 
                         if(g_int8_kvec[kid].ktype == CONV_SWZL_F1 || g_int8_kvec[kid].ktype == CONV_SWZL_F3 || g_int8_kvec[kid].ktype == CONV_SWZL_FN)
@@ -461,50 +523,49 @@ double PPLCUDAConvolutionSelectKernelInt8(
                         }
                     } else {
                         int num_chl_per_spk_head, num_chl_per_spk_tail;
+
                         InitializeNumChlPerSpk(num_chl_per_spk_head, num_chl_per_spk_tail, conv_param.num_chl, conv_param.num_grp, pad_size, g_int8_kvec[kid].tile_k_per_cta, splitk);
 
                         g_int8_kvec[kid].AdaptInt8SpkKernelSMemSize();
 
                         if(g_int8_kvec[kid].ktype == CONV_SWZL_F1 || g_int8_kvec[kid].ktype == CONV_SWZL_F3 || g_int8_kvec[kid].ktype == CONV_SWZL_FN)
                             (g_int8_kvec[kid].int8_spk_kptr)<<<grid_size, block_size, smem_size, stream>>>(INT8_SWZL_SPK_KPARAM_LIST);
-                        else {
+                        else
                             (g_int8_kvec[kid].int8_spk_kptr)<<<grid_size, block_size, smem_size, stream>>>(INT8_SPK_KPARAM_LIST);
-                        }
-    
                     }
 
-                    if(splitk > 1 || splitf > 1) {
-                        int spk_width_v4   = num_flt_per_grp_pad * conv_param.num_grp / __INT4__;
-                        int spk_height_v1  = out_hw * conv_param.in_num;
+                    if (splitk > 1 || splitf > 1) {
+                        int spk_width_v4  = num_flt_per_grp_pad * conv_param.num_grp / __INT4__;
+                        int spk_height_v1 = out_hw * conv_param.in_num;
 
                         dim3 merge_grid_size, merge_block_size;
                         merge_block_size.x = 64; // empirical value
                         merge_block_size.y = 1;
                         merge_block_size.z = 1;
 
-                        merge_grid_size.x  = spk_height_v1;
-                        merge_grid_size.y  = DivUp(spk_width_v4, merge_block_size.x);
-                        merge_grid_size.z  = 1;
+                        merge_grid_size.x = spk_height_v1;
+                        merge_grid_size.y = DivUp(spk_width_v4, merge_block_size.x);
+                        merge_grid_size.z = 1;
 
                         MergeConvSplitResultsFp32<<<merge_grid_size, merge_block_size, 0, stream>>>(INT8_MERGE_KPARAM_LIST);
                     }
                 }
             }
 
-	        cudaEventRecord(end, stream);
-	        cudaEventSynchronize(end);
-	        cudaEventElapsedTime(&elapsed, begin, end);
-	        if(elapsed < minTime){
-                algo_param.kid = kid;
+            cudaEventRecord(end, stream);
+            cudaEventSynchronize(end);
+            cudaEventElapsedTime(&elapsed, begin, end);
+
+            if (elapsed < minTime) {
+                algo_param.kid    = kid;
                 algo_param.splitk = splitk;
                 algo_param.splitf = splitf;
-	            minTime = elapsed;
+                minTime           = elapsed;
             }
         }
-
     }
 
-    if(is_out_grp_pad) {
+    if (is_out_grp_pad) {
         PPLCUDAConvolutionCvtOutput(stream, d_output, final_out, type, conv_param);
     }
 
@@ -512,28 +573,27 @@ double PPLCUDAConvolutionSelectKernelInt8(
     cudaEventDestroy(end);
 
     g_conv_shape_hash[conv_shape_hash] = algo_param;
-
     return minTime;
 }
 
 void PPLCUDAConvolutionForwardImpInt8(
-        int device_id,
-        cudaStream_t &stream, 
-        ppl::common::datatype_t type,
-        int4* d_input,
-        int4* d_flt,
-        int4* d_output,
-        int4* bias,
-        int4* d_temp_buf,
-        algo_param_t& algo_param,
-        conv_param_t &conv_param,
-        quant_param_t &quant_param,
-        fuse_param_t &fuse_param)
+    int device_id,
+    cudaStream_t &stream,
+    ppl::common::datatype_t type,
+    int4 *d_input,
+    int4 *d_flt,
+    int4 *d_output,
+    int4 *bias,
+    int4 *d_temp_buf,
+    algo_param_t& algo_param,
+    conv_param_t &conv_param,
+    quant_param_t &quant_param,
+    fuse_param_t &fuse_param)
 {
-    if(!is_g_int8_kvec_initialized)
+    if (!is_g_int8_kvec_initialized)
         InitializeInt8ConvKernelContainer(g_int8_kvec, device_id, type);
 
-    unsigned int kid = algo_param.kid;
+    unsigned int kid    = algo_param.kid;
     unsigned int splitk = algo_param.splitk;
     unsigned int splitf = algo_param.splitf;
 
@@ -552,28 +612,27 @@ void PPLCUDAConvolutionForwardImpInt8(
     int concat_offset_v8 = fuse_param.concat_offset / pad_size;
     int concat_stride_v8 = fuse_param.concat_stride / pad_size;
 
-    bool  is_in_grp_pad = num_chl_per_grp_pad != num_chl_per_grp && conv_param.num_grp != 1;
+    bool is_in_grp_pad  = num_chl_per_grp_pad != num_chl_per_grp && conv_param.num_grp != 1;
     bool is_out_grp_pad = num_flt_per_grp_pad != num_flt_per_grp && conv_param.num_grp != 1;
 
     uint64_t buf_off_v4 = 0;
 
-    int4 *pad_input = d_input;
+    int4 *pad_input  = d_input;
     int4 *pad_output = d_output;
 
-    if(is_in_grp_pad) {
-	    pad_input = d_temp_buf; 
-	    buf_off_v4 += GetCvtInputSize(type, conv_param, num_chl_per_grp_pad) / (_4INT_TO_INT4_ * _INT_TO_4BYTE_);
+    if (is_in_grp_pad) {
+        pad_input = d_temp_buf;
+        buf_off_v4 += GetCvtInputSize(type, conv_param, num_chl_per_grp_pad) / (_4INT_TO_INT4_ * _INT_TO_4BYTE_);
 
         PPLCUDAConvolutionCvtInput(stream, pad_input, d_input, type, conv_param);
-
     }
 
-    if(is_out_grp_pad) {
-	    pad_output = d_temp_buf + buf_off_v4;
-	    buf_off_v4 += getCvtOutputSize(type, conv_param, num_flt_per_grp_pad) / (_4INT_TO_INT4_ * _INT_TO_4BYTE_);
-    } 
+    if (is_out_grp_pad) {
+        pad_output = d_temp_buf + buf_off_v4;
+        buf_off_v4 += getCvtOutputSize(type, conv_param, num_flt_per_grp_pad) / (_4INT_TO_INT4_ * _INT_TO_4BYTE_);
+    }
 
-    int4 *final_out  = fuse_param.has_concat ? (int4 *) fuse_param.post_concat : pad_output;
+    int4 *final_out = fuse_param.has_concat ? (int4 *)fuse_param.post_concat : pad_output;
 
     int4 *splitk_buf = d_temp_buf + buf_off_v4;
     int4 *conv_out   = (splitk > 1 || splitf > 1) ? splitk_buf : final_out;
@@ -584,6 +643,8 @@ void PPLCUDAConvolutionForwardImpInt8(
     float elt_clip_max = fuse_param.elt_clip_max;
     float leaky        = fuse_param.leaky;
     float elt_leaky    = fuse_param.elt_leaky;
+
+    INT8_ASSIGN_TO_FLT_VEC();
 
     dim3 block_size, grid_size;
 
@@ -602,7 +663,9 @@ void PPLCUDAConvolutionForwardImpInt8(
         grid_size.y = DivUp(num_flt_per_grp_pad, g_int8_kvec[kid].tile_n_per_cta);
     }
 
-    grid_size.z  = conv_param.num_grp * splitk * splitf;
+    grid_size.z = conv_param.num_grp * splitk * splitf;
+
+    flt_vec.idx[0] = grid_size.y;
 
     if(g_int8_kvec[kid].ktype == CONV_IDXN_C4 || g_int8_kvec[kid].ktype == CONV_IDXN_C8 || \
             g_int8_kvec[kid].ktype == CONV_IDXN_C64) {
@@ -611,11 +674,11 @@ void PPLCUDAConvolutionForwardImpInt8(
 
         int out_nhw = out_hw * conv_param.in_num;
 
-        int in_chl_per_grp_pad = Align(num_chl_per_grp, img_pad_size);
+        int in_chl_per_grp_pad  = Align(num_chl_per_grp, img_pad_size);
         int flt_chl_per_grp_pad = Align(num_chl_per_grp, flt_pad_size);
         int num_flt_per_grp_pad = Align(num_flt_per_grp, img_pad_size);
 
-	    int kloop_num = DivUp(flt_hw * flt_chl_per_grp_pad, g_int8_kvec[kid].tile_k_per_cta);
+        int kloop_num    = DivUp(flt_hw * flt_chl_per_grp_pad, g_int8_kvec[kid].tile_k_per_cta);
         int koff_num_pad = Align(kloop_num * (g_int8_kvec[kid].tile_k_per_cta / flt_pad_size), WARP_SIZE);
 
         (g_int8_kvec[kid].int8_idx_kptr)<<<grid_size, block_size, 0, stream>>>(INT8_IDX_KPARAM_LIST);
@@ -625,11 +688,11 @@ void PPLCUDAConvolutionForwardImpInt8(
               g_int8_kvec[kid].ktype == CONV_SWZL_F1 || g_int8_kvec[kid].ktype == CONV_SWZL_F3 || \
               g_int8_kvec[kid].ktype == CONV_SWZL_FN) {
 
-	    int kloop_num = (flt_hw / splitf) * DivUp(num_chl_per_grp_pad, g_int8_kvec[kid].tile_k_per_cta);
+        int kloop_num = (flt_hw / splitf) * DivUp(num_chl_per_grp_pad, g_int8_kvec[kid].tile_k_per_cta);
 
         lut_t in_lut, flt_lut;
         int in_lut_size, flt_lut_size;
-    
+
         InitializeInputLut(in_lut_size, in_lut.idx, conv_param.flt_height, conv_param.flt_width, conv_param.in_height,
                 conv_param.in_width, conv_param.pad_height, conv_param.pad_width, conv_param.hole_height, conv_param.hole_width,
                 num_chl_per_grp_pad, conv_param.num_grp, g_int8_kvec[kid].tile_k_per_cta, pad_size);
@@ -637,7 +700,7 @@ void PPLCUDAConvolutionForwardImpInt8(
         InitializeFilterLut(flt_lut_size, flt_lut.idx, conv_param.flt_height, conv_param.flt_width, num_chl_per_grp_pad,
                 g_int8_kvec[kid].tile_k_per_cta, pad_size);
 
-        if(splitk == 1) {
+        if (splitk == 1) {
             g_int8_kvec[kid].AdaptInt8LutKernelSMemSize();
 
             if(g_int8_kvec[kid].ktype == CONV_SWZL_F1 || g_int8_kvec[kid].ktype == CONV_SWZL_F3 || g_int8_kvec[kid].ktype == CONV_SWZL_FN)
@@ -647,6 +710,7 @@ void PPLCUDAConvolutionForwardImpInt8(
             }
         } else {
             int num_chl_per_spk_head, num_chl_per_spk_tail;
+
             InitializeNumChlPerSpk(num_chl_per_spk_head, num_chl_per_spk_tail, conv_param.num_chl, conv_param.num_grp, pad_size, g_int8_kvec[kid].tile_k_per_cta, splitk);
 
             g_int8_kvec[kid].AdaptInt8SpkKernelSMemSize();
@@ -657,88 +721,29 @@ void PPLCUDAConvolutionForwardImpInt8(
                 (g_int8_kvec[kid].int8_spk_kptr)<<<grid_size, block_size, smem_size, stream>>>(INT8_SPK_KPARAM_LIST);
         }
     }
-    
-    if(splitk > 1 || splitf > 1) {
-        int spk_width_v4   = num_flt_per_grp_pad * conv_param.num_grp / __INT4__;
-        int spk_height_v1  = out_hw * conv_param.in_num;
+
+    if (splitk > 1 || splitf > 1) {
+        int spk_width_v4  = num_flt_per_grp_pad * conv_param.num_grp / __INT4__;
+        int spk_height_v1 = out_hw * conv_param.in_num;
 
         dim3 merge_grid_size, merge_block_size;
         merge_block_size.x = 64;
         merge_block_size.y = 1;
         merge_block_size.z = 1;
 
-        merge_grid_size.x  = spk_height_v1;
-        merge_grid_size.y  = DivUp(spk_width_v4, merge_block_size.x);
-        merge_grid_size.z  = 1;
+        merge_grid_size.x = spk_height_v1;
+        merge_grid_size.y = DivUp(spk_width_v4, merge_block_size.x);
+        merge_grid_size.z = 1;
 
         MergeConvSplitResultsFp32<<<merge_grid_size, merge_block_size, 0, stream>>>(INT8_MERGE_KPARAM_LIST);
     }
 
-    if(is_out_grp_pad) {
+    if (is_out_grp_pad) {
         PPLCUDAConvolutionCvtOutput(stream, d_output, final_out, type, conv_param);
     }
-    
 }
 
 /* -----------------  JIT INT8 KERNEL ------------------ */
-
-float AlgoForwardTimeInt8(
-    int device_id,
-    cudaStream_t &stream,
-    std::vector<string> name,
-    string code,
-    int &idx,
-    std::vector<const char *> compile_params,
-    int device,
-    bool include,
-    ppl::common::datatype_t type,
-    int4 *d_input,
-    int4 *d_flt,
-    int4 *d_output,
-    int4 *bias,
-    int4 *d_temp_buf,
-    std::vector<algo_param_t> &algo_param,
-    conv_param_t &conv_param,
-    quant_param_t &quant_param,
-    fuse_param_t &fuse_param,
-    uint64_t workspace)
-{
-    float elapsed = 0;
-
-#ifdef PPLNN_ENABLE_CUDA_JIT
-    std::string src_name                   = name[0];
-    string ptx                             = ppl::nn::cuda::CUDANVRTCCompile(pair<string, string>(src_name, code), compile_params, device, include);
-    ppl::nn::cuda::CUDAModule *cuda_module = new ppl::nn::cuda::CUDAModule();
-    cuda_module->SetSourceCode(src_name, ptx);
-    float min_time = FLT_MAX;
-    int times      = 1;
-
-    cudaEvent_t begin, end;
-    cudaEventCreate(&begin);
-    cudaEventCreate(&end);
-
-    for (size_t n = 0; n < name.size(); n++) {
-        CUfunction function = cuda_module->GetKernelFunc(name[n]);
-        cudaEventRecord(begin, stream);
-        for (int i = 0; i < times; i++) {
-            PPLCUDAConvolutionForwardJitImpInt8(
-                device_id, stream, function, type, d_input, d_flt, d_output, bias, d_temp_buf, algo_param[n], conv_param, quant_param, fuse_param);
-        }
-        cudaEventRecord(end, stream);
-        cudaEventSynchronize(begin);
-        cudaEventSynchronize(end);
-        cudaEventElapsedTime(&elapsed, begin, end);
-        if (elapsed < min_time) {
-            min_time = elapsed;
-            idx      = n;
-        }
-    }
-    cudaEventDestroy(begin);
-    cudaEventDestroy(end);
-    delete cuda_module;
-#endif
-    return elapsed;
-}
 
 ppl::common::RetCode GetInt8ConvKernelNominees(
     int device_id,
@@ -1144,6 +1149,64 @@ double PPLCUDAConvolutionJitSelectKernelInt8(
     return elapsed;
 }
 
+float AlgoForwardTimeInt8(
+    int device_id,
+    cudaStream_t &stream,
+    std::vector<string> kname,
+    string code,
+    int &idx,
+    std::vector<const char *> compile_params,
+    int device,
+    bool include,
+    ppl::common::datatype_t type,
+    int4 *d_input,
+    int4 *d_flt,
+    int4 *d_output,
+    int4 *bias,
+    int4 *d_temp_buf,
+    std::vector<algo_param_t> &algo_param,
+    conv_param_t &conv_param,
+    quant_param_t &quant_param,
+    fuse_param_t &fuse_param,
+    uint64_t workspace)
+{
+    float elapsed = 0;
+
+#ifdef PPLNN_ENABLE_CUDA_JIT
+    std::string src_name                   = kname[0];
+    string ptx                             = ppl::nn::cuda::CUDANVRTCCompile(pair<string, string>(src_name, code), compile_params, device, include);
+    ppl::nn::cuda::CUDAModule *cuda_module = new ppl::nn::cuda::CUDAModule();
+    cuda_module->SetSourceCode(src_name, ptx);
+    float min_time = FLT_MAX;
+    int times      = 1;
+
+    cudaEvent_t begin, end;
+    cudaEventCreate(&begin);
+    cudaEventCreate(&end);
+
+    for (size_t n = 0; n < kname.size(); n++) {
+        CUfunction function = cuda_module->GetKernelFunc(kname[n]);
+        cudaEventRecord(begin, stream);
+        for (int i = 0; i < times; i++) {
+            PPLCUDAConvolutionForwardJitImpInt8(
+                device_id, stream, function, type, d_input, d_flt, d_output, bias, d_temp_buf, algo_param[n], conv_param, quant_param, fuse_param);
+        }
+        cudaEventRecord(end, stream);
+        cudaEventSynchronize(begin);
+        cudaEventSynchronize(end);
+        cudaEventElapsedTime(&elapsed, begin, end);
+        if (elapsed < min_time) {
+            min_time = elapsed;
+            idx      = n;
+        }
+    }
+    cudaEventDestroy(begin);
+    cudaEventDestroy(end);
+    delete cuda_module;
+#endif
+    return elapsed;
+}
+
 void PPLCUDAConvolutionForwardJitImpInt8(
     int device_id,
     cudaStream_t &stream,
@@ -1198,7 +1261,7 @@ void PPLCUDAConvolutionForwardJitImpInt8(
         buf_off_v4 += getCvtOutputSize(type, conv_param, num_flt_per_grp_pad) / (_4INT_TO_INT4_ * _INT_TO_4BYTE_);
     }
 
-    int4 *final_out  = fuse_param.has_concat ? (int4 *) fuse_param.post_concat : pad_output;
+    int4 *final_out = fuse_param.has_concat ? (int4 *)fuse_param.post_concat : pad_output;
 
     int4 *splitk_buf = d_temp_buf + buf_off_v4;
     int4 *conv_out   = (splitk > 1 || splitf > 1) ? splitk_buf : final_out;
@@ -1209,7 +1272,9 @@ void PPLCUDAConvolutionForwardJitImpInt8(
     float elt_clip_max = fuse_param.elt_clip_max;
     float leaky        = fuse_param.leaky;
     float elt_leaky    = fuse_param.elt_leaky;
-    
+
+    INT8_ASSIGN_TO_FLT_VEC();
+
     int tile_n = algo_param.tiles.n_cta;
     int tile_m = algo_param.tiles.m_cta;
     int cta_k  = algo_param.tiles.k_cta;
@@ -1229,6 +1294,8 @@ void PPLCUDAConvolutionForwardJitImpInt8(
         grid_size.y = DivUp(num_flt_per_grp_pad, tile_n);
     }
     grid_size.z = conv_param.num_grp * splitk * splitf * algo_param.gemm_batch;
+
+    flt_vec.idx[0] = grid_size.y;
 
     const int4 *pre_data  = (const int4 *)fuse_param.pre_data;
     const void *prelu     = (const void *)fuse_param.prelu;
@@ -1267,7 +1334,9 @@ void PPLCUDAConvolutionForwardJitImpInt8(
             CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, smem_size, stream, args, 0));
         } else {
             int num_chl_per_spk_head, num_chl_per_spk_tail;
+
             InitializeNumChlPerSpk(num_chl_per_spk_head, num_chl_per_spk_tail, conv_param.num_chl, conv_param.num_grp, pad_size, cta_k, splitk);
+
             void *args[] = {&pad_input, &d_flt, &conv_out, &kloop_num, &in_lut, &in_lut_size, &flt_lut, &flt_lut_size, &num_chl_per_spk_head, &num_chl_per_spk_tail, &in_hw, &out_hw, &flt_hw, &splitk, &conv_param.in_height, &conv_param.in_width, &conv_param.in_num, &conv_param.num_grp, &num_chl_per_grp, &num_chl_per_grp_pad, &conv_param.flt_height, &conv_param.flt_width, &num_flt_per_grp, &num_flt_per_grp_pad, &conv_param.out_height, &conv_param.out_width, &conv_param.stride_height, &conv_param.stride_width, &conv_param.pad_height, &conv_param.pad_width, &conv_param.hole_height, &conv_param.hole_width, &conv_param.has_bias, &bias, &quant_param.in_scale, &quant_param.d_flt_scale};
             CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, smem_size, stream, args, 0));
         }
@@ -1288,22 +1357,21 @@ void PPLCUDAConvolutionForwardJitImpInt8(
         CUDA_SAFE_CALL(cuLaunchKernel(function, grid_size.x, grid_size.y, grid_size.z, block_size.x, block_size.y, block_size.z, smem_size, stream, args, 0));
     }
 
-    if(splitk > 1 || splitf > 1) {
-        int spk_width_v4   = num_flt_per_grp_pad * conv_param.num_grp / __INT4__;
-        int spk_height_v1  = out_hw * conv_param.in_num;
+    if (splitk > 1 || splitf > 1) {
+        int spk_width_v4  = num_flt_per_grp_pad * conv_param.num_grp / __INT4__;
+        int spk_height_v1 = out_hw * conv_param.in_num;
 
         dim3 merge_grid_size, merge_block_size;
         merge_block_size.x = 64;
         merge_block_size.y = 1;
         merge_block_size.z = 1;
 
-        merge_grid_size.x  = spk_height_v1;
-        merge_grid_size.y  = DivUp(spk_width_v4, merge_block_size.x);
-        merge_grid_size.z  = 1;
+        merge_grid_size.x = spk_height_v1;
+        merge_grid_size.y = DivUp(spk_width_v4, merge_block_size.x);
+        merge_grid_size.z = 1;
 
         MergeConvSplitResultsFp32<<<merge_grid_size, merge_block_size, 0, stream>>>(INT8_MERGE_KPARAM_LIST);
     }
-
     if (is_out_grp_pad) {
         PPLCUDAConvolutionCvtOutput(stream, d_output, final_out, type, conv_param);
     }
