@@ -61,8 +61,18 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
     uint sts_idy   =   tid >> 5;
 #endif
 
-    uint cta_idx   = blockIdx.y;
-    uint cta_idy   = blockIdx.x;
+    uint flt_nid  = 0;
+    while(blockIdx.y >= flt_vec.idx[flt_nid]) flt_nid++;
+
+    uint cta_idx  = flt_nid == 0 ? blockIdx.y : blockIdx.y - flt_vec.idx[flt_nid - 1];
+    uint cta_idy  = blockIdx.x;
+
+    int4 * dA = dA_vec[flt_nid];
+    int4 * dB = dB_vec[flt_nid];
+    int4 * dC = dC_vec[flt_nid];
+
+    int num_flt_per_grp = num_flt_per_grp_vec.idx[flt_nid];
+    int num_flt_per_grp_pad = num_flt_per_grp_pad_vec.idx[flt_nid];
 
 #if defined(ENABLE_SPLITK) && defined(ENABLE_SPLITF)
     uint spk_id    =  blockIdx.z %  splitk;
@@ -507,29 +517,23 @@ __global__ void __launch_bounds__(CTA_SIZE_IN_THD) KERNEL_NAME(TOTAL_KPARAM_LIST
 #if defined(ENABLE_FUSE)
         float4 de_scale_v4;
         float* de_scale = (float *) &de_scale_v4;
-        GET_DEQUANTSCALE(de_scale_v4, de_scale, d_flt_scale, in_scale);
+        GET_DEQUANTSCALE(de_scale_v4, de_scale, d_flt_scale_vec.idx[flt_nid], in_scale_vec.idx[flt_nid]);
         DEQUANT_V4(fR, R, de_scale);
-#endif
 
-#if defined(ENABLE_FUSE)
-        ADD_BIAS_V4(has_bias, bias);
-#endif
+        ADD_BIAS_V4(has_bias_vec.idx[flt_nid], bias_vec.idx[flt_nid]);
 
-#if defined(ENABLE_FUSE)
-        uint concat_v4_off = 0;
+        FUSE_RELU_V4(has_relu_vec.idx[flt_nid]);
+        FUSE_CLIP_V4(has_clip_vec.idx[flt_nid], clip_max_vec.idx[flt_nid], clip_min_vec.idx[flt_nid]);
+        // FUSE_PRELU_V4(has_prelu_vec.idx[flt_nid], prelu_vec.idx[flt_nid], leaky_vec.idx[flt_nid]);
 
-        FUSE_RELU_V4(has_relu);
-        FUSE_CLIP_V4(has_clip, clip_max, clip_min);
-        // FUSE_PRELU_V4(has_prelu, prelu, leaky);
+        FUSE_ELT_V4(has_elt_vec.idx[flt_nid], pre_data_vec.idx[flt_nid]);
+        FUSE_RELU_V4(has_elt_relu_vec.idx[flt_nid]);
+        FUSE_CLIP_V4(has_elt_clip_vec.idx[flt_nid], elt_clip_max_vec.idx[flt_nid], elt_clip_min_vec.idx[flt_nid]);
+        // FUSE_PRELU_V4(has_elt_prelu_vec.idx[flt_nid], elt_prelu_vec.idx[flt_nid], elt_leaky_vec.idx[flt_nid]);
 
-        FUSE_ELT_V4(has_elt, pre_data);
-        FUSE_RELU_V4(has_elt_relu);
-        FUSE_CLIP_V4(has_elt_clip, elt_clip_max, elt_clip_min);
-        // FUSE_PRELU_V4(has_elt_prelu, elt_prelu, elt_leaky);
+        SET_CONCAT_OFF_V4(has_concat_vec.idx[flt_nid], concat_offset_v4_vec.idx[flt_nid], concat_stride_v4_vec.idx[flt_nid]);
 
-        SET_CONCAT_OFF_V4(has_concat, concat_v4_off);
-
-        QUANT_V4(R, fR, out_scale);
+        QUANT_V4(R, fR, out_scale_vec.idx[flt_nid]);
 #endif
 
 #if defined(ENABLE_FUSE)

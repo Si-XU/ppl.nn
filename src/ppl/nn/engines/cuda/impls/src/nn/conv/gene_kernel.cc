@@ -1291,11 +1291,10 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionFor2spk(std::string& file_
     int fuse_index = 0;
     int fuse_size  = fuse_info.types.size();
 
-    auto begin = file_res.find("uint concat_v4_off = 0;");
-    auto end   = file_res.find("QUANT_V4(R, fR, out_scale);", begin);
+    auto begin = file_res.find("FUSE_RELU_V4(has_relu_vec.idx[flt_nid]);");
+    auto end   = file_res.find("QUANT_V4(R, fR, out_scale_vec.idx[flt_nid]);", begin);
 
     std::stringstream file_str;
-    file_str << "uint concat_v4_off = 0;\n";
     file_str << "if(dCv4_x_valid  && dCv4_y_valid ) {\n";
 
     if (fuse_index < fuse_size && relu_set.find(fuse_info.types[fuse_index]) != relu_set.end()) {
@@ -1303,11 +1302,11 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionFor2spk(std::string& file_
         if (type == "Relu") {
             file_str << "JIT_FUSE_RELU_V4()\n";
         } else if (type == "Clip") {
-            file_str << "JIT_FUSE_CLIP_V4(clip_max, clip_min)\n";
+            file_str << "JIT_FUSE_CLIP_V4(clip_max_vec.idx[flt_nid], clip_min_vec.idx[flt_nid])\n";
         } else if (type == "PRelu") {
-            file_str << "JIT_FUSE_PRELU_V4(has_prelu, prelu)\n";
+            file_str << "JIT_FUSE_PRELU_V4(has_prelu_vec.idx[flt_nid], prelu_vec.idx[flt_nid])\n";
         } else if (type == "LeakyRelu") {
-            file_str << "JIT_FUSE_LEAKY_V4(leaky)\n";
+            file_str << "JIT_FUSE_LEAKY_V4(leaky_vec.idx[flt_nid])\n";
         } else if (type == "Sigmoid") {
             file_str << "JIT_FUSE_SIGMOID_V4()\n";
         } else {
@@ -1318,7 +1317,7 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionFor2spk(std::string& file_
     }
 
     if (fuse_index < fuse_size && fuse_info.types[fuse_index] == "Add") {
-        file_str << "JIT_FUSE_ELT_V4(pre_data)\n";
+        file_str << "JIT_FUSE_ELT_V4(pre_data_vec.idx[flt_nid])\n";
         fuse_index++;
     }
 
@@ -1327,11 +1326,11 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionFor2spk(std::string& file_
         if (type == "Relu") {
             file_str << "JIT_FUSE_RELU_V4()\n";
         } else if (type == "Clip") {
-            file_str << "JIT_FUSE_CLIP_V4(elt_clip_max, elt_clip_min)\n";
+            file_str << "JIT_FUSE_CLIP_V4(elt_clip_max_vec.idx[flt_nid], elt_clip_min_vec.idx[flt_nid])\n";
         } else if (type == "PRelu") {
-            file_str << "JIT_FUSE_PRELU_V4(has_elt_prelu, elt_prelu)\n";
+            file_str << "JIT_FUSE_PRELU_V4(has_elt_prelu_vec.idx[flt_nid], elt_prelu_vec.idx[flt_nid])\n";
         } else if (type == "LeakyRelu") {
-            file_str << "JIT_FUSE_LEAKY_V4(elt_leaky)\n";
+            file_str << "JIT_FUSE_LEAKY_V4(elt_leaky_vec.idx[flt_nid])\n";
         } else if (type == "Sigmoid") {
             file_str << "JIT_FUSE_SIGMOID_V4()\n";
         } else {
@@ -1342,7 +1341,7 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionFor2spk(std::string& file_
     }
 
     if (fuse_info.channel_offset >= 0) {
-        file_str << "JIT_SET_CONCAT_OFF_V4(concat_v4_off)\n";
+        file_str << "SET_CONCAT_OFF_V4(concat_offset_v4_vec.idx[flt_nid], concat_stride_v4_vec.idx[flt_nid]);\n";
     }
 
     file_str << "}\n";
@@ -1361,26 +1360,21 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionForIdxn(std::string& file_
 
     int fuse_index = 0;
 
-    auto begin = file_res.find("uint concat_v2_off0 = 0;");
-    auto inter = file_res.find("QUANT_V2(Cv2, fCv2, out_scale);", begin);
-    auto end   = file_res.find("#endif", inter);
+    auto begin = file_res.find("FUSE_RELU_V2(has_relu_vec.idx[flt_nid]);");
+    auto end   = file_res.find("QUANT_V2(Cv2, fCv2, out_scale_vec.idx[flt_nid]);", begin);
 
     std::stringstream file_str;
-    file_str << "uint concat_v2_off0 = dCv2_idy[0] * num_flt_v2;\n";
-    file_str << "#if BLK_M_PER_MMA == 2\n";
-    file_str << "uint concat_v2_off1 = dCv2_idy[1] * num_flt_v2;\n";
-    file_str << "#endif\n";
 
     if (fuse_index < fuse_size && relu_set.find(fuse_info.types[fuse_index]) != relu_set.end()) {
         auto type = fuse_info.types[fuse_index];
         if (type == "Relu") {
             file_str << "JIT_FUSE_RELU_V2()\n";
         } else if (type == "Clip") {
-            file_str << "JIT_FUSE_CLIP_V2(clip_max, clip_min)\n";
+            file_str << "JIT_FUSE_CLIP_V2(clip_max_vec.idx[flt_nid], clip_min_vec.idx[flt_nid])\n";
         } else if (type == "PRelu") {
-            file_str << "JIT_FUSE_PRELU_V2(has_prelu, prelu)\n";
+            file_str << "JIT_FUSE_PRELU_V2(has_prelu_vec.idx[flt_nid], prelu_vec.idx[flt_nid])\n";
         } else if (type == "LeakyRelu") {
-            file_str << "JIT_FUSE_LEAKY_V2(leaky)\n";
+            file_str << "JIT_FUSE_LEAKY_V2(leaky_vec.idx[flt_nid])\n";
         } else if (type == "Sigmoid") {
             file_str << "JIT_FUSE_SIGMOID_V2()\n";
         } else {
@@ -1391,7 +1385,7 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionForIdxn(std::string& file_
     }
 
     if (fuse_index < fuse_size && fuse_info.types[fuse_index] == "Add") {
-        file_str << "JIT_FUSE_ELT_V2(pre_data)\n";
+        file_str << "JIT_FUSE_ELT_V2(pre_data_vec.idx[flt_nid])\n";
         fuse_index++;
     }
 
@@ -1400,11 +1394,11 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionForIdxn(std::string& file_
         if (type == "Relu") {
             file_str << "JIT_FUSE_RELU_V2()\n";
         } else if (type == "Clip") {
-            file_str << "JIT_FUSE_CLIP_V2(elt_clip_max, elt_clip_min)\n";
+            file_str << "JIT_FUSE_CLIP_V2(elt_clip_max_vec.idx[flt_nid], elt_clip_min_vec.idx[flt_nid])\n";
         } else if (type == "PRelu") {
-            file_str << "JIT_FUSE_PRELU_V2(has_elt_prelu, elt_prelu)\n";
+            file_str << "JIT_FUSE_PRELU_V2(has_elt_prelu_vec.idx[flt_nid], elt_prelu_vec.idx[flt_nid])\n";
         } else if (type == "LeakyRelu") {
-            file_str << "JIT_FUSE_LEAKY_V2(elt_leaky)\n";
+            file_str << "JIT_FUSE_LEAKY_V2(elt_leaky_vec.idx[flt_nid])\n";
         } else if (type == "Sigmoid") {
             file_str << "JIT_FUSE_SIGMOID_V2()\n";
         } else {
@@ -1415,11 +1409,7 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionForIdxn(std::string& file_
     }
 
     if (fuse_info.channel_offset >= 0) {
-        file_str << "#if BLK_M_PER_MMA == 1\n";
-        file_str << "JIT_SET_CONCAT_OFF_V2(concat_v2_off0);\n";
-        file_str << "#elif BLK_M_PER_MMA == 2\n";
-        file_str << "JIT_SET_CONCAT_OFF_V2(concat_v2_off0, concat_v2_off1);\n";
-        file_str << "#endif\n";
+        file_str << "SET_CONCAT_OFF_V2(has_concat_vec.idx[flt_nid], concat_offset_v4_vec.idx[flt_nid], concat_stride_v4_vec.idx[flt_nid]);\n";
     }
 
     file_res.replace(begin, end - begin, file_str.str());
@@ -1433,8 +1423,8 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionForSwzl(std::string& file_
     int fuse_index = 0;
     int fuse_size  = fuse_info.types.size();
 
-    auto begin = file_res.find("FUSE_RELU_V4(has_relu);");
-    auto end   = file_res.find("QUANT_V4(R, fR, out_scale);", begin);
+    auto begin = file_res.find("FUSE_RELU_V4(has_relu_vec.idx[flt_nid]);");
+    auto end   = file_res.find("QUANT_V4(R, fR, out_scale_vec.idx[flt_nid]);", begin);
 
     std::stringstream file_str;
     file_str << "if(dCv4_y_valid) {\n";
@@ -1444,11 +1434,11 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionForSwzl(std::string& file_
         if (type == "Relu") {
             file_str << "JIT_FUSE_RELU_V4()\n";
         } else if (type == "Clip") {
-            file_str << "JIT_FUSE_CLIP_V4(clip_max, clip_min)\n";
+            file_str << "JIT_FUSE_CLIP_V4(clip_max_vec.idx[flt_nid], clip_min_vec.idx[flt_nid])\n";
         } else if (type == "PRelu") {
-            file_str << "JIT_FUSE_PRELU_V4(has_prelu, prelu)\n";
+            file_str << "JIT_FUSE_PRELU_V4(has_prelu_vec.idx[flt_nid], prelu_vec.idx[flt_nid])\n";
         } else if (type == "LeakyRelu") {
-            file_str << "JIT_FUSE_LEAKY_V4(leaky)\n";
+            file_str << "JIT_FUSE_LEAKY_V4(leaky_vec.idx[flt_nid])\n";
         } else if (type == "Sigmoid") {
             file_str << "JIT_FUSE_SIGMOID_V4()\n";
         } else {
@@ -1459,7 +1449,7 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionForSwzl(std::string& file_
     }
 
     if (fuse_index < fuse_size && fuse_info.types[fuse_index] == "Add") {
-        file_str << "JIT_FUSE_ELT_V4(pre_data)\n";
+        file_str << "JIT_FUSE_ELT_V4(pre_data_vec.idx[flt_nid])\n";
         fuse_index++;
     }
 
@@ -1468,11 +1458,11 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionForSwzl(std::string& file_
         if (type == "Relu") {
             file_str << "JIT_FUSE_RELU_V4()\n";
         } else if (type == "Clip") {
-            file_str << "JIT_FUSE_CLIP_V4(elt_clip_max, elt_clip_min)\n";
+            file_str << "JIT_FUSE_CLIP_V4(elt_clip_max_vec.idx[flt_nid], elt_clip_min_vec.idx[flt_nid])\n";
         } else if (type == "PRelu") {
-            file_str << "JIT_FUSE_PRELU_V4(has_elt_prelu, elt_prelu)\n";
+            file_str << "JIT_FUSE_PRELU_V4(has_elt_prelu_vec.idx[flt_nid], elt_prelu_vec.idx[flt_nid])\n";
         } else if (type == "LeakyRelu") {
-            file_str << "JIT_FUSE_LEAKY_V4(elt_leaky)\n";
+            file_str << "JIT_FUSE_LEAKY_V4(elt_leaky_vec.idx[flt_nid])\n";
         } else if (type == "Sigmoid") {
             file_str << "JIT_FUSE_SIGMOID_V4()\n";
         } else {
@@ -1482,8 +1472,9 @@ ppl::common::RetCode Int8CodeGeneFactor::ReplaceFusionForSwzl(std::string& file_
         fuse_index++;
     }
 
-    // NOTE: swizzle kernel requires concat macro all the time
-    file_str << "JIT_SET_CONCAT_OFF_V4(has_concat, concat_v4_off)\n";
+    if (fuse_info.channel_offset >= 0) {
+        file_str << "SET_CONCAT_OFF_V4(concat_offset_v4_vec.idx[flt_nid], concat_stride_v4_vec.idx[flt_nid]);\n";
+    }
 
     file_str << "}\n";
 

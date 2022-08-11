@@ -266,7 +266,7 @@
                     _Pragma("unroll") \
                     for (int j = 0; j < _INT4_TO_4INT_; j++) \
                     { \
-			            fR[i * _INT4_TO_4INT_ + j] += (int)elt_v1[i * _INT4_TO_4INT_ + j] * pre_scale; \
+			            fR[i * _INT4_TO_4INT_ + j] += (int)elt_v1[i * _INT4_TO_4INT_ + j] * pre_scale_vec.idx[flt_nid]; \
 	                } \
 	            } \
 	        } \
@@ -276,13 +276,13 @@
 // concat macros
 //////////////////////////////////////////////////////
 
-#define SET_CONCAT_OFF_V4(_has_concat, _concat_v4_off) \
+#define SET_CONCAT_OFF_V4(_has_concat, _concat_offset_v4, _concat_stride_v4) \
         { \
-            _Pragma("unroll") \
-            for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
-            { \
-	            _concat_v4_off[i] = (_has_concat) ? dCv4_idx[i] * concat_stride_v4 + concat_offset_v4 : dCv4_idx[i] * num_flt_per_grp_pad_v4 * num_grp; \
-	        } \
+            if(_has_concat) { \
+                _Pragma("unroll") \
+                for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
+	                concat_v4_off[i] = dCv4_idx[i] * _concat_stride_v4 + _concat_offset_v4; \
+            } \
         }
         
 //////////////////////////////////////////////////////
@@ -387,16 +387,14 @@
                 _Pragma("unroll") \
                 for (int j = 0; j < _INT4_TO_4INT_; j++) \
                 { \
-			        fR[i * _INT4_TO_4INT_ + j] += (int)elt_v1[i * _INT4_TO_4INT_ + j] * pre_scale; \
+			        fR[i * _INT4_TO_4INT_ + j] += (int)elt_v1[i * _INT4_TO_4INT_ + j] * pre_scale_vec.idx[flt_nid]; \
 	            } \
 	        } \
         }
 
-#define JIT_SET_CONCAT_OFF_V4(_has_concat, _concat_v4_off) \
+#define JIT_SET_CONCAT_OFF_V4(_concat_offset_v4, _concat_stride_v4) \
         { \
             _Pragma("unroll") \
             for(int i = 0; i < OUTPUT_BLKS_PER_STEP; i++) \
-            { \
-	            _concat_v4_off[i] = (_has_concat) ? dCv4_idx[i] * concat_stride_v4 + concat_offset_v4 : dCv4_idx[i] * num_flt_per_grp_pad_v4 * num_grp; \
-	        } \
+	            concat_v4_off[i] = dCv4_idx[i] * _concat_stride_v4 + _concat_offset_v4; \
         }

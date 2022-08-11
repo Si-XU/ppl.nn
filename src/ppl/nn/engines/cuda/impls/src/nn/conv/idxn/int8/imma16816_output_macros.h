@@ -308,15 +308,15 @@
                         int16_t  elt_v2 = ((int16_t*) _pre_data) [dCv2_idy[0] * num_flt_v2 + dCv2_idx[i]]; \
                         int8_t * elt_v1 = (int8_t *) &elt_v2; \
                         \
-                        fCv2[Cv2_off + i].x += (int)elt_v1[0] * pre_scale; \
-                        fCv2[Cv2_off + i].y += (int)elt_v1[1] * pre_scale; \
+                        fCv2[Cv2_off + i].x += (int)elt_v1[0] * pre_scale_vec.idx[flt_nid]; \
+                        fCv2[Cv2_off + i].y += (int)elt_v1[1] * pre_scale_vec.idx[flt_nid]; \
                     } \
                     if(dCv2_y_valid[1] && dCv2_x_valid[i] ) { \
                         int16_t  elt_v2 = ((int16_t*) _pre_data) [dCv2_idy[1] * num_flt_v2 + dCv2_idx[i]]; \
                         int8_t * elt_v1 = (int8_t *) &elt_v2; \
                         \
-                        fCv2[Cv2_off + i + NUM_N_STEPS].x += (int)elt_v1[0] * pre_scale; \
-                        fCv2[Cv2_off + i + NUM_N_STEPS].y += (int)elt_v1[1] * pre_scale; \
+                        fCv2[Cv2_off + i + NUM_N_STEPS].x += (int)elt_v1[0] * pre_scale_vec.idx[flt_nid]; \
+                        fCv2[Cv2_off + i + NUM_N_STEPS].y += (int)elt_v1[1] * pre_scale_vec.idx[flt_nid]; \
                     } \
 	            } \
 	        } \
@@ -326,15 +326,13 @@
 // concat macros
 //////////////////////////////////////////////////////
 
-#define SET_CONCAT_OFF_V2(_has_concat, _concat_v2_off0, _concat_v2_off1) \
+#define SET_CONCAT_OFF_V2(_has_concat, _concat_offset_v4, _concat_stride_v4) \
         { \
-            _concat_v2_off0 = dCv2_idy[0] * num_flt_v2; \
-            _concat_v2_off1 = dCv2_idy[1] * num_flt_v2; \
             if (_has_concat) { \
                 if (dCv2_y_valid[0]) \
-                    _concat_v2_off0 = concat_offset_v4 * _INT4_TO_8HALF_ + dCv2_idy[0] * concat_stride_v4 * _INT4_TO_8HALF_; \
+                    concat_v2_off0 = _concat_offset_v4 * _INT4_TO_8HALF_ + dCv2_idy[0] * _concat_stride_v4 * _INT4_TO_8HALF_; \
                 if (dCv2_y_valid[1]) \
-                    _concat_v2_off1 = concat_offset_v4 * _INT4_TO_8HALF_ + dCv2_idy[1] * concat_stride_v4 * _INT4_TO_8HALF_; \
+                    concat_v2_off1 = _concat_offset_v4 * _INT4_TO_8HALF_ + dCv2_idy[1] * _concat_stride_v4 * _INT4_TO_8HALF_; \
             } \
         }
 
@@ -473,25 +471,23 @@
                     int16_t  elt_v2 = ((int16_t*) _pre_data) [dCv2_idy[0] * num_flt_v2 + dCv2_idx[i]]; \
                     int8_t * elt_v1 = (int8_t *) &elt_v2; \
                     \
-                    fCv2[Cv2_off + i].x += (int)elt_v1[0] * pre_scale; \
-                    fCv2[Cv2_off + i].y += (int)elt_v1[1] * pre_scale; \
+                    fCv2[Cv2_off + i].x += (int)elt_v1[0] * pre_scale_vec.idx[flt_nid]; \
+                    fCv2[Cv2_off + i].y += (int)elt_v1[1] * pre_scale_vec.idx[flt_nid]; \
                 } \
                 if(dCv2_y_valid[1] && dCv2_x_valid[i] ) { \
                     int16_t  elt_v2 = ((int16_t*) _pre_data) [dCv2_idy[1] * num_flt_v2 + dCv2_idx[i]]; \
                     int8_t * elt_v1 = (int8_t *) &elt_v2; \
                     \
-                    fCv2[Cv2_off + i + NUM_N_STEPS].x += (int)elt_v1[0] * pre_scale; \
-                    fCv2[Cv2_off + i + NUM_N_STEPS].y += (int)elt_v1[1] * pre_scale; \
+                    fCv2[Cv2_off + i + NUM_N_STEPS].x += (int)elt_v1[0] * pre_scale_vec.idx[flt_nid]; \
+                    fCv2[Cv2_off + i + NUM_N_STEPS].y += (int)elt_v1[1] * pre_scale_vec.idx[flt_nid]; \
                 } \
 	        } \
         }
 
-#define JIT_SET_CONCAT_OFF_V2(_concat_v2_off0, _concat_v2_off1) \
+#define JIT_SET_CONCAT_OFF_V2(_concat_offset_v4, _concat_stride_v4) \
         { \
-            _concat_v2_off0 = dCv2_idy[0] * num_flt_v2; \
-            _concat_v2_off1 = dCv2_idy[1] * num_flt_v2; \
             if (dCv2_y_valid[0]) \
-                _concat_v2_off0 = concat_offset_v4 * _INT4_TO_8HALF_ + dCv2_idy[0] * concat_stride_v4 * _INT4_TO_8HALF_; \
+                concat_v2_off0 = _concat_offset_v4 * _INT4_TO_8HALF_ + dCv2_idy[0] * _concat_stride_v4 * _INT4_TO_8HALF_; \
             if (dCv2_y_valid[1]) \
-                _concat_v2_off1 = concat_offset_v4 * _INT4_TO_8HALF_ + dCv2_idy[1] * concat_stride_v4 * _INT4_TO_8HALF_; \
+                concat_v2_off1 = _concat_offset_v4 * _INT4_TO_8HALF_ + dCv2_idy[1] * _concat_stride_v4 * _INT4_TO_8HALF_; \
         }

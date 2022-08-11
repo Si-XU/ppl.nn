@@ -30,7 +30,7 @@
 #define OUTPUT_BY_INT8_V4(_R) \
         { \
             if( dCv4_x_valid && dCv4_y_valid ) \
-                ((int*) dC)[concat_v4_off + dCv4_off] = _R[0]; \
+                ((int*) dC)[ dCv4_off ] = _R[0]; \
         }
 
 #elif defined(ENABLE_SPLITK) || defined(ENABLE_SPLITF)
@@ -216,16 +216,16 @@
                 _Pragma("unroll") \
 	            for(int i = 0; i < _INT4_TO_4INT_; i++) \
                 { \
-			        fR[i] += (int)elt_v1[i] * pre_scale; \
+			        fR[i] += (int)elt_v1[i] * pre_scale_vec.idx[flt_nid]; \
 	            } \
 	        } \
         }
 
-#define SET_CONCAT_OFF_V4(_has_concat, _concat_v4_off) \
+#define SET_CONCAT_OFF_V4(_has_concat, _concat_offset_v4, _concat_stride_v4) \
         { \
             if (_has_concat && dCv4_x_valid && dCv4_y_valid) \
             { \
-                dCv4_off = concat_offset_v4 + dCv4_idy * concat_stride_v4 + dCv4_base + dCv4_idx; \
+                dCv4_off = _concat_offset_v4 + dCv4_idy * _concat_stride_v4 + dCv4_base + dCv4_idx; \
             } \
         }
         
@@ -308,11 +308,11 @@
             _Pragma("unroll") \
             for(int i = 0; i < _INT4_TO_4INT_; i++) \
             { \
-                fR[i] += (int)_elt_v1[i] * pre_scale; \
+                fR[i] += (int)_elt_v1[i] * pre_scale_vec.idx[flt_nid]; \
             } \
         }
 
-#define JIT_SET_CONCAT_OFF_V4(_concat_v4_off) \
+#define JIT_SET_CONCAT_OFF_V4(_concat_offset_v4, _concat_stride_v4) \
         { \
-            dCv4_off = concat_offset_v4 + dCv4_idy * concat_stride_v4 + dCv4_base + dCv4_idx; \
+            dCv4_off = _concat_offset_v4 + dCv4_idy * _concat_stride_v4 + dCv4_base + dCv4_idx; \
         }
