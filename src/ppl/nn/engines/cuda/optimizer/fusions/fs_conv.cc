@@ -19,7 +19,9 @@
 
 #include "ppl/nn/common/logger.h"
 #include "ppl/nn/engines/cuda/optimizer/opt_kernel.h"
-#include "ppl/nn/engines/cuda/params/conv_extra_param.h"
+#include "ppl/nn/engines/cuda/optimizer/opt_kernel_creator_manager.h"
+#include "ppl/nn/params/onnx/split_param.h"
+#include "ppl/nn/models/onnx/param_parser_manager.h"
 
 using namespace ppl::common;
 
@@ -56,7 +58,34 @@ const RetCode ConvFusion::FuseConvWithNextNode(ir::Node* node, ir::Node* nextnod
     return RC_SUCCESS;
 }
 
-const bool ConvFusion::FuseTest(ir::Node* node, const OptKernelOptions& options,
+const RetCode ConvFusion::FuseConvWithBrotherNode(ir::Node* node, ir::Node* brothernode, const OptKernelOptions& options) {
+    auto topo = options.graph->topo.get();
+    auto connect_edge_id = brothernode->GetInput(0);
+    auto connect_edge = topo->GetEdge(connect_edge_id);
+
+    for (uint32_t i = 0; i < brothernode->GetOutputCount(); ++i) {
+        auto edge_id = brothernode->GetOutput(i);
+        auto temp_edge = topo->GetEdge(edge_id);
+        temp_edge->SetProducer(node->GetId());
+        node->AddOutput(edge_id);
+    }
+
+    for (uint32_t i = 0; i < brothernode->GetInputCount(); ++i) {
+        auto edge_id = brothernode->GetInput(i);
+        if (edge_id == connect_edge_id || edge_id == INVALID_EDGEID) {
+            continue;
+        }
+        ir::Edge* edge = topo->GetEdge(edge_id);
+        edge->DelConsumer(brothernode->GetId());
+        topo->DelEdge(edge_id);
+    }
+
+    connect_edge->DelConsumer(brothernode->GetId());
+    topo->DelNode(brothernode->GetId());
+    return RC_SUCCESS;
+}
+
+const bool ConvFusion::FuseVerti(ir::Node* node, const OptKernelOptions& options,
                                 std::function<ppl::common::RetCode(ir::Node*, const OptKernelOptions&)> canfuse) {
     auto topo = options.graph->topo.get();
     auto data = options.graph->data.get();
@@ -110,13 +139,135 @@ const bool ConvFusion::FuseTest(ir::Node* node, const OptKernelOptions& options,
     return false;
 }
 
-const RetCode ConvFusion::FuseNode(ir::Node* node, bool reliable, const OptKernelOptions& options) {
-    FuseTest(node, options, CanFuseRelu);
-    if (reliable) {
-        if (FuseTest(node, options, CanFuseElementwise)) {
-            FuseTest(node, options, CanFuseRelu);
+const bool ConvFusion::FuseHoriz(ir::Node* node, bool reliable, const OptKernelOptions& options,
+                                std::function<ppl::common::RetCode(ir::Node*, ir::Node*, const OptKernelOptions&)> canfuse) {
+    auto topo = options.graph->topo.get();
+    auto data = options.graph->data.get();
+    auto node_id = node->GetId();
+    auto self_opt_kernel = (CudaOptKernel*)(options.info->kernels[node_id].get());
+    CudaConvParam* self_param = (CudaConvParam*)self_opt_kernel->GetParam();
+
+    auto edge_id = node->GetInput(0);
+    auto edge = topo->GetEdge(edge_id);
+    if (topo->GetOutput(edge->GetName()) != INVALID_EDGEID) { // Can not fuse an output edge
+        return false;
+    }
+    if (topo->GetEdge(edge_id)->CalcConsumerCount() == 1) { // Can not fuse single comsumer edge
+        return false;
+    }
+    
+    std::vector<ir::Node*> node_list;
+    for (auto iter = topo->GetEdge(edge_id)->CreateConsumerIter(); iter.IsValid(); iter.Forward()) {
+        auto brothernode_id = iter.Get();
+        auto brothernode = topo->GetNode(brothernode_id);
+        if (node_id != brothernode_id && canfuse(node, brothernode, options)) {
+            node_list.push_back(brothernode);
         }
     }
+
+    if (node_list.size() > 0) {
+        TensorShape& weight_shape = *options.tensors->find(node->GetInput(1))->second->GetShape();
+        auto out_channel_size = weight_shape.GetDim(0);
+        self_param->extra_param.fuse_info.horiz_out_size.push_back(out_channel_size);
+        
+        // Creat Split op
+        auto node_pair = topo->AddNode("Split_For_" + node->GetName());
+        if (!node_pair.second) {
+            LOG(ERROR) << "create a new node for [" << node->GetName() << "] failed.";
+            return false;
+        }
+        auto split_node = node_pair.first;
+        split_node->SetType(ir::Node::Type("", "Split", 11));
+        LOG(INFO) << split_node->GetId() << " " << node->GetId();
+
+        // Change outputs edge topo
+        auto output_edge = topo->GetEdge(node->GetOutput(0));
+        auto edge_pair = topo->AddEdge("Additional_" + output_edge->GetName());
+        if (!node_pair.second) {
+            LOG(ERROR) << "create a new edge for [" << node->GetName() << "] failed.";
+            return false;
+        }
+        auto new_edge = edge_pair.first;
+        node->ReplaceOutput(output_edge->GetId(), new_edge->GetId());
+        new_edge->SetProducer(node->GetId());
+        new_edge->AddConsumer(split_node->GetId());
+        split_node->AddInput(new_edge->GetId());
+        split_node->AddOutput(output_edge->GetId());
+        output_edge->SetProducer(split_node->GetId());
+        auto impl_pair = options.tensors->insert(
+                make_pair(new_edge->GetId(), unique_ptr<TensorImpl>(new TensorImpl(new_edge, TENSORTYPE_NORMAL))));
+        auto pre_shape = options.tensors->find(new_edge->GetId())->second.get();
+        impl_pair.first->second->GetShape()->Reshape(pre_shape->GetShape()->GetDims(),
+                                                        pre_shape->GetShape()->GetRealDimCount());
+
+
+        for (uint32_t i = 0; i < node_list.size(); ++i) {
+            auto brothernode = node_list[i];
+            LOG(DEBUG) << "Fuse node[" << node->GetName() << "] and brothernode[" << brothernode->GetName() << "]";
+
+            // Fuse vertical nodes first
+            FuseVerti(brothernode, options, CanFuseRelu);
+            if (reliable) {
+                if (FuseVerti(brothernode, options, CanFuseElementwise)) {
+                    FuseVerti(brothernode, options, CanFuseRelu);
+                }
+            }
+
+            auto brothernode_id = brothernode->GetId();
+            auto brother_opt_kernel = (CudaOptKernel*)(options.info->kernels[brothernode_id].get());
+            CudaConvParam* brother_param = (CudaConvParam*)brother_opt_kernel->GetParam();
+            if (SameFusePattern(self_param, brother_param)) {
+                const TensorShape& brother_weight_shape = *options.tensors->find(brothernode_id)->second->GetShape();
+                auto brother_out_channel_size = brother_weight_shape.GetDim(0);
+                self_param->extra_param.fuse_info.horiz_out_size.push_back(brother_out_channel_size);
+                weight_shape.SetDim(0, weight_shape.GetDim(0) + brother_out_channel_size);
+                options.info->kernels.erase(brothernode_id);
+                // Concat constant together
+                auto& constants = options.graph->data->constants;
+                auto& weight_constant_0 = constants[node->GetInput(1)];
+                auto& weight_constant_1 = constants[brothernode->GetInput(1)];
+                auto& bias_constant_0 = constants[node->GetInput(2)];
+                auto& bias_constant_1 = constants[brothernode->GetInput(2)];
+                weight_constant_0.data.Append(weight_constant_1.data.GetData() , weight_constant_0.data.GetSize());
+                bias_constant_0.data.Append(bias_constant_1.data.GetData() , bias_constant_0.data.GetSize());
+                constants.erase(brothernode->GetInput(1));
+                constants.erase(brothernode->GetInput(2));
+                FuseConvWithBrotherNode(split_node, brothernode, options);
+            }
+        }
+
+        // Create Split kernal and param
+        auto creator = OptKernelCreatorManager::GetInstance()->Find("", "Split", 11);
+        if (!creator) {
+            LOG(ERROR) << "Cannot find creator for split kernel";
+            return false;
+        }
+        auto opt_kernel = unique_ptr<CudaOptKernel>((*creator)(split_node));
+        if (!opt_kernel) {
+            LOG(ERROR) << "create Kernel failed: oom";
+            return false;
+        }
+
+        ppl::nn::onnx::SplitParam split_param;
+        split_param.axis = 1;
+        split_param.split_point = self_param->extra_param.fuse_info.horiz_out_size;
+        shared_ptr<ppl::nn::onnx::SplitParam> sp = make_shared<ppl::nn::onnx::SplitParam>(split_param);
+        data->attrs.emplace(split_node->GetId(), std::move(sp));
+        opt_kernel->Init(options);
+        options.info->kernels.emplace(split_node->GetId(), std::move(opt_kernel));
+
+    }
+    return false;
+}
+
+const RetCode ConvFusion::FuseNode(ir::Node* node, bool reliable, const OptKernelOptions& options) {
+    FuseVerti(node, options, CanFuseRelu);
+    if (reliable) {
+        if (FuseVerti(node, options, CanFuseElementwise)) {
+            FuseVerti(node, options, CanFuseRelu);
+        }
+    }
+    FuseHoriz(node, reliable, options, CanFuseConv);
     return RC_SUCCESS;
 }
 

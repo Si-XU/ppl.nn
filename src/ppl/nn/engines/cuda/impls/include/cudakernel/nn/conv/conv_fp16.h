@@ -206,6 +206,7 @@ struct fuse_info_t {
     std::vector<std::string> types; // support fuse relu + add + relu right now
     std::vector<uint32_t> input_ind; // save fused kernel's input index
     std::vector<void*> fuse_attrs; // save fused kernel's attributes
+    std::vector<int32_t> horiz_out_size; // save cout for each conv, only for hroriz conv fusion
     int channel_size   = -1; // save total channel size for concat
     int channel_offset = -1; // save output offset if we fuse concat
     int concat_edge_id = -1; // save concat output edge id
