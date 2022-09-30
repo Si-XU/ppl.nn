@@ -129,10 +129,26 @@ static void ExportAlgorithmsInfo(const map<string, CudaArgs::AlgoSelects>& algos
     for (auto s = algos.begin(); s != algos.end(); ++s) {
         auto& item = s->second;
         rapidjson::Value object(rapidjson::kObjectType);
-        object.AddMember("kname", rapidjson::StringRef(item.kname.data(), item.kname.size()), allocator);
-        object.AddMember("kid", item.kid, allocator);
-        object.AddMember("splitk", item.splitk, allocator);
-        object.AddMember("splitf", item.splitf, allocator);
+        rapidjson::Value value_kname(rapidjson::Type::kArrayType);
+        for (uint i = 0; i < item.kname.size(); ++i) {
+            value_kname.PushBack(rapidjson::StringRef(item.kname[0].data(), item.kname[0].size()), allocator);
+        }
+        rapidjson::Value value_kid(rapidjson::Type::kArrayType);
+        for (uint i = 0; i < item.kid.size(); ++i) {
+            value_kid.PushBack(item.kid[i], allocator);
+        }
+        rapidjson::Value value_splitk(rapidjson::Type::kArrayType);
+        for (uint i = 0; i < item.splitk.size(); ++i) {
+            value_splitk.PushBack(item.splitk[i], allocator);
+        }
+        rapidjson::Value value_splitf(rapidjson::Type::kArrayType);
+        for (uint i = 0; i < item.splitf.size(); ++i) {
+            value_splitf.PushBack(item.splitf[i], allocator);
+        }
+        object.AddMember("kname", value_kname, allocator);
+        object.AddMember("kid", value_kid, allocator);
+        object.AddMember("splitk", value_splitk, allocator);
+        object.AddMember("splitf", value_splitf, allocator);
         rapidjson::Value key_info(s->first.data(), s->first.size(), allocator);
         d.AddMember(key_info, object, allocator);
     }
@@ -368,20 +384,30 @@ static RetCode ImportAlgorithmsImpl(const char* json_buffer, uint64_t buffer_siz
 
         CudaArgs::AlgoSelects algo_info;
         auto ref = it->value.FindMember("kid");
-        if (ref != it->value.MemberEnd()) {
-            algo_info.kid = ref->value.GetInt();
+        if (ref != it->value.MemberEnd() && ref->value.IsArray()) {
+            for (auto iter = ref->value.GetArray().Begin(); iter != ref->value.GetArray().End(); ++iter) {
+                algo_info.kid.push_back(iter->GetInt());
+            }
         }
         ref = it->value.FindMember("splitk");
-        if (ref != it->value.MemberEnd()) {
-            algo_info.splitk = ref->value.GetInt();
+        if (ref != it->value.MemberEnd() && ref->value.IsArray()) {
+            for (auto iter = ref->value.GetArray().Begin(); iter != ref->value.GetArray().End(); ++iter) {
+                algo_info.splitk.push_back(iter->GetInt());
+            }
         }
         ref = it->value.FindMember("splitf");
-        if (ref != it->value.MemberEnd()) {
-            algo_info.splitf = ref->value.GetInt();
+        if (ref != it->value.MemberEnd() && ref->value.IsArray()) {
+            for (auto iter = ref->value.GetArray().Begin(); iter != ref->value.GetArray().End(); ++iter) {
+                algo_info.splitf.push_back(iter->GetInt());
+            }
         }
         ref = it->value.FindMember("kname");
-        if (ref != it->value.MemberEnd()) {
-            algo_info.kname.assign(ref->value.GetString(), ref->value.GetStringLength());
+        if (ref != it->value.MemberEnd() && ref->value.IsArray()) {
+            for (auto iter = ref->value.GetArray().Begin(); iter != ref->value.GetArray().End(); ++iter) {
+                std::string str;
+                str.assign(iter->GetString(), iter->GetStringLength());
+                algo_info.kname.push_back(str);
+            }
         }
         algo_selected->insert(make_pair(shape_name, algo_info));
     }

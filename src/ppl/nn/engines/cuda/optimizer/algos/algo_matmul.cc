@@ -139,13 +139,13 @@ double MatMulAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& opti
     const std::string& key_str = node->GetName();
     auto algo_info = options.args->alog_selects.find(key_str);
     if (algo_info != options.args->alog_selects.end()) {
-        attr_param_.extra_param.algo_info.kid = algo_info->second.kid;
-        attr_param_.extra_param.algo_info.splitk = algo_info->second.splitk;
-        attr_param_.extra_param.algo_info.splitf = algo_info->second.splitf;
+        attr_param_.extra_param.algo_info.kid = algo_info->second.kid[0];
+        attr_param_.extra_param.algo_info.splitk = algo_info->second.splitk[0];
+        attr_param_.extra_param.algo_info.splitf = algo_info->second.splitf[0];
 	    attr_param_.extra_param.algo_info.gemm_batch = batch;
-        attr_param_.extra_param.algo_info.algo_name = algo_info->second.kname;
-        if (algo_info->second.splitk > 1)
-            attr_param_.extra_param.algo_info.algo_name += "_spk" + std::to_string(algo_info->second.splitk);
+        attr_param_.extra_param.algo_info.algo_name = algo_info->second.kname[0];
+        if (attr_param_.extra_param.algo_info.splitk > 1)
+            attr_param_.extra_param.algo_info.algo_name += "_spk" + std::to_string(attr_param_.extra_param.algo_info.splitk);
         attr_param_.extra_param.algo_info.ParseAlgoName();
         return 0.0f;
     }
@@ -197,10 +197,10 @@ double MatMulAlgorithm::ExcuteTimer(const ir::Node* node, OptKernelOptions& opti
     }
 #endif
     CudaArgs::AlgoSelects algo_select;
-    algo_select.kname = attr_param_.extra_param.algo_info.algo_name;
-    algo_select.kid = attr_param_.extra_param.algo_info.kid;
-    algo_select.splitk = attr_param_.extra_param.algo_info.splitk;
-    algo_select.splitf = attr_param_.extra_param.algo_info.splitf;
+    algo_select.kname.push_back(attr_param_.extra_param.algo_info.algo_name);
+    algo_select.kid.push_back(attr_param_.extra_param.algo_info.kid);
+    algo_select.splitk.push_back(attr_param_.extra_param.algo_info.splitk);
+    algo_select.splitf.push_back(attr_param_.extra_param.algo_info.splitf);
     options.args->alog_selects.emplace(key_str, std::move(algo_select));
     return timer;
 }

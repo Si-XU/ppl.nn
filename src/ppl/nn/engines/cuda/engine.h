@@ -39,10 +39,10 @@ typedef std::set<nodeid_t> CompileInfo;
 
 struct CudaArgs {
     struct AlgoSelects {
-        std::string kname;
-        int kid = 0;
-        int splitk = 1;
-        int splitf = 1;
+        std::vector<std::string> kname;
+        std::vector<int> kid;
+        std::vector<int> splitk;
+        std::vector<int> splitf;
     };
 
     bool quick_select = false;
